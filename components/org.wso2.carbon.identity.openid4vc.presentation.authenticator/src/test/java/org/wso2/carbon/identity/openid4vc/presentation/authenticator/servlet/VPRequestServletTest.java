@@ -22,9 +22,9 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestCreateDTO;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestResponseDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
-import org.wso2.carbon.identity.openid4vc.presentation.common.dto.VPRequestCreateDTO;
-import org.wso2.carbon.identity.openid4vc.presentation.common.dto.VPRequestResponseDTO;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;

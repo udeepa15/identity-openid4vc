@@ -24,9 +24,9 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.lang.StringUtils;
-import org.wso2.carbon.identity.openid4vc.presentation.common.exception.RevocationCheckException;
-import org.wso2.carbon.identity.openid4vc.presentation.common.model.RevocationCheckResult;
-import org.wso2.carbon.identity.openid4vc.presentation.common.model.VerifiableCredential;
+import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.RevocationCheckException;
+import org.wso2.carbon.identity.openid4vc.presentation.verification.model.RevocationCheckResult;
+import org.wso2.carbon.identity.openid4vc.presentation.verification.model.VerifiableCredential;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.service.StatusListService;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.util.HttpClientUtil;
 

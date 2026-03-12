@@ -19,7 +19,7 @@
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.dao;
 
 import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException;
-import org.wso2.carbon.identity.openid4vc.presentation.common.model.PresentationDefinition;
+import org.wso2.carbon.identity.openid4vc.presentation.management.model.PresentationDefinition;
 
 import java.util.List;
 

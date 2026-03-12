@@ -19,9 +19,9 @@
 package org.wso2.carbon.identity.openid4vc.presentation.verification.util;
 
 import org.testng.annotations.Test;
-import org.wso2.carbon.identity.openid4vc.presentation.common.dto.VPSubmissionDTO;
-import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPSubmissionValidationException;
-import org.wso2.carbon.identity.openid4vc.presentation.common.model.PresentationDefinition;
+import org.wso2.carbon.identity.openid4vc.presentation.definition.model.PresentationDefinition;
+import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VPSubmissionDTO;
+import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VPSubmissionValidationException;
 
 import static org.testng.Assert.assertThrows;
 
@@ -69,8 +69,8 @@ public class VPSubmissionValidatorTest {
 
     @Test
     public void testValidateSubmissionMatchesDefinitionMismatch() {
-        org.wso2.carbon.identity.openid4vc.presentation.common.dto.PresentationSubmissionDTO submission = 
-            new org.wso2.carbon.identity.openid4vc.presentation.common.dto.PresentationSubmissionDTO();
+        org.wso2.carbon.identity.openid4vc.presentation.verification.dto.PresentationSubmissionDTO submission = 
+            new org.wso2.carbon.identity.openid4vc.presentation.verification.dto.PresentationSubmissionDTO();
         submission.setDefinitionId("def1");
         
         PresentationDefinition definition = new PresentationDefinition();

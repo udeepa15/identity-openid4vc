@@ -25,9 +25,9 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
-import org.wso2.carbon.identity.openid4vc.presentation.common.dto.AuthorizationDetailsDTO;
-import org.wso2.carbon.identity.openid4vc.presentation.common.model.PresentationDefinition;
-import org.wso2.carbon.identity.openid4vc.presentation.common.model.VPRequest;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.AuthorizationDetailsDTO;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
+import org.wso2.carbon.identity.openid4vc.presentation.management.model.PresentationDefinition;
 
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;

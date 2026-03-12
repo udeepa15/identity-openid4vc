@@ -27,7 +27,7 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
 import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
-import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPSubmissionValidationException;
+import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VPSubmissionValidationException;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.service.VCVerificationService;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.util.VPSubmissionValidator;
 

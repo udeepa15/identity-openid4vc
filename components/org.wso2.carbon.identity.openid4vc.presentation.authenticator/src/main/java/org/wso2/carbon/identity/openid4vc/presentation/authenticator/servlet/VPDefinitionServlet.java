@@ -23,14 +23,15 @@ import com.google.gson.GsonBuilder;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.ErrorDTO;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.CORSUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
-import org.wso2.carbon.identity.openid4vc.presentation.common.dto.ErrorDTO;
-import org.wso2.carbon.identity.openid4vc.presentation.common.exception.PresentationDefinitionNotFoundException;
 import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException;
-import org.wso2.carbon.identity.openid4vc.presentation.common.model.PresentationDefinition;
-import org.wso2.carbon.identity.openid4vc.presentation.common.util.CORSUtil;
-import org.wso2.carbon.identity.openid4vc.presentation.definition.service.PresentationDefinitionService;
-import org.wso2.carbon.identity.openid4vc.presentation.definition.service.impl.PresentationDefinitionServiceImpl;
+import org.wso2.carbon.identity.openid4vc.presentation.management.exception.PresentationDefinitionNotFoundException;
+import org.wso2.carbon.identity.openid4vc.presentation.management.model.PresentationDefinition;
+import org.wso2.carbon.identity.openid4vc.presentation.management.service.PresentationDefinitionService;
+import org.wso2.carbon.identity.openid4vc.presentation.management.service.impl.PresentationDefinitionServiceImpl;
+import org.wso2.carbon.identity.openid4vc.presentation.management.util.PresentationDefinitionUtil;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -285,8 +286,7 @@ public class VPDefinitionServlet extends HttpServlet {
         dto.setDefinitionId(definition.getDefinitionId());
         dto.setName(definition.getName());
         dto.setDescription(definition.getDescription());
-        String pdJson = org.wso2.carbon.identity.openid4vc.presentation.common.util
-                .PresentationDefinitionUtil.buildDefinitionJson(definition);
+        String pdJson = PresentationDefinitionUtil.buildDefinitionJson(definition);
         if (org.apache.commons.lang.StringUtils.isNotBlank(pdJson) && !"{}".equals(pdJson)) {
             try {
                 dto.setDefinition(gson.fromJson(pdJson, Object.class));

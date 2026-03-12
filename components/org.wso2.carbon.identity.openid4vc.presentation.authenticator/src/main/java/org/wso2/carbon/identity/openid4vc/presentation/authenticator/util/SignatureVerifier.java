@@ -25,8 +25,8 @@ import com.nimbusds.jose.util.Base64URL;
 import com.nimbusds.jwt.SignedJWT;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.carbon.identity.openid4vc.presentation.common.exception.CredentialVerificationException;
 import org.wso2.carbon.identity.openid4vc.presentation.did.service.DIDResolverService;
+import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.CredentialVerificationException;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;

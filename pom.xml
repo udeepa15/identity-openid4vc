@@ -52,7 +52,7 @@
         <module>components/org.wso2.carbon.identity.openid4vc.presentation.common</module>
         <module>components/org.wso2.carbon.identity.openid4vc.presentation.did</module>
         <module>components/org.wso2.carbon.identity.openid4vc.presentation.verification</module>
-        <module>components/org.wso2.carbon.identity.openid4vc.presentation.definition</module>
+        <module>components/org.wso2.carbon.identity.openid4vc.presentation.management</module>
         <module>components/org.wso2.carbon.identity.openid4vc.presentation.authenticator</module>
         <module>features/org.wso2.carbon.identity.openid4vc.template.management.server.feature</module>
         <module>features/org.wso2.carbon.identity.openid4vc.issuance.common.server.feature</module>
@@ -117,8 +117,11 @@
             </dependency>
             <dependency>
                 <groupId>org.wso2.carbon.identity.openid4vc</groupId>
-      <artifactId>org.wso2.carbon.identity.openid4vc.presentation.definition</artifactId>
-
+                <artifactId>org.wso2.carbon.identity.openid4vc.presentation.management</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.wso2.carbon.identity.openid4vc</groupId>
                 <artifactId>org.wso2.carbon.identity.sdjwt</artifactId>
                 <version>${project.version}</version>
             </dependency>

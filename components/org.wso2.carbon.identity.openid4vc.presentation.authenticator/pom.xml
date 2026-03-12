@@ -41,10 +41,10 @@
             <version>${project.version}</version>
         </dependency>
 
-        <!-- OpenID4VP Definition module -->
+        <!-- OpenID4VP Management module -->
         <dependency>
             <groupId>org.wso2.carbon.identity.openid4vc</groupId>
-            <artifactId>org.wso2.carbon.identity.openid4vc.presentation.definition</artifactId>
+            <artifactId>org.wso2.carbon.identity.openid4vc.presentation.management</artifactId>
             <version>${project.version}</version>
         </dependency>
 
@@ -231,7 +231,7 @@
                         </Private-Package>
                         <Import-Package>
                             org.wso2.carbon.identity.openid4vc.presentation.common.*;version="${identity.oid4vc.pkg.version}",
-                            org.wso2.carbon.identity.openid4vc.presentation.definition.*;version="${identity.oid4vc.pkg.version}",
+                            org.wso2.carbon.identity.openid4vc.presentation.management.*;version="${identity.oid4vc.pkg.version}",
                             org.wso2.carbon.identity.openid4vc.presentation.did.*;version="${identity.oid4vc.pkg.version}",
                             org.wso2.carbon.identity.openid4vc.presentation.verification.*;version="${identity.oid4vc.pkg.version}",
                             org.osgi.service.component; version="[1.2.0, 2.0.0)",

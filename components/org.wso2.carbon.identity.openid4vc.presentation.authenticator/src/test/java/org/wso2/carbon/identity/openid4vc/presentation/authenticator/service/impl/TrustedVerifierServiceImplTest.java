@@ -20,9 +20,9 @@ package org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.im
 
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.TrustedVerifier;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.TrustedVerifierService;
 import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException;
-import org.wso2.carbon.identity.openid4vc.presentation.common.model.TrustedVerifier;
 
 import java.util.ArrayList;
 import java.util.List;

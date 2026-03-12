@@ -21,7 +21,7 @@ package org.wso2.carbon.identity.openid4vc.presentation.verification.util;
 import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import org.wso2.carbon.identity.openid4vc.presentation.common.exception.CredentialVerificationException;
+import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.CredentialVerificationException;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;

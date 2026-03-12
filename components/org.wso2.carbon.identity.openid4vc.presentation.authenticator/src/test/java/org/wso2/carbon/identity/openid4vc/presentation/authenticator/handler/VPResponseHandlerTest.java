@@ -21,11 +21,11 @@ package org.wso2.carbon.identity.openid4vc.presentation.authenticator.handler;
 import com.google.gson.JsonObject;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import org.wso2.carbon.identity.openid4vc.presentation.common.dto.VPSubmissionDTO;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException;
-import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPSubmissionValidationException;
-import org.wso2.carbon.identity.openid4vc.presentation.common.model.VCVerificationStatus;
-import org.wso2.carbon.identity.openid4vc.presentation.common.model.VPRequest;
+import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VPSubmissionDTO;
+import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VPSubmissionValidationException;
+import org.wso2.carbon.identity.openid4vc.presentation.verification.model.VCVerificationStatus;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;

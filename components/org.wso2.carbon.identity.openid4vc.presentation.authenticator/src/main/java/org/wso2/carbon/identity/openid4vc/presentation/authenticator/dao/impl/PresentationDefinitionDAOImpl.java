@@ -19,14 +19,14 @@
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.dao.impl;
 
 import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException;
-import org.wso2.carbon.identity.openid4vc.presentation.common.model.PresentationDefinition;
-import org.wso2.carbon.identity.openid4vc.presentation.definition.dao.PresentationDefinitionDAO;
+import org.wso2.carbon.identity.openid4vc.presentation.management.dao.PresentationDefinitionDAO;
+import org.wso2.carbon.identity.openid4vc.presentation.management.model.PresentationDefinition;
 
 import java.util.List;
 
 /**
  * Authenticator-scoped implementation of PresentationDefinitionDAO.
- * Delegates to the canonical implementation in the presentation.definition bundle,
+ * Delegates to the canonical implementation in the presentation.management bundle,
  * which handles the 2-table schema (IDN_PRESENTATION_DEFINITION + IDN_PD_CREDENTIAL).
  */
 public class PresentationDefinitionDAOImpl implements PresentationDefinitionDAO {
@@ -38,7 +38,7 @@ public class PresentationDefinitionDAOImpl implements PresentationDefinitionDAO 
      */
     public PresentationDefinitionDAOImpl() {
         this.delegate =
-                new org.wso2.carbon.identity.openid4vc.presentation.definition.dao.impl
+                new org.wso2.carbon.identity.openid4vc.presentation.management.dao.impl
                         .PresentationDefinitionDAOImpl();
     }
 

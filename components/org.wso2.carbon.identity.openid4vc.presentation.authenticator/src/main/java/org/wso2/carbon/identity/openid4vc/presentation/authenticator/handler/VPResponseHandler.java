@@ -24,13 +24,13 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.lang.StringUtils;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPTokenExpiredException;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
-import org.wso2.carbon.identity.openid4vc.presentation.common.dto.VPSubmissionDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException;
-import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPSubmissionValidationException;
-import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPTokenExpiredException;
-import org.wso2.carbon.identity.openid4vc.presentation.common.model.VCVerificationStatus;
-import org.wso2.carbon.identity.openid4vc.presentation.common.model.VPRequest;
+import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VPSubmissionDTO;
+import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VPSubmissionValidationException;
+import org.wso2.carbon.identity.openid4vc.presentation.verification.model.VCVerificationStatus;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;

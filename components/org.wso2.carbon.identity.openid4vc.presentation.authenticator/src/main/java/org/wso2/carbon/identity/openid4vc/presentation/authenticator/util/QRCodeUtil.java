@@ -19,8 +19,8 @@
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.util;
 
 import org.apache.commons.lang.StringUtils;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.AuthorizationDetailsDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
-import org.wso2.carbon.identity.openid4vc.presentation.common.dto.AuthorizationDetailsDTO;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;

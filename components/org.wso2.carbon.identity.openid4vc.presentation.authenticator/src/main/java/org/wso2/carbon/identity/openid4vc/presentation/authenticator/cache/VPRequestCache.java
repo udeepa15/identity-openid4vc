@@ -19,8 +19,8 @@
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
-import org.wso2.carbon.identity.openid4vc.presentation.common.model.VPRequest;
 
 import java.util.ArrayList;
 import java.util.Iterator;

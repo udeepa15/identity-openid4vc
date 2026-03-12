@@ -20,9 +20,9 @@ package org.wso2.carbon.identity.openid4vc.presentation.did.service.impl;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import org.wso2.carbon.identity.openid4vc.presentation.common.exception.DIDDocumentException;
 import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException;
-import org.wso2.carbon.identity.openid4vc.presentation.common.model.DIDDocument;
+import org.wso2.carbon.identity.openid4vc.presentation.did.exception.DIDDocumentException;
+import org.wso2.carbon.identity.openid4vc.presentation.did.model.DIDDocument;
 import org.wso2.carbon.identity.openid4vc.presentation.did.provider.DIDProvider;
 import org.wso2.carbon.identity.openid4vc.presentation.did.provider.DIDProviderFactory;
 import org.wso2.carbon.identity.openid4vc.presentation.did.service.DIDDocumentService;

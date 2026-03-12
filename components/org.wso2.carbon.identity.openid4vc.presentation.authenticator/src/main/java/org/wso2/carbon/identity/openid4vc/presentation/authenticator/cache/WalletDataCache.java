@@ -20,7 +20,7 @@ package org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
-import org.wso2.carbon.identity.openid4vc.presentation.common.model.VPSubmission;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPSubmission;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;

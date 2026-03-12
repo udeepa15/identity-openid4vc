@@ -23,9 +23,9 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPRequestCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dao.VPRequestDAO;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException;
-import org.wso2.carbon.identity.openid4vc.presentation.common.model.VPRequest;
-import org.wso2.carbon.identity.openid4vc.presentation.common.model.VPRequestStatus;
 
 import java.util.ArrayList;
 import java.util.List;

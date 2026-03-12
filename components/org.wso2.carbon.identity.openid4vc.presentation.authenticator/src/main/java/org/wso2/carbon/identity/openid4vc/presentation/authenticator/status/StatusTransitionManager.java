@@ -18,7 +18,7 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.status;
 
-import org.wso2.carbon.identity.openid4vc.presentation.common.model.VPRequestStatus;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 
 import java.util.EnumMap;
 import java.util.EnumSet;

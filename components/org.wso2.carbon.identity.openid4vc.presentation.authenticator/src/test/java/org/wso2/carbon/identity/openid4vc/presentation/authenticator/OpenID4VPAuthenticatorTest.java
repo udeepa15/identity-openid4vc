@@ -16,18 +16,18 @@ import org.wso2.carbon.identity.application.common.model.IdentityProvider;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPStatusListenerCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.WalletDataCache;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.AuthorizationDetailsDTO;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestResponseDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPSubmission;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.QRCodeUtil;
-import org.wso2.carbon.identity.openid4vc.presentation.common.dto.AuthorizationDetailsDTO;
-import org.wso2.carbon.identity.openid4vc.presentation.common.dto.VPRequestResponseDTO;
-import org.wso2.carbon.identity.openid4vc.presentation.common.dto.VPVerificationResponseDTO;
-import org.wso2.carbon.identity.openid4vc.presentation.common.model.PresentationDefinition;
-import org.wso2.carbon.identity.openid4vc.presentation.common.model.VPRequest;
-import org.wso2.carbon.identity.openid4vc.presentation.common.model.VPRequestStatus;
-import org.wso2.carbon.identity.openid4vc.presentation.common.model.VPSubmission;
-import org.wso2.carbon.identity.openid4vc.presentation.common.util.SecurityUtils;
-import org.wso2.carbon.identity.openid4vc.presentation.definition.service.PresentationDefinitionService;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.SecurityUtils;
+import org.wso2.carbon.identity.openid4vc.presentation.management.model.PresentationDefinition;
+import org.wso2.carbon.identity.openid4vc.presentation.management.service.PresentationDefinitionService;
+import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VPVerificationResponseDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.service.VCVerificationService;
 
 import java.util.HashMap;
@@ -316,7 +316,7 @@ public class OpenID4VPAuthenticatorTest {
 
         when(vpRequestService.getVPRequestById(anyString(), anyInt()))
                 .thenThrow(
-                        new org.wso2.carbon.identity.openid4vc.presentation.common
+                        new org.wso2.carbon.identity.openid4vc.presentation.authenticator
                                 .exception.VPRequestExpiredException("Error", 1600000000000L));
 
         authenticator.process(request, response, context);

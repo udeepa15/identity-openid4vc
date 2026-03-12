@@ -19,21 +19,21 @@
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.impl;
 
 import org.apache.commons.lang.StringUtils;
-import org.wso2.carbon.identity.openid4vc.presentation.common.exception.PresentationDefinitionNotFoundException;
 import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException;
-import org.wso2.carbon.identity.openid4vc.presentation.common.model.PresentationDefinition;
 import org.wso2.carbon.identity.openid4vc.presentation.common.util.OpenID4VPUtil;
-import org.wso2.carbon.identity.openid4vc.presentation.definition.dao.PresentationDefinitionDAO;
-import org.wso2.carbon.identity.openid4vc.presentation.definition.dao.impl.PresentationDefinitionDAOImpl;
-import org.wso2.carbon.identity.openid4vc.presentation.definition.service.PresentationDefinitionService;
-import org.wso2.carbon.identity.openid4vc.presentation.definition.service.PresentationDefinitionService.ClaimDTO;
-import org.wso2.carbon.identity.openid4vc.presentation.definition.service.PresentationDefinitionService.InputDescriptorClaimsDTO;
+import org.wso2.carbon.identity.openid4vc.presentation.management.dao.PresentationDefinitionDAO;
+import org.wso2.carbon.identity.openid4vc.presentation.management.dao.impl.PresentationDefinitionDAOImpl;
+import org.wso2.carbon.identity.openid4vc.presentation.management.exception.PresentationDefinitionNotFoundException;
+import org.wso2.carbon.identity.openid4vc.presentation.management.model.PresentationDefinition;
+import org.wso2.carbon.identity.openid4vc.presentation.management.service.PresentationDefinitionService;
+import org.wso2.carbon.identity.openid4vc.presentation.management.service.PresentationDefinitionService.ClaimDTO;
+import org.wso2.carbon.identity.openid4vc.presentation.management.service.PresentationDefinitionService.InputDescriptorClaimsDTO;
 
 import java.util.List;
 
 /**
  * Authenticator-scoped PresentationDefinitionService implementation.
- * Delegates to the canonical service logic in the presentation.definition bundle.
+ * Delegates to the canonical service logic in the presentation.management bundle.
  */
 public class PresentationDefinitionServiceImpl implements PresentationDefinitionService {
 

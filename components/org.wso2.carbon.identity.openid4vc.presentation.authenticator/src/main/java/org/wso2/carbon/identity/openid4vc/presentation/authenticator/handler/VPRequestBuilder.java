@@ -22,11 +22,12 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import org.apache.commons.lang.StringUtils;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.AuthorizationDetailsDTO;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
-import org.wso2.carbon.identity.openid4vc.presentation.common.dto.AuthorizationDetailsDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException;
-import org.wso2.carbon.identity.openid4vc.presentation.common.model.PresentationDefinition;
-import org.wso2.carbon.identity.openid4vc.presentation.common.model.VPRequest;
+import org.wso2.carbon.identity.openid4vc.presentation.management.model.PresentationDefinition;
+import org.wso2.carbon.identity.openid4vc.presentation.management.util.PresentationDefinitionUtil;
 
 import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
@@ -78,8 +79,7 @@ public class VPRequestBuilder {
 
         // Presentation definition
         if (presentationDefinition != null) {
-            String pdJsonStr = org.wso2.carbon.identity.openid4vc.presentation.common.util
-                    .PresentationDefinitionUtil.buildDefinitionJson(presentationDefinition);
+            String pdJsonStr = PresentationDefinitionUtil.buildDefinitionJson(presentationDefinition);
             if (org.apache.commons.lang.StringUtils.isNotBlank(pdJsonStr) && !"{}".equals(pdJsonStr)) {
                 // Embed the presentation definition
                 JsonObject pdJson = com.google.gson.JsonParser.parseString(pdJsonStr).getAsJsonObject();
@@ -144,8 +144,7 @@ public class VPRequestBuilder {
 
             // Presentation definition
             if (presentationDefinition != null) {
-                String pdJsonStr = org.wso2.carbon.identity.openid4vc.presentation.common.util
-                        .PresentationDefinitionUtil.buildDefinitionJson(presentationDefinition);
+                String pdJsonStr = PresentationDefinitionUtil.buildDefinitionJson(presentationDefinition);
                 if (org.apache.commons.lang.StringUtils.isNotBlank(pdJsonStr) && !"{}".equals(pdJsonStr)) {
                     JsonObject pdJson = com.google.gson.JsonParser.parseString(pdJsonStr).getAsJsonObject();
                     payload.add(OpenID4VPConstants.Protocol.PRESENTATION_DEFINITION, pdJson);
@@ -189,8 +188,7 @@ public class VPRequestBuilder {
         dto.setResponseUri(buildResponseUri(vpRequest));
 
         if (presentationDefinition != null) {
-            String pdJsonStr = org.wso2.carbon.identity.openid4vc.presentation.common.util
-                    .PresentationDefinitionUtil.buildDefinitionJson(presentationDefinition);
+            String pdJsonStr = PresentationDefinitionUtil.buildDefinitionJson(presentationDefinition);
             if (org.apache.commons.lang.StringUtils.isNotBlank(pdJsonStr) && !"{}".equals(pdJsonStr)) {
                 JsonObject pdJson = com.google.gson.JsonParser.parseString(pdJsonStr).getAsJsonObject();
                 dto.setPresentationDefinition(pdJson);

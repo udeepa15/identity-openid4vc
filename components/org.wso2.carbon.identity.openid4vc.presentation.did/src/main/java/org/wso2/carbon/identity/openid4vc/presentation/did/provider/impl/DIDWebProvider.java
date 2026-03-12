@@ -23,7 +23,7 @@ import com.nimbusds.jose.JWSSigner;
 import com.nimbusds.jose.jwk.OctetKeyPair;
 import org.wso2.carbon.core.util.KeyStoreManager;
 import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException;
-import org.wso2.carbon.identity.openid4vc.presentation.common.model.DIDDocument;
+import org.wso2.carbon.identity.openid4vc.presentation.did.model.DIDDocument;
 import org.wso2.carbon.identity.openid4vc.presentation.did.provider.DIDProvider;
 import org.wso2.carbon.identity.openid4vc.presentation.did.util.BCEd25519Signer;
 

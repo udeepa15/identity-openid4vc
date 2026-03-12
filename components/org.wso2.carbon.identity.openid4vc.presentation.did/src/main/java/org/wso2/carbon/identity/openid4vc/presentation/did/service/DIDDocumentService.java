@@ -18,8 +18,8 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.did.service;
 
-import org.wso2.carbon.identity.openid4vc.presentation.common.exception.DIDDocumentException;
-import org.wso2.carbon.identity.openid4vc.presentation.common.model.DIDDocument;
+import org.wso2.carbon.identity.openid4vc.presentation.did.exception.DIDDocumentException;
+import org.wso2.carbon.identity.openid4vc.presentation.did.model.DIDDocument;
 
 /**
  * Service interface for managing DID Documents for WSO2 Identity Server.

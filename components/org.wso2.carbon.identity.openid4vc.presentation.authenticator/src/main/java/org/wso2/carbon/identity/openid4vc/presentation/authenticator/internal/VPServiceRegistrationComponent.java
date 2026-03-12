@@ -34,7 +34,7 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.OpenID4VPAu
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.listener.OpenID4VPIdentityProviderMgtListener;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.impl.VPRequestServiceImpl;
-import org.wso2.carbon.identity.openid4vc.presentation.definition.service.PresentationDefinitionService;
+import org.wso2.carbon.identity.openid4vc.presentation.management.service.PresentationDefinitionService;
 import org.wso2.carbon.idp.mgt.listener.IdentityProviderMgtListener;
 import org.wso2.carbon.user.core.service.RealmService;
 
@@ -104,7 +104,7 @@ public class VPServiceRegistrationComponent {
 
     }
 
-    @Reference(name = "presentation.definition.service", service = PresentationDefinitionService.class,
+    @Reference(name = "presentation.management.service", service = PresentationDefinitionService.class,
             cardinality = ReferenceCardinality.MANDATORY, policy = ReferencePolicy.DYNAMIC,
             unbind = "unsetPresentationDefinitionService")
     protected void setPresentationDefinitionService(PresentationDefinitionService service) {

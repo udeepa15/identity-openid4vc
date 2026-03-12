@@ -20,9 +20,9 @@ package org.wso2.carbon.identity.openid4vc.presentation.authenticator.status;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPStatusListenerCache;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPSubmission;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling.LongPollingManager;
-import org.wso2.carbon.identity.openid4vc.presentation.common.model.VPRequestStatus;
-import org.wso2.carbon.identity.openid4vc.presentation.common.model.VPSubmission;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
