@@ -20,6 +20,8 @@ package org.wso2.carbon.identity.openid4vc.presentation.authenticator.servlet;
 
 import com.google.gson.JsonObject;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.CORSUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.did.exception.DIDDocumentException;
 import org.wso2.carbon.identity.openid4vc.presentation.did.service.DIDDocumentService;
@@ -48,6 +50,7 @@ import javax.servlet.http.HttpServletResponse;
 public class WellKnownDIDServlet extends HttpServlet {
 
     private static final long serialVersionUID = 1L;
+    private static final Log LOG = LogFactory.getLog(WellKnownDIDServlet.class);
     private static final int DEFAULT_TENANT_ID = -1234; // Super tenant
 
     private transient DIDDocumentService didDocumentService;
@@ -70,6 +73,9 @@ public class WellKnownDIDServlet extends HttpServlet {
         try {
             // Get tenant domain and ID from context
             String tenantDomain = org.wso2.carbon.identity.core.util.IdentityTenantUtil.getTenantDomainFromContext();
+            if (org.apache.commons.lang.StringUtils.isBlank(tenantDomain)) {
+                tenantDomain = org.wso2.carbon.utils.multitenancy.MultitenantConstants.SUPER_TENANT_DOMAIN_NAME;
+            }
             int tenantId = org.wso2.carbon.identity.core.util.IdentityTenantUtil.getTenantId(tenantDomain);
 
             // Dynamically construct domain with path for this tenant
@@ -95,10 +101,11 @@ public class WellKnownDIDServlet extends HttpServlet {
             out.flush();
 
         } catch (DIDDocumentException e) {
-
+            LOG.error("Failed to generate DID document.", e);
             sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
                     "Failed to generate DID document: " + e.getMessage());
-        } catch (RuntimeException e) {
+        } catch (Throwable e) {
+            LOG.error("Internal server error while serving DID document.", e);
             sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
                     "Internal server error");
         }
