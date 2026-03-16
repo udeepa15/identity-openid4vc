@@ -31,6 +31,7 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VP
 import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException;
 import org.wso2.carbon.identity.openid4vc.presentation.management.model.PresentationDefinition;
 import org.wso2.carbon.identity.openid4vc.presentation.management.service.PresentationDefinitionService;
+import org.wso2.carbon.idp.mgt.IdentityProviderManagementException;
 import org.wso2.carbon.idp.mgt.listener.AbstractIdentityProviderMgtListener;
 
 import java.util.ArrayList;
@@ -45,8 +46,7 @@ import java.util.Set;
 public class OpenID4VPIdentityProviderMgtListener extends AbstractIdentityProviderMgtListener {
 
     private static final Log log = LogFactory.getLog(OpenID4VPIdentityProviderMgtListener.class);
-     private static final String PROP_PRESENTATION_DEFINITION = "presentationDefinition";
-     private static final String PROP_PRESENTATION_DEFINITION_ID = "presentationDefinitionId";
+    private static final String PROP_PRESENTATION_DEFINITION_ID = "presentationDefinitionId";
     private static final String OPENID4VP_AUTHENTICATOR_NAME = "OpenID4VPAuthenticator";
 
     @Override
@@ -57,32 +57,44 @@ public class OpenID4VPIdentityProviderMgtListener extends AbstractIdentityProvid
 
     @Override
     @SuppressFBWarnings("REC_CATCH_EXCEPTION")
-    public boolean doPreAddIdP(IdentityProvider identityProvider, String tenantDomain) {
+    public boolean doPreAddIdP(IdentityProvider identityProvider, String tenantDomain)
+            throws IdentityProviderManagementException {
 
-        handlePrePersistence(identityProvider);
+        handlePrePersistence(identityProvider, tenantDomain, "ADD");
         return true;
     }
 
     @Override
-    public boolean doPostAddIdP(IdentityProvider identityProvider, String tenantDomain) {
+    public boolean doPostAddIdP(IdentityProvider identityProvider, String tenantDomain)
+            throws IdentityProviderManagementException {
 
-        handlePostPersistence(identityProvider, tenantDomain);
-        return true;
+        try {
+            handlePostPersistence(identityProvider, tenantDomain);
+            return true;
+        } finally {
+            clearOperationContext();
+        }
     }
 
     @Override
     @SuppressFBWarnings("REC_CATCH_EXCEPTION")
-    public boolean doPreUpdateIdP(String oldIdPName, IdentityProvider identityProvider, String tenantDomain) {
+    public boolean doPreUpdateIdP(String oldIdPName, IdentityProvider identityProvider, String tenantDomain)
+            throws IdentityProviderManagementException {
 
-        handlePrePersistence(identityProvider);
+        handlePrePersistence(identityProvider, tenantDomain, "UPDATE");
         return true;
     }
 
     @Override
-    public boolean doPostUpdateIdP(String oldIdPName, IdentityProvider identityProvider, String tenantDomain) {
+    public boolean doPostUpdateIdP(String oldIdPName, IdentityProvider identityProvider, String tenantDomain)
+            throws IdentityProviderManagementException {
 
-        handlePostPersistence(identityProvider, tenantDomain);
-        return true;
+        try {
+            handlePostPersistence(identityProvider, tenantDomain);
+            return true;
+        } finally {
+            clearOperationContext();
+        }
     }
 
     @Override
@@ -132,8 +144,39 @@ public class OpenID4VPIdentityProviderMgtListener extends AbstractIdentityProvid
      * No longer intercepts JSON or generates UUIDs.
      */
     @SuppressFBWarnings({"CRLF_INJECTION_LOGS", "REC_CATCH_EXCEPTION"})
-    private void handlePrePersistence(IdentityProvider identityProvider) {
-        // No-op for ID reference flow
+    private void handlePrePersistence(IdentityProvider identityProvider,
+                                      String tenantDomain,
+                                      String operationType)
+            throws IdentityProviderManagementException {
+
+        clearOperationContext();
+
+        if (!isOpenID4VPConnection(identityProvider)) {
+            return;
+        }
+
+        PresentationDefinitionService pdService = VPServiceDataHolder.getInstance().getPresentationDefinitionService();
+        if (pdService == null) {
+            throw new IdentityProviderManagementException(
+                    "Presentation Definition service is unavailable for OpenID4VP connection creation.");
+        }
+
+        int tenantId;
+        try {
+            tenantId = IdentityTenantUtil.getTenantId(tenantDomain);
+        } catch (Exception e) {
+            throw new IdentityProviderManagementException("Error resolving tenant id for tenant: "
+                    + sanitize(tenantDomain), e);
+        }
+
+        String presentationDefinitionId = resolvePresentationDefinitionId(identityProvider);
+        if (StringUtils.isNotBlank(presentationDefinitionId)) {
+            validatePresentationDefinitionExists(pdService, presentationDefinitionId, tenantId);
+            return;
+        }
+
+        throw new IdentityProviderManagementException("OpenID4VP connection requires an existing "
+            + "presentationDefinitionId. Auto-creation of Presentation Definitions is disabled.");
     }
 
     /**
@@ -246,18 +289,13 @@ public class OpenID4VPIdentityProviderMgtListener extends AbstractIdentityProvid
                 return null;
             }
 
-            String legacyPropertyValue = null;
             for (Property prop : properties) {
                 if (PROP_PRESENTATION_DEFINITION_ID.equals(prop.getName())
                         && StringUtils.isNotBlank(prop.getValue())) {
                     return prop.getValue();
                 }
-                if (PROP_PRESENTATION_DEFINITION.equals(prop.getName())
-                        && StringUtils.isNotBlank(prop.getValue())) {
-                    legacyPropertyValue = prop.getValue();
-                }
             }
-            return legacyPropertyValue;
+            return null;
         }
 
         return null;
@@ -368,5 +406,42 @@ public class OpenID4VPIdentityProviderMgtListener extends AbstractIdentityProvid
             return null;
         }
         return input.replace("\r", "").replace("\n", "");
+    }
+
+    private boolean isOpenID4VPConnection(IdentityProvider identityProvider) {
+
+        return getOpenID4VPAuthenticatorConfig(identityProvider) != null;
+    }
+
+    private FederatedAuthenticatorConfig getOpenID4VPAuthenticatorConfig(IdentityProvider identityProvider) {
+
+        if (identityProvider == null || identityProvider.getFederatedAuthenticatorConfigs() == null) {
+            return null;
+        }
+
+        for (FederatedAuthenticatorConfig config : identityProvider.getFederatedAuthenticatorConfigs()) {
+            if (config != null && OPENID4VP_AUTHENTICATOR_NAME.equals(config.getName())) {
+                return config;
+            }
+        }
+        return null;
+    }
+
+    private void validatePresentationDefinitionExists(PresentationDefinitionService pdService,
+                                                      String definitionId,
+                                                      int tenantId)
+            throws IdentityProviderManagementException {
+
+        try {
+            pdService.getPresentationDefinitionById(definitionId, tenantId);
+        } catch (Exception e) {
+            throw new IdentityProviderManagementException(
+                    "Invalid Presentation Definition ID configured for connection: "
+                            + sanitize(definitionId), e);
+        }
+    }
+
+    private void clearOperationContext() {
+        // No operation context is needed when PD auto-creation is disabled.
     }
 }
