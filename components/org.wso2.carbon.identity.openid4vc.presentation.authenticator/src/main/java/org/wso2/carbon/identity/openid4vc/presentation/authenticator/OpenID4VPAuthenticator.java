@@ -328,7 +328,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      * Extract the username from verified claims using only the IDP-configured subject claim.
      *
      * <p>The remote claim name to use as subject is resolved from the IDP's {@code userIdClaim}
-     * local URI. If that cannot be determined (IDP not configured, or no matching mapping), this
+        * remote URI. If that cannot be determined (IDP not configured, or no matching mapping), this
      * method returns {@code null}, which causes authentication to fail with a clear error rather
      * than silently picking the wrong field.</p>
      *
@@ -629,10 +629,10 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      * Resolve the remote (VC-side) claim name that corresponds to the IDP's configured subject
      * claim URI ({@code userIdClaim}).
      *
-     * <p>The IDP's {@code userIdClaim} is a <em>local</em> WSO2 claim URI such as
-     * {@code http://wso2.org/claims/emailaddress}. This method finds the ClaimMapping whose
-     * local claim URI matches that value and returns its remote claim name (e.g. {@code email}),
-     * which is the field name we must look for inside the Verifiable Credential.</p>
+        * <p>The IDP's {@code userIdClaim} is expected to be the <em>external IdP claim</em>
+        * (remote claim) such as {@code email}. This method finds the ClaimMapping whose remote
+        * claim URI matches that value and returns the same remote claim name, which is the field
+        * name we must look for inside the Verifiable Credential.</p>
      *
      * @param context          Authentication context
      * @param idpClaimMappings Resolved IDP claim mappings
@@ -668,8 +668,16 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
                 return null;
             }
 
-            // Find the remote claim whose local URI matches the userIdClaim
+            // Find the remote claim whose remote URI matches the userIdClaim.
             for (ClaimMapping mapping : idpClaimMappings) {
+                if (mapping.getRemoteClaim() != null
+                        && userIdClaimUri.equals(mapping.getRemoteClaim().getClaimUri())) {
+                    return mapping.getRemoteClaim() != null
+                            ? mapping.getRemoteClaim().getClaimUri()
+                            : null;
+                }
+
+                // Backward compatibility: allow old configurations where userIdClaim was local.
                 if (mapping.getLocalClaim() != null
                         && userIdClaimUri.equals(mapping.getLocalClaim().getClaimUri())) {
                     return mapping.getRemoteClaim() != null
