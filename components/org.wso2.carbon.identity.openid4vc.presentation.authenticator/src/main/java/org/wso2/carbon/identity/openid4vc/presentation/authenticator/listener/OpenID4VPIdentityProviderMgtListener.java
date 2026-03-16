@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, WSO2 LLC. (http://www.wso2.com).
+ * Copyright (c) 2025-2026, WSO2 LLC. (http://www.wso2.com).
  *
  * WSO2 LLC. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -22,6 +22,7 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 import org.wso2.carbon.identity.application.common.model.FederatedAuthenticatorConfig;
 import org.wso2.carbon.identity.application.common.model.IdentityProvider;
 import org.wso2.carbon.identity.application.common.model.Property;
@@ -32,14 +33,20 @@ import org.wso2.carbon.identity.openid4vc.presentation.management.model.Presenta
 import org.wso2.carbon.identity.openid4vc.presentation.management.service.PresentationDefinitionService;
 import org.wso2.carbon.idp.mgt.listener.AbstractIdentityProviderMgtListener;
 
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+
 /**
- * Identity Provider Management Listener for OpenIDoa4VP.
+ * Identity Provider Management Listener for OpenID4VP.
  * This listener manages the lifecycle of Presentation Definitions associated with Identity Providers.
  */
 public class OpenID4VPIdentityProviderMgtListener extends AbstractIdentityProviderMgtListener {
 
     private static final Log log = LogFactory.getLog(OpenID4VPIdentityProviderMgtListener.class);
-    private static final String PROP_PRESENTATION_DEFINITION = "presentationDefinition";
+     private static final String PROP_PRESENTATION_DEFINITION = "presentationDefinition";
+     private static final String PROP_PRESENTATION_DEFINITION_ID = "presentationDefinitionId";
     private static final String OPENID4VP_AUTHENTICATOR_NAME = "OpenID4VPAuthenticator";
 
     @Override
@@ -141,66 +148,213 @@ public class OpenID4VPIdentityProviderMgtListener extends AbstractIdentityProvid
         }
 
         try {
-            FederatedAuthenticatorConfig[] fedAuthConfigs = identityProvider.getFederatedAuthenticatorConfigs();
-            if (fedAuthConfigs == null) {
+            PresentationDefinitionService pdService = VPServiceDataHolder.getInstance()
+                    .getPresentationDefinitionService();
+            if (pdService == null) {
                 return;
             }
 
-            String presentationDefinitionId = null;
-
-            // Find the presentation definition ID property
-            for (FederatedAuthenticatorConfig config : fedAuthConfigs) {
-                if (OPENID4VP_AUTHENTICATOR_NAME.equals(config.getName())) {
-                    Property[] properties = config.getProperties();
-                    if (properties != null) {
-                        for (Property prop : properties) {
-                            if (PROP_PRESENTATION_DEFINITION.equals(prop.getName())) {
-                                presentationDefinitionId = prop.getValue();
-                                break;
-                            }
-                        }
-                    }
-                    break;
+            int tenantId = IdentityTenantUtil.getTenantId(tenantDomain);
+            PresentationDefinition existingPd = resolvePresentationDefinition(identityProvider, pdService, tenantId);
+            if (existingPd == null) {
+                if (log.isDebugEnabled()) {
+                    log.debug("Presentation Definition not found for IDP: "
+                            + sanitize(identityProvider.getIdentityProviderName()));
                 }
+                return;
             }
 
-            if (StringUtils.isNotBlank(presentationDefinitionId)) {
+            List<String> mappedIdpClaims = extractMappedIdpClaims(identityProvider);
+            if (!hasClaimChanges(existingPd, mappedIdpClaims)) {
+                return;
+            }
 
-                String resourceId = identityProvider.getResourceId();
-                if (StringUtils.isBlank(resourceId)) {
-                    log.error("Resource ID not available in post-persistence for IDP: " +
-                            sanitize(identityProvider.getIdentityProviderName()));
-                    return;
-                }
+            PresentationDefinition syncedDefinition = buildSyncedDefinition(existingPd, mappedIdpClaims);
+            pdService.updatePresentationDefinition(syncedDefinition, tenantId);
 
-                PresentationDefinitionService pdService =
-                        VPServiceDataHolder.getInstance().getPresentationDefinitionService();
-                int tenantId = IdentityTenantUtil.getTenantId(tenantDomain);
-
-                PresentationDefinition existingPd = null;
-                try {
-                    existingPd = pdService.getPresentationDefinitionById(presentationDefinitionId, tenantId);
-                } catch (Exception e) {
-                    // Ignore, might not exist
-                }
-
-                if (existingPd != null) {
-                    // The definition is linked to this IDP via the authenticator config property.
-                    // No resourceId update needed — RESOURCE_ID column was removed from the schema.
-                    if (log.isDebugEnabled()) {
-                        log.debug("Presentation Definition " + sanitize(presentationDefinitionId) +
-                                " already exists for IDP: " + sanitize(identityProvider.getIdentityProviderName()));
-                    }
-                } else {
-                    log.warn("Presentation Definition not found for ID: " + sanitize(presentationDefinitionId) +
-                            " during IDP creation: " + sanitize(identityProvider.getIdentityProviderName()));
-                }
+            if (log.isDebugEnabled()) {
+                log.debug("Synchronized " + mappedIdpClaims.size() + " claim(s) to Presentation Definition: "
+                        + sanitize(existingPd.getDefinitionId()) + " for IDP: "
+                        + sanitize(identityProvider.getIdentityProviderName()));
             }
 
         } catch (Exception e) {
             log.error("Error in post-persistence handling for IDP: " +
                     sanitize(identityProvider.getIdentityProviderName()), e);
         }
+    }
+
+    /**
+     * Resolve the presentation definition associated with the given identity provider.
+     *
+     * @param identityProvider Identity provider
+     * @param pdService        Presentation definition service
+     * @param tenantId         Tenant ID
+     * @return Associated presentation definition, or null if not found
+     */
+        @SuppressFBWarnings(value = {"REC_CATCH_EXCEPTION", "CRLF_INJECTION_LOGS"},
+            justification = "Exception is intentionally swallowed for fallback lookup. "
+                + "All logged values are sanitized via sanitize().")
+    private PresentationDefinition resolvePresentationDefinition(IdentityProvider identityProvider,
+                                                                 PresentationDefinitionService pdService,
+                                                                 int tenantId) {
+
+        String presentationDefinitionId = resolvePresentationDefinitionId(identityProvider);
+
+        if (StringUtils.isNotBlank(presentationDefinitionId)) {
+            try {
+                return pdService.getPresentationDefinitionById(presentationDefinitionId, tenantId);
+            } catch (Exception e) {
+                if (log.isDebugEnabled()) {
+                    log.debug("Presentation Definition not found by ID: " + sanitize(presentationDefinitionId));
+                }
+            }
+        }
+
+        try {
+            String pdName = identityProvider.getIdentityProviderName() + " Definition";
+            return pdService.getPresentationDefinitionByName(pdName, tenantId);
+        } catch (Exception e) {
+            if (log.isDebugEnabled()) {
+                log.debug("Presentation Definition not found by name for IDP: "
+                        + sanitize(identityProvider.getIdentityProviderName()));
+            }
+            return null;
+        }
+    }
+
+    /**
+     * Resolve configured presentation definition ID from OpenID4VP authenticator properties.
+     *
+     * @param identityProvider Identity provider
+     * @return Presentation definition ID, or null
+     */
+    private String resolvePresentationDefinitionId(IdentityProvider identityProvider) {
+
+        FederatedAuthenticatorConfig[] fedAuthConfigs = identityProvider.getFederatedAuthenticatorConfigs();
+        if (fedAuthConfigs == null) {
+            return null;
+        }
+
+        for (FederatedAuthenticatorConfig config : fedAuthConfigs) {
+            if (!OPENID4VP_AUTHENTICATOR_NAME.equals(config.getName())) {
+                continue;
+            }
+
+            Property[] properties = config.getProperties();
+            if (properties == null) {
+                return null;
+            }
+
+            String legacyPropertyValue = null;
+            for (Property prop : properties) {
+                if (PROP_PRESENTATION_DEFINITION_ID.equals(prop.getName())
+                        && StringUtils.isNotBlank(prop.getValue())) {
+                    return prop.getValue();
+                }
+                if (PROP_PRESENTATION_DEFINITION.equals(prop.getName())
+                        && StringUtils.isNotBlank(prop.getValue())) {
+                    legacyPropertyValue = prop.getValue();
+                }
+            }
+            return legacyPropertyValue;
+        }
+
+        return null;
+    }
+
+    /**
+     * Extract all non-empty IdP claim names from the claim mappings.
+     *
+     * @param identityProvider Identity provider
+     * @return Ordered and de-duplicated claim names
+     */
+    private List<String> extractMappedIdpClaims(IdentityProvider identityProvider) {
+
+        Set<String> claims = new LinkedHashSet<>();
+
+        if (identityProvider == null
+                || identityProvider.getClaimConfig() == null
+                || identityProvider.getClaimConfig().getClaimMappings() == null) {
+            return new ArrayList<>();
+        }
+
+        for (ClaimMapping mapping : identityProvider.getClaimConfig().getClaimMappings()) {
+            if (mapping != null && mapping.getRemoteClaim() != null
+                    && StringUtils.isNotBlank(mapping.getRemoteClaim().getClaimUri())) {
+                claims.add(mapping.getRemoteClaim().getClaimUri().trim());
+            }
+        }
+
+        return new ArrayList<>(claims);
+    }
+
+    /**
+     * Check whether requested credential claim lists differ from the mapped claims.
+     *
+     * @param definition       Existing presentation definition
+     * @param mappedIdpClaims  Mapped IdP claim names
+     * @return True if claims must be updated
+     */
+    private boolean hasClaimChanges(PresentationDefinition definition, List<String> mappedIdpClaims) {
+
+        if (definition == null || definition.getRequestedCredentials() == null
+                || definition.getRequestedCredentials().isEmpty()) {
+            return false;
+        }
+
+        Set<String> targetClaims = new LinkedHashSet<>(mappedIdpClaims);
+
+        for (PresentationDefinition.RequestedCredential credential : definition.getRequestedCredentials()) {
+            List<String> existingClaims = credential != null ? credential.getClaims() : null;
+            Set<String> existingClaimSet = existingClaims != null
+                    ? new LinkedHashSet<>(existingClaims)
+                    : new LinkedHashSet<String>();
+
+            if (!existingClaimSet.equals(targetClaims)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Build a new presentation definition with synchronized claim lists.
+     *
+     * @param definition       Existing presentation definition
+     * @param mappedIdpClaims  Mapped IdP claim names
+     * @return Synchronized presentation definition
+     */
+    private PresentationDefinition buildSyncedDefinition(PresentationDefinition definition,
+                                                         List<String> mappedIdpClaims) {
+
+        List<PresentationDefinition.RequestedCredential> updatedCredentials = new ArrayList<>();
+        List<PresentationDefinition.RequestedCredential> existingCredentials = definition.getRequestedCredentials();
+
+        if (existingCredentials != null) {
+            for (PresentationDefinition.RequestedCredential credential : existingCredentials) {
+                if (credential == null) {
+                    continue;
+                }
+
+                PresentationDefinition.RequestedCredential updatedCredential =
+                        new PresentationDefinition.RequestedCredential();
+                updatedCredential.setType(credential.getType());
+                updatedCredential.setPurpose(credential.getPurpose());
+                updatedCredential.setIssuer(credential.getIssuer());
+                updatedCredential.setClaims(mappedIdpClaims);
+                updatedCredentials.add(updatedCredential);
+            }
+        }
+
+        return new PresentationDefinition.Builder()
+                .definitionId(definition.getDefinitionId())
+                .name(definition.getName())
+                .description(definition.getDescription())
+                .tenantId(definition.getTenantId())
+                .requestedCredentials(updatedCredentials)
+                .build();
     }
 
     /**
