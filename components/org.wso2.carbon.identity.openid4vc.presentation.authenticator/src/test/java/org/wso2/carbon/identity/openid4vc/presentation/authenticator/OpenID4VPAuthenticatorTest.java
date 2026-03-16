@@ -230,6 +230,7 @@ public class OpenID4VPAuthenticatorTest {
 
         Map<String, Object> verifiedClaims = new HashMap<>();
         verifiedClaims.put("email", "testuser@example.com");
+        verifiedClaims.put("iss", "did:example:issuer");
         VPVerificationResponseDTO verificationResult =
                 VPVerificationResponseDTO.success(verifiedClaims, "vc+sd-jwt", "dummy-nonce", "dummy-client");
         when(vcVerificationService.verifyPresentation(
@@ -274,6 +275,7 @@ public class OpenID4VPAuthenticatorTest {
 
         Map<String, Object> verifiedClaims = new HashMap<>();
         verifiedClaims.put("email", "testuser@example.com");
+        verifiedClaims.put("iss", "did:example:issuer");
         VPVerificationResponseDTO verificationResult =
                 VPVerificationResponseDTO.success(verifiedClaims, "ldp_vp", "dummy-nonce", "dummy-client");
         when(vcVerificationService.verifyPresentation(

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, WSO2 LLC. (http://www.wso2.com).
+ * Copyright (c) 2025-2026, WSO2 LLC. (http://www.wso2.com).
  *
  * WSO2 LLC. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -58,6 +58,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -296,13 +297,22 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             // Fix 1: Always resolve IDP claim mappings, even when getExternalIdP() is null.
             ClaimMapping[] idpClaimMappings = resolveIdpClaimMappings(context);
 
-            // Fix 3: Derive subject claim name from IDP's userIdClaim configuration.
+            // Derive subject claim name from IDP's userIdClaim configuration when available.
             String subjectRemoteClaim = resolveSubjectRemoteClaim(context, idpClaimMappings);
+            String issuerSubject = resolveIssuerSubjectIdentifier(verifiedClaims);
+            if (StringUtils.isBlank(issuerSubject)) {
+                throw new AuthenticationFailedException("No VC issuer found in verified credentials");
+            }
 
-            // Resolve username: prefer the IDP-configured subject claim, fall back to heuristics.
-            String username = extractUsername(verifiedClaims, subjectRemoteClaim);
+            boolean isSubjectClaimConfigured = isSubjectClaimConfigured(context);
 
-            if (StringUtils.isBlank(username)) {
+            // If IDP subject claim is configured, enforce it.
+                // Otherwise, use a transient random UUID as the subject identifier.
+            String username = isSubjectClaimConfigured
+                    ? extractUsername(verifiedClaims, subjectRemoteClaim)
+                    : generateTransientSubjectIdentifier();
+
+            if (isSubjectClaimConfigured && StringUtils.isBlank(username)) {
                 throw new AuthenticationFailedException("No user identifier found in verified credentials");
             }
 
@@ -316,7 +326,9 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
 
             Map<ClaimMapping, String> userAttributes = mapVerifiedClaimsToLocal(verifiedClaims, idpClaimMappings);
 
-            authenticatedUser.setUserAttributes(userAttributes);
+            if (!userAttributes.isEmpty()) {
+                authenticatedUser.setUserAttributes(userAttributes);
+            }
             context.setSubject(authenticatedUser);
 
         } catch (RuntimeException e) {
@@ -347,24 +359,63 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
     }
 
     /**
+     * Resolve issuer from verified claims for issuer-only authentication mode.
+     *
+     * @param verifiedClaims Claims extracted and verified from the VC
+     * @return Issuer value if available, or null
+     */
+    private String resolveIssuerSubjectIdentifier(Map<String, Object> verifiedClaims) {
+        if (verifiedClaims == null || verifiedClaims.isEmpty()) {
+            return null;
+        }
+
+        Object issuer = verifiedClaims.get("iss");
+        if (issuer == null) {
+            issuer = verifiedClaims.get("issuer");
+        }
+        if (issuer != null && StringUtils.isNotBlank(issuer.toString())) {
+            return issuer.toString();
+        }
+
+        Object vcObject = verifiedClaims.get("vc");
+        if (vcObject instanceof Map) {
+            Object nestedIssuer = ((Map<?, ?>) vcObject).get("issuer");
+            if (nestedIssuer != null && StringUtils.isNotBlank(nestedIssuer.toString())) {
+                return nestedIssuer.toString();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Generate a transient random subject identifier when no subject claim is configured.
+     *
+     * @return Random UUID string
+     */
+    private String generateTransientSubjectIdentifier() {
+
+        return UUID.randomUUID().toString();
+    }
+
+    /**
      * Map verified claims to WSO2 ClaimMappings using IDP-configured mappings.
-     * Fix 2: When no mappings, use raw VC claim names on both sides (honest) rather
-     * than fabricating local WSO2 URIs that don't match the IDP configuration.
+     *
+     * <p>If no mappings are configured, an empty map is returned and no claim mapping is applied.</p>
      */
     private Map<ClaimMapping, String> mapVerifiedClaimsToLocal(Map<String, Object> verifiedClaims,
                                                                ClaimMapping[] idpClaimMappings) {
         Map<ClaimMapping, String> mappedClaims = new HashMap<>();
         if (idpClaimMappings == null || idpClaimMappings.length == 0) {
-            // No IDP mappings configured: emit raw VC claim names on both remote and local sides.
-            // DefaultClaimHandler will use the Name Identifier as subject in this case, which is expected.
-            for (Map.Entry<String, Object> entry : verifiedClaims.entrySet()) {
-                mappedClaims.put(ClaimMapping.build(entry.getKey(), entry.getKey(), null, false),
-                        entry.getValue().toString());
-            }
+            // No IDP mappings configured.
             return mappedClaims;
         }
 
         for (ClaimMapping mapping : idpClaimMappings) {
+            if (mapping == null || mapping.getRemoteClaim() == null
+                    || StringUtils.isBlank(mapping.getRemoteClaim().getClaimUri())) {
+                continue;
+            }
+
             String remoteClaim = mapping.getRemoteClaim().getClaimUri();
             // Direct top-level match
             if (verifiedClaims.containsKey(remoteClaim)) {
@@ -643,26 +694,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
                     + " being passed to logger.")
     private String resolveSubjectRemoteClaim(AuthenticationContext context, ClaimMapping[] idpClaimMappings) {
         try {
-            String userIdClaimUri = null;
-
-            // Try ExternalIdP directly first
-            if (context.getExternalIdP() != null && context.getExternalIdP().getIdentityProvider() != null
-                    && context.getExternalIdP().getIdentityProvider().getClaimConfig() != null) {
-                userIdClaimUri = context.getExternalIdP().getIdentityProvider()
-                        .getClaimConfig().getUserClaimURI();
-            }
-
-            // Fall back to IdentityProviderManager lookup
-            if (StringUtils.isBlank(userIdClaimUri)) {
-                String idpName = resolveIdpNameFromSequenceConfig(context);
-                if (StringUtils.isNotBlank(idpName)) {
-                    IdentityProvider idp = IdentityProviderManager.getInstance()
-                            .getIdPByName(idpName, context.getTenantDomain());
-                    if (idp != null && idp.getClaimConfig() != null) {
-                        userIdClaimUri = idp.getClaimConfig().getUserClaimURI();
-                    }
-                }
-            }
+            String userIdClaimUri = resolveConfiguredSubjectClaimUri(context);
 
             if (StringUtils.isBlank(userIdClaimUri) || idpClaimMappings == null) {
                 return null;
@@ -688,6 +720,56 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         } catch (Exception e) {
             if (log.isDebugEnabled()) {
                 log.debug("Could not resolve subject remote claim: " + sanitizeForLog(e.getMessage()));
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Check whether the IDP has configured a subject claim.
+     *
+     * @param context Authentication context
+     * @return True if subject claim is configured
+     */
+    private boolean isSubjectClaimConfigured(AuthenticationContext context) {
+
+        return StringUtils.isNotBlank(resolveConfiguredSubjectClaimUri(context));
+    }
+
+    /**
+     * Resolve the configured subject claim URI ({@code userIdClaim}) from the IDP.
+     *
+     * @param context Authentication context
+     * @return Configured subject claim URI, or null
+     */
+    @SuppressFBWarnings(value = { "REC_CATCH_EXCEPTION", "CRLF_INJECTION_LOGS" },
+            justification = "Exception is intentionally swallowed; null is the safe fallback. "
+                    + "Log message sanitized via sanitizeForLog() before being passed to logger.")
+    private String resolveConfiguredSubjectClaimUri(AuthenticationContext context) {
+
+        try {
+            // Try ExternalIdP directly first.
+            if (context.getExternalIdP() != null && context.getExternalIdP().getIdentityProvider() != null
+                    && context.getExternalIdP().getIdentityProvider().getClaimConfig() != null) {
+                String userIdClaimUri = context.getExternalIdP().getIdentityProvider()
+                        .getClaimConfig().getUserClaimURI();
+                if (StringUtils.isNotBlank(userIdClaimUri)) {
+                    return userIdClaimUri;
+                }
+            }
+
+            // Fall back to IdentityProviderManager lookup.
+            String idpName = resolveIdpNameFromSequenceConfig(context);
+            if (StringUtils.isNotBlank(idpName)) {
+                IdentityProvider idp = IdentityProviderManager.getInstance()
+                        .getIdPByName(idpName, context.getTenantDomain());
+                if (idp != null && idp.getClaimConfig() != null) {
+                    return idp.getClaimConfig().getUserClaimURI();
+                }
+            }
+        } catch (Exception e) {
+            if (log.isDebugEnabled()) {
+                log.debug("Could not resolve configured subject claim: " + sanitizeForLog(e.getMessage()));
             }
         }
         return null;
