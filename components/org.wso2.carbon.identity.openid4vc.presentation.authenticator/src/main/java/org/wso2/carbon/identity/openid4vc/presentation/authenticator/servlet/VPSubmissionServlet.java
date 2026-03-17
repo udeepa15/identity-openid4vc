@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, WSO2 LLC. (http://www.wso2.com).
+ * Copyright (c) 2025-2026, WSO2 LLC. (http://www.wso2.com).
  *
  * WSO2 LLC. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -27,6 +27,7 @@ import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.lang.StringUtils;
+import org.osgi.service.component.annotations.Component;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPStatusListenerCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.WalletDataCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dao.VPRequestDAO;
@@ -50,6 +51,7 @@ import java.io.PrintWriter;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 
+import javax.servlet.Servlet;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -70,6 +72,15 @@ import javax.servlet.http.HttpServletResponse;
  * - error: (Optional) Error code if wallet declined or failed
  * - error_description: (Optional) Error description
  */
+@Component(
+    service = Servlet.class,
+    immediate = true,
+    property = {
+        "osgi.http.whiteboard.servlet.pattern=/openid4vp/v1/response",
+        "osgi.http.whiteboard.servlet.name=OpenID4VPSubmission",
+        "osgi.http.whiteboard.servlet.asyncSupported=true"
+    }
+)
 public class VPSubmissionServlet extends HttpServlet {
 
     private static final long serialVersionUID = 1L;

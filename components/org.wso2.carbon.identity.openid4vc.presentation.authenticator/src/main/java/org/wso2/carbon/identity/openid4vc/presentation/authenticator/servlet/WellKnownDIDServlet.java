@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, WSO2 LLC. (http://www.wso2.com).
+ * Copyright (c) 2025-2026, WSO2 LLC. (http://www.wso2.com).
  *
  * WSO2 LLC. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -22,6 +22,7 @@ import com.google.gson.JsonObject;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.osgi.service.component.annotations.Component;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.CORSUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.did.exception.DIDDocumentException;
 import org.wso2.carbon.identity.openid4vc.presentation.did.service.DIDDocumentService;
@@ -30,6 +31,7 @@ import org.wso2.carbon.identity.openid4vc.presentation.did.service.impl.DIDDocum
 import java.io.IOException;
 import java.io.PrintWriter;
 
+import javax.servlet.Servlet;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -47,6 +49,15 @@ import javax.servlet.http.HttpServletResponse;
  * - https://example.com/.well-known/did.json → did:web:example.com
  * - https://localhost:9443/.well-known/did.json → did:web:localhost%3A9443
  */
+@Component(
+    service = Servlet.class,
+    immediate = true,
+    property = {
+        "osgi.http.whiteboard.servlet.pattern=/.well-known/did.json",
+        "osgi.http.whiteboard.servlet.name=OpenID4VPWellKnownDID",
+        "osgi.http.whiteboard.servlet.asyncSupported=true"
+    }
+)
 public class WellKnownDIDServlet extends HttpServlet {
 
     private static final long serialVersionUID = 1L;

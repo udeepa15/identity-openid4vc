@@ -31,11 +31,9 @@ import org.slf4j.LoggerFactory;
 import org.wso2.carbon.identity.application.authentication.framework.ApplicationAuthenticator;
 import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.OpenID4VPAuthenticator;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.listener.OpenID4VPIdentityProviderMgtListener;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.impl.VPRequestServiceImpl;
 import org.wso2.carbon.identity.openid4vc.presentation.management.service.PresentationDefinitionService;
-import org.wso2.carbon.idp.mgt.listener.IdentityProviderMgtListener;
 import org.wso2.carbon.user.core.service.RealmService;
 
 import java.util.Hashtable;
@@ -83,10 +81,6 @@ public class VPServiceRegistrationComponent {
             OpenID4VPAuthenticator authenticator = new OpenID4VPAuthenticator();
             bundleContext.registerService(ApplicationAuthenticator.class.getName(),
                     authenticator, new Hashtable<>());
-
-            // Register Identity Provider Management Listener
-            bundleContext.registerService(IdentityProviderMgtListener.class.getName(),
-                    new OpenID4VPIdentityProviderMgtListener(), new Hashtable<>());
 
             authenticatorRegistered = true;
 

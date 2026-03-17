@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, WSO2 LLC. (http://www.wso2.com).
+ * Copyright (c) 2025-2026, WSO2 LLC. (http://www.wso2.com).
  *
  * WSO2 LLC. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -23,6 +23,7 @@ import com.google.gson.GsonBuilder;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
+import org.osgi.service.component.annotations.Component;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.ErrorDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestCreateDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestResponseDTO;
@@ -41,6 +42,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 
+import javax.servlet.Servlet;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -58,6 +60,15 @@ import javax.servlet.http.HttpServletResponse;
  * - GET /api/identity/openid4vp/v1/vp-request/{requestId}/status - Get request
  * status (with polling)
  */
+@Component(
+    service = Servlet.class,
+    immediate = true,
+    property = {
+        "osgi.http.whiteboard.servlet.pattern=/openid4vp/v1/vp-request/*",
+        "osgi.http.whiteboard.servlet.name=OpenID4VPRequest",
+        "osgi.http.whiteboard.servlet.asyncSupported=true"
+    }
+)
 public class VPRequestServlet extends HttpServlet {
 
     private static final long serialVersionUID = 1L;

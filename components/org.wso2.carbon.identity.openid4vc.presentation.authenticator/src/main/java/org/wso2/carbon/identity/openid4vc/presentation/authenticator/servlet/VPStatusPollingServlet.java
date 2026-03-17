@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, WSO2 LLC. (http://www.wso2.com).
+ * Copyright (c) 2025-2026, WSO2 LLC. (http://www.wso2.com).
  *
  * WSO2 LLC. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -23,6 +23,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.lang.StringUtils;
+import org.osgi.service.component.annotations.Component;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPStatusResponseDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling.LongPollingManager;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling.PollingResult;
@@ -32,6 +33,7 @@ import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VP
 import java.io.IOException;
 import java.io.PrintWriter;
 
+import javax.servlet.Servlet;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -47,6 +49,15 @@ import javax.servlet.http.HttpServletResponse;
  * 
  * Supports both synchronous and asynchronous (long polling) modes.
  */
+@Component(
+    service = Servlet.class,
+    immediate = true,
+    property = {
+        "osgi.http.whiteboard.servlet.pattern=/openid4vp/v1/vp-status/*",
+        "osgi.http.whiteboard.servlet.name=OpenID4VPStatusPolling",
+        "osgi.http.whiteboard.servlet.asyncSupported=true"
+    }
+)
 public class VPStatusPollingServlet extends HttpServlet {
 
     private static final long serialVersionUID = 1L;

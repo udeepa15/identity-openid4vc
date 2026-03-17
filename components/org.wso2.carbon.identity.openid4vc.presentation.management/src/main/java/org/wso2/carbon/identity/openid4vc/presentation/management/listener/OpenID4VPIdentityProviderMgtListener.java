@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025-2026, WSO2 LLC. (http://www.wso2.com).
+ * Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).
  *
  * WSO2 LLC. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -16,23 +16,27 @@
  * under the License.
  */
 
-package org.wso2.carbon.identity.openid4vc.presentation.authenticator.listener;
+package org.wso2.carbon.identity.openid4vc.presentation.management.listener;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 import org.wso2.carbon.identity.application.common.model.FederatedAuthenticatorConfig;
 import org.wso2.carbon.identity.application.common.model.IdentityProvider;
 import org.wso2.carbon.identity.application.common.model.Property;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
 import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException;
 import org.wso2.carbon.identity.openid4vc.presentation.management.model.PresentationDefinition;
 import org.wso2.carbon.identity.openid4vc.presentation.management.service.PresentationDefinitionService;
 import org.wso2.carbon.idp.mgt.IdentityProviderManagementException;
 import org.wso2.carbon.idp.mgt.listener.AbstractIdentityProviderMgtListener;
+import org.wso2.carbon.idp.mgt.listener.IdentityProviderMgtListener;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -43,11 +47,31 @@ import java.util.Set;
  * Identity Provider Management Listener for OpenID4VP.
  * This listener manages the lifecycle of Presentation Definitions associated with Identity Providers.
  */
+@Component(
+        name = "org.wso2.carbon.identity.openid4vc.presentation.management.idp.listener",
+        immediate = true,
+        service = IdentityProviderMgtListener.class
+)
 public class OpenID4VPIdentityProviderMgtListener extends AbstractIdentityProviderMgtListener {
 
-    private static final Log log = LogFactory.getLog(OpenID4VPIdentityProviderMgtListener.class);
+    private static final Log LOG = LogFactory.getLog(OpenID4VPIdentityProviderMgtListener.class);
     private static final String PROP_PRESENTATION_DEFINITION_ID = "presentationDefinitionId";
     private static final String OPENID4VP_AUTHENTICATOR_NAME = "OpenID4VPAuthenticator";
+
+    private volatile PresentationDefinitionService presentationDefinitionService;
+
+    @Reference(name = "presentation.management.service", service = PresentationDefinitionService.class,
+            cardinality = ReferenceCardinality.MANDATORY, policy = ReferencePolicy.DYNAMIC,
+            unbind = "unsetPresentationDefinitionService")
+    protected void setPresentationDefinitionService(PresentationDefinitionService service) {
+
+        this.presentationDefinitionService = service;
+    }
+
+    protected void unsetPresentationDefinitionService(PresentationDefinitionService service) {
+
+        this.presentationDefinitionService = null;
+    }
 
     @Override
     public int getDefaultOrderId() {
@@ -100,15 +124,6 @@ public class OpenID4VPIdentityProviderMgtListener extends AbstractIdentityProvid
     @Override
     public boolean doPostDeleteIdP(String idPName, String tenantDomain) {
 
-        // IDP delete logic doesn't provide the Resource ID easily in all versions, 
-        // but we need to clean up definitions. 
-        // Ideally we should delete by Resource ID, but if we don't have it, we might be stuck.
-        // However, the IDP deletion usually doesn't cascade to external tables automatically unless we enforce it.
-        // For now, let's try to lookup the IDP or assume we need to handle this.
-        
-        // Actually, since doPostDeleteIdP only gives the name, we might not be able to get the ResourceId 
-        // if the IDP is already deleted from DB. 
-        // But doPreDeleteIdP gives us a chance.
         return true;
     }
 
@@ -118,14 +133,12 @@ public class OpenID4VPIdentityProviderMgtListener extends AbstractIdentityProvid
 
         try {
             int tenantId = IdentityTenantUtil.getTenantId(tenantDomain);
-            PresentationDefinitionService pdService = VPServiceDataHolder.getInstance()
-                    .getPresentationDefinitionService();
+            PresentationDefinitionService pdService = this.presentationDefinitionService;
 
             if (pdService == null) {
                 return true;
             }
 
-            // Lookup by name (resource ID linkage removed — no RESOURCE_ID column in the new schema)
             String pdName = idPName + " Definition";
             PresentationDefinition existingPd = pdService.getPresentationDefinitionByName(pdName, tenantId);
 
@@ -134,15 +147,11 @@ public class OpenID4VPIdentityProviderMgtListener extends AbstractIdentityProvid
             }
 
         } catch (VPException e) {
-            log.error("Error deleting presentation definition for IDP: " + sanitize(idPName), e);
+            LOG.error("Error deleting presentation definition for IDP: " + sanitize(idPName), e);
         }
         return true;
     }
 
-    /**
-     * Handle pre-persistence logic (PreAdd and PreUpdate).
-     * No longer intercepts JSON or generates UUIDs.
-     */
     @SuppressFBWarnings({"CRLF_INJECTION_LOGS", "REC_CATCH_EXCEPTION"})
     private void handlePrePersistence(IdentityProvider identityProvider,
                                       String tenantDomain,
@@ -155,7 +164,7 @@ public class OpenID4VPIdentityProviderMgtListener extends AbstractIdentityProvid
             return;
         }
 
-        PresentationDefinitionService pdService = VPServiceDataHolder.getInstance().getPresentationDefinitionService();
+        PresentationDefinitionService pdService = this.presentationDefinitionService;
         if (pdService == null) {
             throw new IdentityProviderManagementException(
                     "Presentation Definition service is unavailable for OpenID4VP connection creation.");
@@ -176,13 +185,9 @@ public class OpenID4VPIdentityProviderMgtListener extends AbstractIdentityProvid
         }
 
         throw new IdentityProviderManagementException("OpenID4VP connection requires an existing "
-            + "presentationDefinitionId. Auto-creation of Presentation Definitions is disabled.");
+                + "presentationDefinitionId. Auto-creation of Presentation Definitions is disabled.");
     }
 
-    /**
-     * Handle post-persistence logic (PostAdd and PostUpdate).
-     * Links the provided Presentation Definition ID to the Identity Provider.
-     */
     @SuppressFBWarnings({"CRLF_INJECTION_LOGS", "REC_CATCH_EXCEPTION", "DE_MIGHT_IGNORE"})
     private void handlePostPersistence(IdentityProvider identityProvider, String tenantDomain) {
 
@@ -191,8 +196,7 @@ public class OpenID4VPIdentityProviderMgtListener extends AbstractIdentityProvid
         }
 
         try {
-            PresentationDefinitionService pdService = VPServiceDataHolder.getInstance()
-                    .getPresentationDefinitionService();
+            PresentationDefinitionService pdService = this.presentationDefinitionService;
             if (pdService == null) {
                 return;
             }
@@ -200,8 +204,8 @@ public class OpenID4VPIdentityProviderMgtListener extends AbstractIdentityProvid
             int tenantId = IdentityTenantUtil.getTenantId(tenantDomain);
             PresentationDefinition existingPd = resolvePresentationDefinition(identityProvider, pdService, tenantId);
             if (existingPd == null) {
-                if (log.isDebugEnabled()) {
-                    log.debug("Presentation Definition not found for IDP: "
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Presentation Definition not found for IDP: "
                             + sanitize(identityProvider.getIdentityProviderName()));
                 }
                 return;
@@ -215,29 +219,21 @@ public class OpenID4VPIdentityProviderMgtListener extends AbstractIdentityProvid
             PresentationDefinition syncedDefinition = buildSyncedDefinition(existingPd, mappedIdpClaims);
             pdService.updatePresentationDefinition(syncedDefinition, tenantId);
 
-            if (log.isDebugEnabled()) {
-                log.debug("Synchronized " + mappedIdpClaims.size() + " claim(s) to Presentation Definition: "
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Synchronized " + mappedIdpClaims.size() + " claim(s) to Presentation Definition: "
                         + sanitize(existingPd.getDefinitionId()) + " for IDP: "
                         + sanitize(identityProvider.getIdentityProviderName()));
             }
 
         } catch (Exception e) {
-            log.error("Error in post-persistence handling for IDP: " +
-                    sanitize(identityProvider.getIdentityProviderName()), e);
+            LOG.error("Error in post-persistence handling for IDP: "
+                    + sanitize(identityProvider.getIdentityProviderName()), e);
         }
     }
 
-    /**
-     * Resolve the presentation definition associated with the given identity provider.
-     *
-     * @param identityProvider Identity provider
-     * @param pdService        Presentation definition service
-     * @param tenantId         Tenant ID
-     * @return Associated presentation definition, or null if not found
-     */
-        @SuppressFBWarnings(value = {"REC_CATCH_EXCEPTION", "CRLF_INJECTION_LOGS"},
+    @SuppressFBWarnings(value = {"REC_CATCH_EXCEPTION", "CRLF_INJECTION_LOGS"},
             justification = "Exception is intentionally swallowed for fallback lookup. "
-                + "All logged values are sanitized via sanitize().")
+                    + "All logged values are sanitized via sanitize().")
     private PresentationDefinition resolvePresentationDefinition(IdentityProvider identityProvider,
                                                                  PresentationDefinitionService pdService,
                                                                  int tenantId) {
@@ -248,8 +244,8 @@ public class OpenID4VPIdentityProviderMgtListener extends AbstractIdentityProvid
             try {
                 return pdService.getPresentationDefinitionById(presentationDefinitionId, tenantId);
             } catch (Exception e) {
-                if (log.isDebugEnabled()) {
-                    log.debug("Presentation Definition not found by ID: " + sanitize(presentationDefinitionId));
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Presentation Definition not found by ID: " + sanitize(presentationDefinitionId));
                 }
             }
         }
@@ -258,20 +254,14 @@ public class OpenID4VPIdentityProviderMgtListener extends AbstractIdentityProvid
             String pdName = identityProvider.getIdentityProviderName() + " Definition";
             return pdService.getPresentationDefinitionByName(pdName, tenantId);
         } catch (Exception e) {
-            if (log.isDebugEnabled()) {
-                log.debug("Presentation Definition not found by name for IDP: "
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Presentation Definition not found by name for IDP: "
                         + sanitize(identityProvider.getIdentityProviderName()));
             }
             return null;
         }
     }
 
-    /**
-     * Resolve configured presentation definition ID from OpenID4VP authenticator properties.
-     *
-     * @param identityProvider Identity provider
-     * @return Presentation definition ID, or null
-     */
     private String resolvePresentationDefinitionId(IdentityProvider identityProvider) {
 
         FederatedAuthenticatorConfig[] fedAuthConfigs = identityProvider.getFederatedAuthenticatorConfigs();
@@ -301,12 +291,6 @@ public class OpenID4VPIdentityProviderMgtListener extends AbstractIdentityProvid
         return null;
     }
 
-    /**
-     * Extract all non-empty IdP claim names from the claim mappings.
-     *
-     * @param identityProvider Identity provider
-     * @return Ordered and de-duplicated claim names
-     */
     private List<String> extractMappedIdpClaims(IdentityProvider identityProvider) {
 
         Set<String> claims = new LinkedHashSet<>();
@@ -327,13 +311,6 @@ public class OpenID4VPIdentityProviderMgtListener extends AbstractIdentityProvid
         return new ArrayList<>(claims);
     }
 
-    /**
-     * Check whether requested credential claim lists differ from the mapped claims.
-     *
-     * @param definition       Existing presentation definition
-     * @param mappedIdpClaims  Mapped IdP claim names
-     * @return True if claims must be updated
-     */
     private boolean hasClaimChanges(PresentationDefinition definition, List<String> mappedIdpClaims) {
 
         if (definition == null || definition.getRequestedCredentials() == null
@@ -357,13 +334,6 @@ public class OpenID4VPIdentityProviderMgtListener extends AbstractIdentityProvid
         return false;
     }
 
-    /**
-     * Build a new presentation definition with synchronized claim lists.
-     *
-     * @param definition       Existing presentation definition
-     * @param mappedIdpClaims  Mapped IdP claim names
-     * @return Synchronized presentation definition
-     */
     private PresentationDefinition buildSyncedDefinition(PresentationDefinition definition,
                                                          List<String> mappedIdpClaims) {
 
@@ -395,12 +365,6 @@ public class OpenID4VPIdentityProviderMgtListener extends AbstractIdentityProvid
                 .build();
     }
 
-    /**
-     * Sanitize a string to prevent CRLF injection in log messages.
-     *
-     * @param input The string to sanitize
-     * @return Sanitized string with CR/LF characters removed
-     */
     private String sanitize(String input) {
         if (input == null) {
             return null;
