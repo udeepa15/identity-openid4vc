@@ -26,6 +26,7 @@ import org.wso2.carbon.identity.openid4vc.presentation.did.exception.DIDResoluti
 import org.wso2.carbon.identity.openid4vc.presentation.did.model.DIDDocument;
 import org.wso2.carbon.identity.openid4vc.presentation.did.util.Base58;
 
+import java.io.IOException;
 import java.math.BigInteger;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -37,6 +38,7 @@ import java.util.Arrays;
 import java.util.Base64;
 
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.spy;
 
 /**
@@ -334,6 +336,338 @@ public class DIDResolverServiceImplTest {
         Assert.assertTrue(resolver.isValidDID("did:custom:abc"));
         Assert.assertFalse(resolver.isValidDID("did::abc"));
         Assert.assertEquals(resolver.getSupportedMethods().length, 1);
+    }
+
+    /**
+     * Tests key extraction failure when no key material is present.
+     *
+     * @throws Exception If test setup fails.
+     */
+    @Test(expectedExceptions = DIDResolutionException.class)
+    public void testGetPublicKeyNoKeyMaterial() throws Exception {
+        String did = "did:web:nokey.example.com";
+        String didDoc = "{"
+                + "\"id\":\"" + did + "\","
+                + "\"verificationMethod\":[{"
+                + "\"id\":\"" + did + "#key-1\","
+                + "\"type\":\"Ed25519VerificationKey2020\","
+                + "\"controller\":\"" + did + "\""
+                + "}],"
+                + "\"assertionMethod\":[\"" + did + "#key-1\"]"
+                + "}";
+
+        DIDResolverServiceImpl spyResolver = spy(resolver);
+        doReturn(didDoc).when(spyResolver).fetchUrl("https://nokey.example.com/.well-known/did.json");
+
+        spyResolver.getPublicKey(did, null);
+    }
+
+    /**
+     * Tests key-not-found handling.
+     *
+     * @throws Exception If test setup fails.
+     */
+    @Test(expectedExceptions = DIDResolutionException.class)
+    public void testGetPublicKeyKeyNotFound() throws Exception {
+        String did = "did:web:notfound.example.com";
+        String didDoc = "{\"id\":\"" + did + "\"}";
+
+        DIDResolverServiceImpl spyResolver = spy(resolver);
+        doReturn(didDoc).when(spyResolver).fetchUrl("https://notfound.example.com/.well-known/did.json");
+
+        spyResolver.getPublicKey(did, "missing-key");
+    }
+
+    /**
+     * Tests unsupported JWK key type handling.
+     *
+     * @throws Exception If test setup fails.
+     */
+    @Test(expectedExceptions = DIDResolutionException.class)
+    public void testGetPublicKeyUnsupportedJwkType() throws Exception {
+        String did = "did:web:badkty.example.com";
+        String didDoc = "{"
+                + "\"id\":\"" + did + "\","
+                + "\"verificationMethod\":[{"
+                + "\"id\":\"" + did + "#key-1\","
+                + "\"type\":\"JsonWebKey2020\","
+                + "\"controller\":\"" + did + "\","
+                + "\"publicKeyJwk\":{\"kty\":\"oct\",\"k\":\"abc\"}"
+                + "}],"
+                + "\"assertionMethod\":[\"" + did + "#key-1\"]"
+                + "}";
+
+        DIDResolverServiceImpl spyResolver = spy(resolver);
+        doReturn(didDoc).when(spyResolver).fetchUrl("https://badkty.example.com/.well-known/did.json");
+
+        spyResolver.getPublicKey(did, null);
+    }
+
+    /**
+     * Tests unsupported OKP curve handling.
+     *
+     * @throws Exception If test setup fails.
+     */
+    @Test(expectedExceptions = DIDResolutionException.class)
+    public void testGetPublicKeyUnsupportedOkpCurve() throws Exception {
+        String did = "did:web:badokp.example.com";
+        String didDoc = "{"
+                + "\"id\":\"" + did + "\","
+                + "\"verificationMethod\":[{"
+                + "\"id\":\"" + did + "#key-1\","
+                + "\"type\":\"JsonWebKey2020\","
+                + "\"controller\":\"" + did + "\","
+                + "\"publicKeyJwk\":{\"kty\":\"OKP\",\"crv\":\"X25519\",\"x\":\"AQAB\"}"
+                + "}],"
+                + "\"assertionMethod\":[\"" + did + "#key-1\"]"
+                + "}";
+
+        DIDResolverServiceImpl spyResolver = spy(resolver);
+        doReturn(didDoc).when(spyResolver).fetchUrl("https://badokp.example.com/.well-known/did.json");
+
+        spyResolver.getPublicKey(did, null);
+    }
+
+    /**
+     * Tests unsupported EC curve handling.
+     *
+     * @throws Exception If test setup fails.
+     */
+    @Test(expectedExceptions = DIDResolutionException.class)
+    public void testGetPublicKeyUnsupportedEcCurve() throws Exception {
+        String did = "did:web:badec.example.com";
+        String didDoc = "{"
+                + "\"id\":\"" + did + "\","
+                + "\"verificationMethod\":[{"
+                + "\"id\":\"" + did + "#key-1\","
+                + "\"type\":\"JsonWebKey2020\","
+                + "\"controller\":\"" + did + "\","
+                + "\"publicKeyJwk\":{\"kty\":\"EC\",\"crv\":\"P-999\",\"x\":\"AQAB\",\"y\":\"AQAB\"}"
+                + "}],"
+                + "\"assertionMethod\":[\"" + did + "#key-1\"]"
+                + "}";
+
+        DIDResolverServiceImpl spyResolver = spy(resolver);
+        doReturn(didDoc).when(spyResolver).fetchUrl("https://badec.example.com/.well-known/did.json");
+
+        spyResolver.getPublicKey(did, null);
+    }
+
+    /**
+     * Tests unsupported multibase prefix handling.
+     *
+     * @throws Exception If test setup fails.
+     */
+    @Test(expectedExceptions = DIDResolutionException.class)
+    public void testGetPublicKeyUnsupportedMultibase() throws Exception {
+        String did = "did:web:badmb.example.com";
+        String didDoc = "{"
+                + "\"id\":\"" + did + "\","
+                + "\"verificationMethod\":[{"
+                + "\"id\":\"" + did + "#key-1\","
+                + "\"type\":\"Ed25519VerificationKey2020\","
+                + "\"controller\":\"" + did + "\","
+                + "\"publicKeyMultibase\":\"mnot-supported\""
+                + "}],"
+                + "\"assertionMethod\":[\"" + did + "#key-1\"]"
+                + "}";
+
+        DIDResolverServiceImpl spyResolver = spy(resolver);
+        doReturn(didDoc).when(spyResolver).fetchUrl("https://badmb.example.com/.well-known/did.json");
+
+        spyResolver.getPublicKey(did, null);
+    }
+
+    /**
+     * Tests unsupported key type handling for Base58 keys.
+     *
+     * @throws Exception If test setup fails.
+     */
+    @Test(expectedExceptions = DIDResolutionException.class)
+    public void testGetPublicKeyUnsupportedTypeForBase58() throws Exception {
+        String did = "did:web:badtype.example.com";
+        String didDoc = "{"
+                + "\"id\":\"" + did + "\","
+                + "\"verificationMethod\":[{"
+                + "\"id\":\"" + did + "#key-1\","
+                + "\"type\":\"RsaVerificationKey2018\","
+                + "\"controller\":\"" + did + "\","
+                + "\"publicKeyBase58\":\"2NEpo7TZRRrLZSi2U\""
+                + "}],"
+                + "\"assertionMethod\":[\"" + did + "#key-1\"]"
+                + "}";
+
+        DIDResolverServiceImpl spyResolver = spy(resolver);
+        doReturn(didDoc).when(spyResolver).fetchUrl("https://badtype.example.com/.well-known/did.json");
+
+        spyResolver.getPublicKey(did, null);
+    }
+
+    /**
+     * Tests non-HTTPS URL rejection in fetchUrl.
+     *
+     * @throws Exception If test setup fails.
+     */
+    @Test(expectedExceptions = DIDResolutionException.class)
+    public void testFetchUrlRejectsNonHttps() throws Exception {
+        resolver.fetchUrl("http://example.com/did.json");
+    }
+
+    /**
+     * Tests validation for empty verification method references.
+     *
+     * @throws Exception If test setup fails.
+     */
+    @Test(expectedExceptions = DIDResolutionException.class)
+    public void testGetPublicKeyFromReferenceEmpty() throws Exception {
+        resolver.getPublicKeyFromReference("");
+    }
+
+    /**
+     * Tests explicit cache clear operations.
+     */
+    @Test
+    public void testClearCacheOperations() {
+        resolver.clearCache("did:web:cache.example.com");
+        resolver.clearAllCache();
+    }
+
+    /**
+     * Tests parser behavior for object-based relationships and service endpoints.
+     *
+     * @throws Exception If test setup fails.
+     */
+    @Test
+    public void testParseDIDDocumentWithObjectRelationshipsAndServiceMap() throws Exception {
+        String did = "did:web:parse.example.com";
+        String didDoc = "{"
+                + "\"id\":\"" + did + "\","
+                + "\"@context\":\"https://www.w3.org/ns/did/v1\","
+                + "\"verificationMethod\":[{"
+                + "\"id\":\"" + did + "#key-1\","
+                + "\"type\":\"Ed25519VerificationKey2020\","
+                + "\"controller\":\"" + did + "\","
+                + "\"publicKeyBase58\":\"2NEpo7TZRRrLZSi2U\""
+                + "}],"
+                + "\"authentication\":[{\"id\":\"" + did + "#key-1\"}],"
+                + "\"assertionMethod\":[\"" + did + "#key-1\"],"
+                + "\"service\":[{"
+                + "\"id\":\"" + did + "#svc\","
+                + "\"type\":\"LinkedDomains\","
+                + "\"serviceEndpoint\":{\"uri\":\"https://example.com\"}"
+                + "}]"
+                + "}";
+
+        DIDDocument document = resolver.parseDIDDocument(did, didDoc);
+        Assert.assertNotNull(document);
+        Assert.assertEquals(document.getId(), did);
+        Assert.assertEquals(document.getContext().size(), 1);
+        Assert.assertEquals(document.getAuthentication().size(), 1);
+        Assert.assertEquals(document.getService().size(), 1);
+    }
+
+    /**
+     * Tests parser failure for malformed JSON.
+     *
+     * @throws Exception If test setup fails.
+     */
+    @Test(expectedExceptions = DIDResolutionException.class)
+    public void testParseDIDDocumentMalformedJson() throws Exception {
+        resolver.parseDIDDocument("did:web:badjson.example.com", "{not-json");
+    }
+
+    /**
+     * Tests reference resolution when only DID is provided.
+     *
+     * @throws Exception If test setup fails.
+     */
+    @Test
+    public void testGetPublicKeyFromReferenceWithDidOnly() throws Exception {
+        String did = "did:web:didonly.example.com";
+        KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("Ed25519");
+        KeyPair keyPair = keyPairGenerator.generateKeyPair();
+        byte[] encoded = keyPair.getPublic().getEncoded();
+        byte[] raw = Arrays.copyOfRange(encoded, encoded.length - 32, encoded.length);
+        String base58 = Base58.encode(raw);
+
+        String didDoc = "{"
+                + "\"id\":\"" + did + "\","
+                + "\"verificationMethod\":[{"
+                + "\"id\":\"" + did + "#key-1\","
+                + "\"type\":\"Ed25519VerificationKey2020\","
+                + "\"controller\":\"" + did + "\","
+            + "\"publicKeyBase58\":\"" + base58 + "\""
+                + "}],"
+                + "\"assertionMethod\":[\"" + did + "#key-1\"]"
+                + "}";
+
+        DIDResolverServiceImpl spyResolver = spy(resolver);
+        doReturn(didDoc).when(spyResolver).fetchUrl("https://didonly.example.com/.well-known/did.json");
+
+        PublicKey key = spyResolver.getPublicKeyFromReference(did);
+        Assert.assertNotNull(key);
+    }
+
+    /**
+     * Tests method and identifier helper edge cases.
+     */
+    @Test
+    public void testMethodAndIdentifierEdgeCases() {
+        Assert.assertNull(resolver.getMethod(null));
+        Assert.assertNull(resolver.getMethod("invalid"));
+        Assert.assertNull(resolver.getIdentifier("invalid"));
+        Assert.assertNull(resolver.getIdentifier("did:web"));
+    }
+
+    /**
+     * Tests that cache is bypassed when useCache is false.
+     *
+     * @throws Exception If test setup fails.
+     */
+    @Test
+    public void testResolveBypassCacheWhenDisabled() throws Exception {
+        String did = "did:web:nocache.example.com";
+        String first = "{\"id\":\"did:web:nocache.example.com\"}";
+        String second = "{\"id\":\"did:web:nocache.example.com:updated\"}";
+
+        DIDResolverServiceImpl spyResolver = spy(resolver);
+        doReturn(first).doReturn(second)
+                .when(spyResolver).fetchUrl("https://nocache.example.com/.well-known/did.json");
+
+        DIDDocument firstDoc = spyResolver.resolve(did, false);
+        DIDDocument secondDoc = spyResolver.resolve(did, false);
+
+        Assert.assertNotEquals(firstDoc.getId(), secondDoc.getId());
+    }
+
+    /**
+     * Tests network error mapping for did:web resolution.
+     *
+     * @throws Exception If test setup fails.
+     */
+    @Test(expectedExceptions = DIDResolutionException.class)
+    public void testResolveDidWebNetworkError() throws Exception {
+        String did = "did:web:ioerror.example.com";
+        DIDResolverServiceImpl spyResolver = spy(resolver);
+        doThrow(new IOException("network")).when(spyResolver)
+                .fetchUrl("https://ioerror.example.com/.well-known/did.json");
+
+        spyResolver.resolve(did, false);
+    }
+
+    /**
+     * Tests network error mapping for Universal Resolver fallback.
+     *
+     * @throws Exception If test setup fails.
+     */
+    @Test(expectedExceptions = DIDResolutionException.class)
+    public void testResolveUniversalResolverNetworkError() throws Exception {
+        String did = "did:ion:ioerror123";
+        DIDResolverServiceImpl spyResolver = spy(resolver);
+        doThrow(new IOException("network")).when(spyResolver)
+                .fetchUrl("https://dev.uniresolver.io/1.0/identifiers/" + did);
+
+        spyResolver.resolve(did, false);
     }
 
     private static byte[] toUnsigned(BigInteger value) {

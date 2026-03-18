@@ -125,9 +125,32 @@ public class DIDDocumentTest {
         document.setController("did:web:example.com");
         document.setRawDocument("{}");
 
+        Map<String, Object> rawMap = new HashMap<>();
+        rawMap.put("id", "did:web:example.com");
+        document.setRawMap(rawMap);
+
+        List<String> capabilityInvocation = new ArrayList<>();
+        capabilityInvocation.add("did:web:example.com#invoke");
+        document.setCapabilityInvocation(capabilityInvocation);
+
+        List<String> capabilityDelegation = new ArrayList<>();
+        capabilityDelegation.add("did:web:example.com#delegate");
+        document.setCapabilityDelegation(capabilityDelegation);
+
+        List<String> aliases = new ArrayList<>();
+        aliases.add("did:web:alias.example.com");
+        document.setAlsoKnownAs(aliases);
+
         Assert.assertEquals(document.getService().size(), 1);
         Assert.assertEquals(document.getAuthentication().size(), 1);
         Assert.assertEquals(document.getKeyAgreement().size(), 1);
+        Assert.assertEquals(document.getCapabilityInvocation().size(), 1);
+        Assert.assertEquals(document.getCapabilityDelegation().size(), 1);
+        Assert.assertEquals(document.getAlsoKnownAs().size(), 1);
+        Assert.assertEquals(document.getRawDocument(), "{}");
+        Assert.assertTrue(document.getRawMap().containsKey("id"));
+        Assert.assertEquals(service.getServiceEndpoint(), "https://example.com");
+        Assert.assertTrue(service.getServiceEndpointMap().containsKey("uri"));
         Assert.assertTrue(document.toString().contains("did:web:example.com"));
     }
 }

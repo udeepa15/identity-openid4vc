@@ -155,4 +155,60 @@ public class DIDDocumentServiceImplTest {
             Assert.assertEquals(did, "did:web:foo.com");
         }
     }
+
+    /**
+     * Tests JSON conversion with all optional DID document sections.
+     *
+     * @throws Exception If test setup fails.
+     */
+    @Test
+    public void testGetDIDDocumentJsonWithAllSections() throws Exception {
+        DIDDocumentServiceImpl service = new DIDDocumentServiceImpl();
+        DIDProvider provider = mock(DIDProvider.class);
+
+        DIDDocument document = new DIDDocument();
+        document.setId("did:web:all.example.com");
+        document.setContext(Arrays.asList("https://www.w3.org/ns/did/v1"));
+        document.setController("did:web:all.example.com");
+        document.setAlsoKnownAs(Arrays.asList("did:web:alias.example.com"));
+
+        DIDDocument.VerificationMethod verificationMethod = new DIDDocument.VerificationMethod();
+        verificationMethod.setId("did:web:all.example.com#key-1");
+        verificationMethod.setType("JsonWebKey2020");
+        verificationMethod.setController("did:web:all.example.com");
+        java.util.Map<String, Object> jwk = new java.util.HashMap<>();
+        jwk.put("kty", "OKP");
+        jwk.put("crv", "Ed25519");
+        jwk.put("x", "AQAB");
+        verificationMethod.setPublicKeyJwkMap(jwk);
+        document.setVerificationMethod(Arrays.asList(verificationMethod));
+
+        document.setAuthentication(Arrays.asList("did:web:all.example.com#key-1"));
+        document.setAssertionMethod(Arrays.asList("did:web:all.example.com#key-1"));
+        document.setKeyAgreement(Arrays.asList("did:web:all.example.com#key-1"));
+        document.setCapabilityInvocation(Arrays.asList("did:web:all.example.com#key-1"));
+        document.setCapabilityDelegation(Arrays.asList("did:web:all.example.com#key-1"));
+
+        DIDDocument.Service serviceEntry = new DIDDocument.Service();
+        serviceEntry.setId("did:web:all.example.com#svc");
+        serviceEntry.setType("LinkedDomains");
+        serviceEntry.setServiceEndpoint("https://all.example.com");
+        document.setService(Arrays.asList(serviceEntry));
+
+        when(provider.getDIDDocument(-1234, "https://all.example.com")).thenReturn(document);
+
+        try (MockedStatic<DIDProviderFactory> factoryMockedStatic = mockStatic(DIDProviderFactory.class)) {
+            factoryMockedStatic.when(() -> DIDProviderFactory.getProvider("web")).thenReturn(provider);
+
+            String json = service.getDIDDocument("https://all.example.com", -1234);
+            Assert.assertTrue(json.contains("\"alsoKnownAs\""));
+            Assert.assertTrue(json.contains("\"verificationMethod\""));
+            Assert.assertTrue(json.contains("\"authentication\""));
+            Assert.assertTrue(json.contains("\"assertionMethod\""));
+            Assert.assertTrue(json.contains("\"keyAgreement\""));
+            Assert.assertTrue(json.contains("\"capabilityInvocation\""));
+            Assert.assertTrue(json.contains("\"capabilityDelegation\""));
+            Assert.assertTrue(json.contains("\"service\""));
+        }
+    }
 }
