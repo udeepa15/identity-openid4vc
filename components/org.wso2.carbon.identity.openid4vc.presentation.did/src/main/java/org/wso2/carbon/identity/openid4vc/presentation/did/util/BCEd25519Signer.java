@@ -14,8 +14,6 @@ import java.util.Set;
 
 /**
  * A custom Ed25519 JWSSigner that relies on Bouncy Castle directly.
- * This avoids the dependency on Google Tink which is required by
- * nimbus-jose-jwt's default Ed25519Signer.
  */
 public class BCEd25519Signer implements JWSSigner {
 

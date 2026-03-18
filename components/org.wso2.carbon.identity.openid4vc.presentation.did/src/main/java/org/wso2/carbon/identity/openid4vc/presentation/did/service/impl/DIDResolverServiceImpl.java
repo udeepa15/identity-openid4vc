@@ -64,6 +64,7 @@ public class DIDResolverServiceImpl implements DIDResolverService {
 
     // Supported DID methods
     private static final String METHOD_WEB = "web";
+    private static final String UNIVERSAL_RESOLVER_URL = "https://dev.uniresolver.io/1.0/identifiers/";
 
     private static final String[] SUPPORTED_METHODS = { METHOD_WEB };
 
@@ -131,7 +132,8 @@ public class DIDResolverServiceImpl implements DIDResolverService {
                 document = resolveDidWeb(did);
                 break;
             default:
-                throw DIDResolutionException.unsupportedMethod(did, method);
+                document = resolveViaUniversalResolver(did);
+                break;
         }
 
         // Cache the result
@@ -182,11 +184,7 @@ public class DIDResolverServiceImpl implements DIDResolverService {
 
     @Override
     public boolean isSupported(String did) {
-        if (did == null || !did.startsWith("did:")) {
-            return false;
-        }
-        String method = getMethod(did);
-        return Arrays.asList(SUPPORTED_METHODS).contains(method);
+        return isValidDID(did);
     }
 
     @Override
@@ -273,6 +271,39 @@ public class DIDResolverServiceImpl implements DIDResolverService {
             throw e;
         } catch (IOException e) {
             throw DIDResolutionException.networkError(did, e);
+        }
+    }
+
+    /**
+     * Resolve a DID via DIF Universal Resolver as a catch-all fallback.
+     *
+     * @param did The DID to resolve.
+     * @return Resolved DID document.
+     * @throws DIDResolutionException If resolution fails.
+     */
+    private DIDDocument resolveViaUniversalResolver(String did) throws DIDResolutionException {
+        try {
+            String url = UNIVERSAL_RESOLVER_URL + did;
+            String jsonResponse = fetchUrl(url);
+
+            JsonObject responseJson = JsonParser.parseString(jsonResponse).getAsJsonObject();
+            JsonElement didDocumentElement = responseJson.get("didDocument");
+
+            if (didDocumentElement == null || didDocumentElement.isJsonNull() || !didDocumentElement.isJsonObject()) {
+                throw DIDResolutionException.invalidDocument(did,
+                        "Universal Resolver response does not contain a valid didDocument");
+            }
+
+            JsonObject didDocumentJson = didDocumentElement.getAsJsonObject();
+            return parseDIDDocument(did, didDocumentJson.toString());
+
+        } catch (DIDResolutionException e) {
+            throw e;
+        } catch (IOException e) {
+            throw DIDResolutionException.networkError(did, e);
+        } catch (JsonParseException | IllegalStateException e) {
+            throw DIDResolutionException.invalidDocument(did,
+                    "Invalid Universal Resolver response: " + e.getMessage());
         }
     }
 
@@ -631,7 +662,7 @@ public class DIDResolverServiceImpl implements DIDResolverService {
         if (urlString == null || !urlString.startsWith("https://")) {
             throw new DIDResolutionException("Only HTTPS URLs are permitted for DID document fetching: " + urlString);
         }
-        URL url = new URL(urlString);
+        URL url = java.net.URI.create(urlString).toURL();
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 
         try {

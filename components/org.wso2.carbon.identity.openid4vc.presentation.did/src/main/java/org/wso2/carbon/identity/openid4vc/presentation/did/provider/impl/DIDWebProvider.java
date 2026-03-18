@@ -26,6 +26,7 @@ import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPExcept
 import org.wso2.carbon.identity.openid4vc.presentation.did.model.DIDDocument;
 import org.wso2.carbon.identity.openid4vc.presentation.did.provider.DIDProvider;
 import org.wso2.carbon.identity.openid4vc.presentation.did.util.BCEd25519Signer;
+import org.wso2.carbon.identity.openid4vc.presentation.did.util.Base58;
 
 import java.security.PrivateKey;
 import java.util.ArrayList;
@@ -160,63 +161,7 @@ public class DIDWebProvider implements DIDProvider {
         multicodecKey[1] = (byte) 0x01;
         System.arraycopy(rawPublicKey, 0, multicodecKey, 2, 32);
         
-        return "z" + base58Encode(multicodecKey);
-    }
-
-    /**
-     * Base58 encode (Bitcoin alphabet).
-     * 
-     * @param input Byte array to encode
-     * @return Base58 encoded string
-     */
-    private String base58Encode(byte[] input) {
-        String alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-        if (input.length == 0) {
-            return "";
-        }
-
-        // Convert to base58
-        byte[] inputCopy = new byte[input.length];
-        System.arraycopy(input, 0, inputCopy, 0, input.length);
-
-        // Count leading zeros
-        int zeros = 0;
-        while (zeros < inputCopy.length && inputCopy[zeros] == 0) {
-            zeros++;
-        }
-
-        // Convert to base58
-        byte[] encoded = new byte[inputCopy.length * 2];
-        int outputStart = encoded.length;
-        for (int inputStart = zeros; inputStart < inputCopy.length;) {
-            encoded[--outputStart] = (byte) alphabet.charAt(divmod(inputCopy, inputStart, 256, 58));
-            if (inputCopy[inputStart] == 0) {
-                inputStart++;
-            }
-        }
-
-        // Skip leading zeros in encoded result
-        while (outputStart < encoded.length && encoded[outputStart] == (byte) alphabet.charAt(0)) {
-            outputStart++;
-        }
-
-        // Add original leading zeros
-        while (--zeros >= 0) {
-            encoded[--outputStart] = (byte) alphabet.charAt(0);
-        }
-
-        return new String(encoded, outputStart, encoded.length - outputStart, java.nio.charset.StandardCharsets.UTF_8);
-    }
-
-    private byte divmod(byte[] number, int firstDigit, int base, int divisor) {
-        int remainder = 0;
-        for (int i = firstDigit; i < number.length; i++) {
-            int digit = (int) number[i] & 0xFF;
-            int temp = remainder * base + digit;
-            number[i] = (byte) (temp / divisor);
-            remainder = temp % divisor;
-        }
-        return (byte) remainder;
+        return "z" + Base58.encode(multicodecKey);
     }
 
     /**
