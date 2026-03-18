@@ -72,8 +72,6 @@ public class DIDDocument {
         private Map<String, Object> publicKeyJwkMap;
         private String publicKeyMultibase;
         private String publicKeyBase58;
-        private String publicKeyBase64;
-        private String publicKeyHex;
         private String publicKeyPem;
 
         public String getId() {
@@ -132,69 +130,8 @@ public class DIDDocument {
             this.publicKeyBase58 = publicKeyBase58;
         }
 
-        public String getPublicKeyBase64() {
-            return publicKeyBase64;
-        }
-
-        public void setPublicKeyBase64(String publicKeyBase64) {
-            this.publicKeyBase64 = publicKeyBase64;
-        }
-
-        public String getPublicKeyHex() {
-            return publicKeyHex;
-        }
-
-        public void setPublicKeyHex(String publicKeyHex) {
-            this.publicKeyHex = publicKeyHex;
-        }
-
-        public String getPublicKeyPem() {
-            return publicKeyPem;
-        }
-
         public void setPublicKeyPem(String publicKeyPem) {
             this.publicKeyPem = publicKeyPem;
-        }
-
-        /**
-         * Check if this is a JsonWebKey2020 type.
-         */
-        public boolean isJsonWebKey() {
-            return "JsonWebKey2020".equals(type) || "JsonWebKey".equals(type);
-        }
-
-        /**
-         * Check if this is an Ed25519VerificationKey2020 type.
-         */
-        public boolean isEd25519Key() {
-            return type != null && type.contains("Ed25519");
-        }
-
-        /**
-         * Check if this is an EcdsaSecp256k1 key.
-         */
-        public boolean isEcdsaSecp256k1Key() {
-            return type != null && type.contains("EcdsaSecp256k1");
-        }
-
-        /**
-         * Get the key ID without the DID prefix.
-         */
-        public String getKeyIdFragment() {
-            if (id != null && id.contains("#")) {
-                return id.substring(id.indexOf("#") + 1);
-            }
-            return id;
-        }
-
-        /**
-         * Check if this method has a public key in any format.
-         */
-        public boolean hasPublicKey() {
-            return publicKeyJwk != null || publicKeyJwkMap != null
-                    || publicKeyMultibase != null || publicKeyBase58 != null
-                    || publicKeyBase64 != null || publicKeyHex != null
-                    || publicKeyPem != null;
         }
 
         @Override
@@ -231,16 +168,8 @@ public class DIDDocument {
             this.type = type;
         }
 
-        public String getServiceEndpoint() {
-            return serviceEndpoint;
-        }
-
         public void setServiceEndpoint(String serviceEndpoint) {
             this.serviceEndpoint = serviceEndpoint;
-        }
-
-        public Map<String, Object> getServiceEndpointMap() {
-            return serviceEndpointMap != null ? new HashMap<>(serviceEndpointMap) : null;
         }
 
         public void setServiceEndpointMap(Map<String, Object> serviceEndpointMap) {
@@ -276,10 +205,6 @@ public class DIDDocument {
 
     public List<String> getAlsoKnownAs() {
         return alsoKnownAs != null ? new ArrayList<>(alsoKnownAs) : null;
-    }
-
-    public void setAlsoKnownAs(List<String> alsoKnownAs) {
-        this.alsoKnownAs = alsoKnownAs != null ? new ArrayList<>(alsoKnownAs) : null;
     }
 
     public List<VerificationMethod> getVerificationMethod() {
@@ -325,16 +250,8 @@ public class DIDDocument {
         return capabilityInvocation != null ? new ArrayList<>(capabilityInvocation) : null;
     }
 
-    public void setCapabilityInvocation(List<String> capabilityInvocation) {
-        this.capabilityInvocation = capabilityInvocation != null ? new ArrayList<>(capabilityInvocation) : null;
-    }
-
     public List<String> getCapabilityDelegation() {
         return capabilityDelegation != null ? new ArrayList<>(capabilityDelegation) : null;
-    }
-
-    public void setCapabilityDelegation(List<String> capabilityDelegation) {
-        this.capabilityDelegation = capabilityDelegation != null ? new ArrayList<>(capabilityDelegation) : null;
     }
 
     public List<Service> getService() {
@@ -345,20 +262,8 @@ public class DIDDocument {
         this.service = service != null ? new ArrayList<>(service) : null;
     }
 
-    public String getRawDocument() {
-        return rawDocument;
-    }
-
     public void setRawDocument(String rawDocument) {
         this.rawDocument = rawDocument;
-    }
-
-    public Map<String, Object> getRawMap() {
-        return rawMap != null ? new HashMap<>(rawMap) : null;
-    }
-
-    public void setRawMap(Map<String, Object> rawMap) {
-        this.rawMap = rawMap != null ? new HashMap<>(rawMap) : null;
     }
 
     /**
@@ -407,66 +312,6 @@ public class DIDDocument {
         return null;
     }
 
-    /**
-     * Get the first authentication method.
-     *
-     * @return The first authentication method or null
-     */
-    public VerificationMethod getFirstAuthenticationMethod() {
-        if (authentication != null && !authentication.isEmpty()) {
-            String methodRef = authentication.get(0);
-            return findVerificationMethod(methodRef);
-        }
-        return getFirstAssertionMethod();
-    }
-
-    /**
-     * Get all verification methods as a map keyed by ID.
-     *
-     * @return Map of method ID to VerificationMethod
-     */
-    public Map<String, VerificationMethod> getVerificationMethodMap() {
-        Map<String, VerificationMethod> map = new HashMap<>();
-        if (verificationMethod != null) {
-            for (VerificationMethod method : verificationMethod) {
-                if (method.getId() != null) {
-                    map.put(method.getId(), method);
-                    // Also add by fragment
-                    String fragment = method.getKeyIdFragment();
-                    if (fragment != null && !fragment.equals(method.getId())) {
-                        map.put(fragment, method);
-                    }
-                }
-            }
-        }
-        return map;
-    }
-
-    /**
-     * Check if this DID document has any verification methods.
-     *
-     * @return true if there are verification methods
-     */
-    public boolean hasVerificationMethods() {
-        return verificationMethod != null && !verificationMethod.isEmpty();
-    }
-
-    /**
-     * Find a service by type.
-     *
-     * @param serviceType The service type to find
-     * @return The service or null if not found
-     */
-    public Service findServiceByType(String serviceType) {
-        if (service != null && serviceType != null) {
-            for (Service svc : service) {
-                if (serviceType.equals(svc.getType())) {
-                    return svc;
-                }
-            }
-        }
-        return null;
-    }
 
     @Override
     public String toString() {
