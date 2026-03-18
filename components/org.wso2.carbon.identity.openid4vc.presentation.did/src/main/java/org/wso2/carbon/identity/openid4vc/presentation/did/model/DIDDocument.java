@@ -130,6 +130,10 @@ public class DIDDocument {
             this.publicKeyBase58 = publicKeyBase58;
         }
 
+        public String getPublicKeyPem() {
+            return publicKeyPem;
+        }
+
         public void setPublicKeyPem(String publicKeyPem) {
             this.publicKeyPem = publicKeyPem;
         }
@@ -168,8 +172,16 @@ public class DIDDocument {
             this.type = type;
         }
 
+        public String getServiceEndpoint() {
+            return serviceEndpoint;
+        }
+
         public void setServiceEndpoint(String serviceEndpoint) {
             this.serviceEndpoint = serviceEndpoint;
+        }
+
+        public Map<String, Object> getServiceEndpointMap() {
+            return serviceEndpointMap != null ? new HashMap<>(serviceEndpointMap) : null;
         }
 
         public void setServiceEndpointMap(Map<String, Object> serviceEndpointMap) {
@@ -205,6 +217,10 @@ public class DIDDocument {
 
     public List<String> getAlsoKnownAs() {
         return alsoKnownAs != null ? new ArrayList<>(alsoKnownAs) : null;
+    }
+
+    public void setAlsoKnownAs(List<String> alsoKnownAs) {
+        this.alsoKnownAs = alsoKnownAs != null ? new ArrayList<>(alsoKnownAs) : null;
     }
 
     public List<VerificationMethod> getVerificationMethod() {
@@ -250,8 +266,16 @@ public class DIDDocument {
         return capabilityInvocation != null ? new ArrayList<>(capabilityInvocation) : null;
     }
 
+    public void setCapabilityInvocation(List<String> capabilityInvocation) {
+        this.capabilityInvocation = capabilityInvocation != null ? new ArrayList<>(capabilityInvocation) : null;
+    }
+
     public List<String> getCapabilityDelegation() {
         return capabilityDelegation != null ? new ArrayList<>(capabilityDelegation) : null;
+    }
+
+    public void setCapabilityDelegation(List<String> capabilityDelegation) {
+        this.capabilityDelegation = capabilityDelegation != null ? new ArrayList<>(capabilityDelegation) : null;
     }
 
     public List<Service> getService() {
@@ -264,6 +288,18 @@ public class DIDDocument {
 
     public void setRawDocument(String rawDocument) {
         this.rawDocument = rawDocument;
+    }
+
+    public String getRawDocument() {
+        return rawDocument;
+    }
+
+    public Map<String, Object> getRawMap() {
+        return rawMap != null ? new HashMap<>(rawMap) : null;
+    }
+
+    public void setRawMap(Map<String, Object> rawMap) {
+        this.rawMap = rawMap != null ? new HashMap<>(rawMap) : null;
     }
 
     /**
