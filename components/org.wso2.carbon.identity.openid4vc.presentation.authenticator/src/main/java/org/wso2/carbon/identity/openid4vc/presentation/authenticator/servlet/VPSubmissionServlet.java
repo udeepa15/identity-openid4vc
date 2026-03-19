@@ -20,24 +20,20 @@ package org.wso2.carbon.identity.openid4vc.presentation.authenticator.servlet;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.osgi.service.component.annotations.Component;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPStatusListenerCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.WalletDataCache;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dao.VPRequestDAO;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dao.impl.VPRequestDAOImpl;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPSubmission;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.status.StatusNotificationService;
 import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
-import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException;
 import org.wso2.carbon.identity.openid4vc.presentation.common.util.OpenID4VPUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VPSubmissionDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.CredentialVerificationException;
@@ -84,6 +80,7 @@ import javax.servlet.http.HttpServletResponse;
 public class VPSubmissionServlet extends HttpServlet {
 
     private static final long serialVersionUID = 1L;
+    private static final Log LOG = LogFactory.getLog(VPSubmissionServlet.class);
     private static final Gson GSON = new GsonBuilder()
             .setPrettyPrinting()
             .create();
@@ -144,9 +141,13 @@ public class VPSubmissionServlet extends HttpServlet {
             // Get tenant domain and verify all VCs in the VP
             String tenantDomain = getTenantDomain(request);
 
-            // Verify issuer trust for all credentials before processing
+            // Delegate issuer trust pre-check entirely to the verification service.
+            // This replaces the former servlet-local verifyAllCredentialIssuers() method,
+            // removing the duplicate VP/VC parsing logic.
             try {
-                verifyAllCredentialIssuers(submissionDTO.getVpToken(), tenantDomain);
+                VCVerificationService vcVerifier = VPServiceDataHolder.getInstance()
+                        .getVCVerificationService();
+                vcVerifier.verifyAllIssuerTrust(submissionDTO.getVpToken(), tenantDomain);
             } catch (CredentialVerificationException e) {
                 sendErrorResponse(response, HttpServletResponse.SC_FORBIDDEN,
                         "untrusted_issuer",
@@ -173,28 +174,14 @@ public class VPSubmissionServlet extends HttpServlet {
                     .tenantId(tenantId)
                     .build();
 
-            // Store in cache for status polling (direct processing)
-            WalletDataCache walletCache = WalletDataCache.getInstance();
-            walletCache.storeSubmission(requestId, submission);
-
-            // Update VP request status in database
-            try {
-                VPRequestDAO vpRequestDAO = new VPRequestDAOImpl();
-                vpRequestDAO.updateVPRequestStatus(
-                        requestId,
-                        VPRequestStatus.VP_SUBMITTED,
-                        tenantId);
-            } catch (VPException e) {
-                // Non-fatal: cache is already updated for polling
-            }
-
-            // Notify status listeners with submission object (direct processing)
+            // Single authoritative cache write happens inside notifyStatusListeners().
             notifyStatusListeners(requestId, submission);
 
             // Send success response
             sendSuccessResponse(response, submission);
 
         } catch (RuntimeException e) {
+            LOG.error("Unexpected error processing VP submission", e);
             sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
                     OpenID4VPConstants.ErrorCodes.SERVER_ERROR, "Internal server error");
         }
@@ -213,7 +200,6 @@ public class VPSubmissionServlet extends HttpServlet {
             throws IOException {
 
         VPSubmissionDTO dto = new VPSubmissionDTO();
-        @SuppressFBWarnings("SERVLET_CONTENT_TYPE")
         String contentType = request.getContentType();
 
         if (contentType != null
@@ -316,6 +302,8 @@ public class VPSubmissionServlet extends HttpServlet {
         if (walletDataCache != null) {
             walletDataCache.storeSubmission(requestId, submission);
         } else {
+            LOG.warn("WalletDataCache is null; submission will not be persisted for state: "
+                    + requestId.replaceAll("[\r\n]", ""));
         }
 
         // Use the centralized notification service
@@ -426,116 +414,5 @@ public class VPSubmissionServlet extends HttpServlet {
         return "carbon.super";
     }
 
-    /**
-     * Verify all credential issuers in the VP token.
-     * Extracts all VCs from the VP and verifies each issuer against the trusted
-     * allowlist.
-     *
-     * @param vpToken      The VP token (JWT or JSON-LD)
-     * @param tenantDomain The tenant domain
-     * @throws CredentialVerificationException If any credential is from untrusted
-     *                                         issuer
-     */
-    private void verifyAllCredentialIssuers(String vpToken, String tenantDomain)
-            throws CredentialVerificationException {
-
-        if (StringUtils.isBlank(vpToken)) {
-            return;
-        }
-
-        try {
-            VCVerificationService vcVerifier = VPServiceDataHolder.getInstance()
-                    .getVCVerificationService();
-
-            // Determine if VP is JWT or JSON-LD
-            JsonObject vp;
-            if (vpToken.contains(".")) {
-                // JWT VP - decode payload
-                String[] parts = vpToken.split("\\.");
-
-                if (parts.length >= 2) {
-                    String payloadJson = new String(
-                            java.util.Base64.getUrlDecoder().decode(parts[1]),
-                            java.nio.charset.StandardCharsets.UTF_8);
-
-                    JsonElement parsedElement = JsonParser.parseString(payloadJson);
-
-                    // The VP might be wrapped in a "vp" claim or be the top-level object
-                    if (parsedElement.isJsonObject()) {
-                        vp = parsedElement.getAsJsonObject();
-                    } else {
-                        return;
-                    }
-
-                } else {
-                        throw new CredentialVerificationException(
-                                VCVerificationStatus.INVALID,
-                                "Invalid JWT VP format");
-                }
-            } else {
-                // JSON-LD VP
-                vp = JsonParser.parseString(vpToken).getAsJsonObject();
-
-            }
-
-            // Extract verifiable credentials array
-            if (!vp.has("verifiableCredential") && !vp.has("vp")) {
-                return;
-            }
-
-            JsonElement vcElement = vp.has("verifiableCredential")
-                    ? vp.get("verifiableCredential")
-                    : vp.getAsJsonObject("vp").get("verifiableCredential");
-
-            JsonArray verifiableCredentials;
-            if (vcElement.isJsonArray()) {
-                verifiableCredentials = vcElement.getAsJsonArray();
-            } else {
-                // Single credential - wrap in array
-                verifiableCredentials = new JsonArray();
-                verifiableCredentials.add(vcElement);
-            }
-
-            int credentialCount = verifiableCredentials.size();
-
-            // Verify each VC
-            for (int i = 0; i < credentialCount; i++) {
-
-                JsonElement vcElem = verifiableCredentials.get(i);
-
-                if (vcElem.isJsonPrimitive() && vcElem.getAsString().contains(".")) {
-                    // JWT VC
-                    String vcJwt = vcElem.getAsString();
-
-                    boolean verified = vcVerifier.verifyJWTVCIssuer(vcJwt, tenantDomain);
-                    if (!verified) {
-
-                        throw new CredentialVerificationException(
-                                VCVerificationStatus.INVALID,
-                                "Credential " + (i + 1) + " from untrusted issuer");
-                    }
-
-                } else if (vcElem.isJsonObject()) {
-                    // JSON-LD VC
-                    JsonObject vcObj = vcElem.getAsJsonObject();
-
-                    boolean verified = vcVerifier.verifyJSONLDVCIssuer(vcObj, tenantDomain);
-                    if (!verified) {
-
-                        throw new CredentialVerificationException(
-                                VCVerificationStatus.INVALID,
-                                "Credential " + (i + 1) + " from untrusted issuer");
-                    }
-
-                }
-            }
-
-        } catch (CredentialVerificationException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new CredentialVerificationException(
-                    "Failed to verify credential issuers: " + e.getMessage(), e);
-        }
-    }
-
 }
+

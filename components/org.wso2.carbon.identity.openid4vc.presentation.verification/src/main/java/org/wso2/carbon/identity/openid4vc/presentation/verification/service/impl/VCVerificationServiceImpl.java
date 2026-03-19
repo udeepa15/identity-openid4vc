@@ -1145,6 +1145,60 @@ public class VCVerificationServiceImpl implements VCVerificationService {
         }
     }
 
+    @Override
+    public void verifyAllIssuerTrust(String vpToken, String tenantDomain)
+            throws CredentialVerificationException {
+
+        if (vpToken == null || vpToken.trim().isEmpty()) {
+            return;
+        }
+
+        // SD-JWT format: <issuer-jwt>~<disclosure1>~...~<kb-jwt>
+        // There is no wrapping VP container — the issuer JWT itself is the credential.
+        if (vpToken.contains("~")) {
+            String issuerJwt = vpToken.split("~")[0];
+            boolean trusted = verifyJWTVCIssuer(issuerJwt, tenantDomain);
+            if (!trusted) {
+                throw new CredentialVerificationException(VCVerificationStatus.INVALID,
+                        "SD-JWT credential from untrusted issuer");
+            }
+            return;
+        }
+
+        // JWT VP or JSON-LD VP: parse once, then check each embedded VC
+        VerifiablePresentation vp;
+        try {
+            vp = parsePresentation(vpToken);
+        } catch (CredentialVerificationException e) {
+            throw new CredentialVerificationException(
+                    "Failed to parse VP token for issuer trust check: " + e.getMessage(), e);
+        }
+
+        if (vp.getVerifiableCredentials() == null || vp.getVerifiableCredentials().isEmpty()) {
+            // No embedded credentials to verify — nothing to do
+            return;
+        }
+
+        int index = 0;
+        for (VerifiableCredential vc : vp.getVerifiableCredentials()) {
+            index++;
+            if (vc.isJwt() || vc.isSdJwt()) {
+                boolean trusted = verifyJWTVCIssuer(vc.getRawCredential(), tenantDomain);
+                if (!trusted) {
+                    throw new CredentialVerificationException(VCVerificationStatus.INVALID,
+                            "Credential " + index + " from untrusted issuer: " + vc.getIssuerId());
+                }
+            } else if (vc.isJsonLd()) {
+                JsonObject vcObj = JsonParser.parseString(vc.getRawCredential()).getAsJsonObject();
+                boolean trusted = verifyJSONLDVCIssuer(vcObj, tenantDomain);
+                if (!trusted) {
+                    throw new CredentialVerificationException(VCVerificationStatus.INVALID,
+                            "Credential " + index + " from untrusted issuer: " + vc.getIssuerId());
+                }
+            }
+        }
+    }
+
     /**
      * Helper to get tenant ID from domain.
      */

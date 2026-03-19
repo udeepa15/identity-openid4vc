@@ -19,11 +19,13 @@
 package org.wso2.carbon.identity.openid4vc.presentation.verification.service.impl;
 
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.wso2.carbon.identity.openid4vc.presentation.did.service.DIDResolverService;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VCVerificationResultDTO;
+import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.CredentialVerificationException;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.model.VCVerificationStatus;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.model.VerifiableCredential;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.service.StatusListService;
@@ -140,5 +142,68 @@ public class VCVerificationServiceTest {
         VerifiableCredential credential = new VerifiableCredential();
         credential.setExpirationDate(new Date(System.currentTimeMillis() - 10000));
         assertTrue(vcVerificationService.isExpired(credential));
+    }
+
+    // -----------------------------------------------------------------------
+    // verifyAllIssuerTrust tests
+    // -----------------------------------------------------------------------
+
+    @Test
+    public void testVerifyAllIssuerTrust_BlankToken_NoException() throws Exception {
+        // Blank / null token must be a no-op — not an error
+        vcVerificationService.verifyAllIssuerTrust(null, "carbon.super");
+        vcVerificationService.verifyAllIssuerTrust("", "carbon.super");
+        vcVerificationService.verifyAllIssuerTrust("   ", "carbon.super");
+    }
+
+    @Test
+    public void testVerifyAllIssuerTrust_JwtVP_NoEmbeddedCredentials_NoException() throws Exception {
+        // A JWT VP whose payload contains no verifiableCredential array should not throw.
+        // Payload: {"iss":"did:web:holder","vp":{"@context":[],"type":["VerifiablePresentation"]}}
+        String header = "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9";
+        String payload = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(
+                "{\"iss\":\"did:web:holder\",\"vp\":{\"@context\":[],\"type\":[\"VerifiablePresentation\"]}}"
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        String sig = "c2lnbmF0dXJl";
+        String jwtVp = header + "." + payload + "." + sig;
+
+        vcVerificationService.verifyAllIssuerTrust(jwtVp, "carbon.super");
+    }
+
+    @Test
+    public void testVerifyAllIssuerTrust_JsonLdVP_NoEmbeddedCredentials_NoException() throws Exception {
+        // JSON-LD VP with no verifiableCredential field must be a no-op
+        String jsonLdVp = "{\"@context\":[\"https://www.w3.org/2018/credentials/v1\"],"
+                + "\"type\":[\"VerifiablePresentation\"],\"holder\":\"did:web:holder\"}";
+
+        vcVerificationService.verifyAllIssuerTrust(jsonLdVp, "carbon.super");
+    }
+
+    @Test(expectedExceptions = CredentialVerificationException.class)
+    public void testVerifyAllIssuerTrust_SdJwt_UntrustedIssuer_ThrowsException() throws Exception {
+        // Build a spy so that verifyJWTVCIssuer() returns false (untrusted)
+        VCVerificationServiceImpl spy = Mockito.spy(vcVerificationService);
+        Mockito.doReturn(false)
+               .when(spy).verifyJWTVCIssuer(Mockito.anyString(), Mockito.anyString());
+
+        // SD-JWT: <issuer-jwt>~<disclosure>
+        String fakeIssuerJwt = "eyJhbGciOiJFUzI1NiJ9.eyJpc3MiOiJkaWQ6d2ViOmV2aWwuY29tIn0.sig";
+        String sdJwt = fakeIssuerJwt + "~WyJzYWx0IiwiZ2l2ZW5OYW1lIiwiSm9obiJd";
+
+        spy.verifyAllIssuerTrust(sdJwt, "carbon.super");
+        // Must throw CredentialVerificationException
+    }
+
+    @Test
+    public void testVerifyAllIssuerTrust_SdJwt_TrustedIssuer_NoException() throws Exception {
+        VCVerificationServiceImpl spy = Mockito.spy(vcVerificationService);
+        Mockito.doReturn(true)
+               .when(spy).verifyJWTVCIssuer(Mockito.anyString(), Mockito.anyString());
+
+        String fakeIssuerJwt = "eyJhbGciOiJFUzI1NiJ9.eyJpc3MiOiJkaWQ6d2ViOmV4YW1wbGUuY29tIn0.sig";
+        String sdJwt = fakeIssuerJwt + "~WyJzYWx0IiwiZ2l2ZW5OYW1lIiwiSm9obiJd";
+
+        spy.verifyAllIssuerTrust(sdJwt, "carbon.super");
+        // Must complete without exception
     }
 }

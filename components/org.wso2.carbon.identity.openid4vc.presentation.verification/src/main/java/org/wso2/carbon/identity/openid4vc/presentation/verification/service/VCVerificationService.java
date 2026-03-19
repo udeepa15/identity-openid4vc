@@ -199,6 +199,21 @@ public interface VCVerificationService {
     boolean verifyJSONLDVCIssuer(com.google.gson.JsonObject vcJsonObject, String tenantDomain) 
             throws CredentialVerificationException;
     /**
+     * Pre-check: verify all VC issuer trust in a VP token before persisting it.
+     * Parses the VP token using the existing {@link #parsePresentation(String)} path
+     * and checks each embedded credential's issuer via the standard verification pipeline.
+     *
+     * <p>Supports JWT VP, JSON-LD VP, and SD-JWT tokens.</p>
+     *
+     * @param vpToken      The VP token (JWT VP, JSON-LD VP, or SD-JWT)
+     * @param tenantDomain The tenant domain
+     * @throws CredentialVerificationException If any credential is from an untrusted issuer
+     *                                         or if the VP token cannot be parsed
+     */
+    void verifyAllIssuerTrust(String vpToken, String tenantDomain)
+            throws CredentialVerificationException;
+
+    /**
      * Verify SD-JWT Token with Key Binding and Disclosure verification.
      *
      * @param vpToken                   The VP token string (SD-JWT format)
