@@ -215,36 +215,7 @@ public class VPSubmissionServlet extends HttpServlet {
             parseFormEncodedSubmission(request, dto);
         }
 
-        normalizeVpToken(dto);
-
         return dto;
-    }
-
-    /**
-     * Normalize vp_token value to avoid quoted payload propagation.
-     *
-     * @param dto Submission DTO.
-     */
-    private void normalizeVpToken(final VPSubmissionDTO dto) {
-
-        if (dto == null || StringUtils.isBlank(dto.getVpToken())) {
-            return;
-        }
-
-        String rawValue = dto.getVpToken();
-        String sanitizedValue = rawValue.trim();
-
-        if (sanitizedValue.startsWith("\"") && sanitizedValue.endsWith("\"")) {
-            sanitizedValue = sanitizedValue.substring(1, sanitizedValue.length() - 1).trim();
-        }
-
-        sanitizedValue = StringUtils.strip(sanitizedValue, "\"");
-
-        if (!StringUtils.equals(rawValue, sanitizedValue) && LOG.isDebugEnabled()) {
-            LOG.debug("Sanitized quoted vp_token at servlet ingress.");
-        }
-
-        dto.setVpToken(sanitizedValue);
     }
 
     /**
@@ -306,7 +277,25 @@ public class VPSubmissionServlet extends HttpServlet {
         String value = request.getParameter(paramName);
         if (StringUtils.isNotBlank(value)) {
             try {
-                return URLDecoder.decode(value, StandardCharsets.UTF_8.name());
+                String decodedValue = URLDecoder.decode(value, StandardCharsets.UTF_8.name());
+
+                if (OpenID4VPConstants.ResponseParams.VP_TOKEN.equals(paramName)) {
+                    String sanitizedValue = decodedValue.trim();
+
+                    if (sanitizedValue.startsWith("\"") && sanitizedValue.endsWith("\"")) {
+                        sanitizedValue = sanitizedValue.substring(1, sanitizedValue.length() - 1).trim();
+                    }
+
+                    sanitizedValue = StringUtils.strip(sanitizedValue, "\"");
+
+                    if (!StringUtils.equals(decodedValue, sanitizedValue) && LOG.isDebugEnabled()) {
+                        LOG.debug("Sanitized quoted vp_token in decoded request parameter.");
+                    }
+
+                    return sanitizedValue;
+                }
+
+                return decodedValue;
             } catch (Exception e) {
                 return value;
             }
