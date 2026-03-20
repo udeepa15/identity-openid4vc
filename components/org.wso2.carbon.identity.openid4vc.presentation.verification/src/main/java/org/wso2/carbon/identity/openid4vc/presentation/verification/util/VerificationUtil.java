@@ -93,9 +93,43 @@ public final class VerificationUtil {
      * @throws NoSuchAlgorithmException
      */
     public static String createHash(String input) throws NoSuchAlgorithmException {
-        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        return createHash(input, "SHA-256");
+    }
+
+    /**
+     * Creates a Base64URL-encoded hash for a given string input using the specified algorithm.
+     *
+     * @param input     The string to hash.
+     * @param algorithm The JCA hash algorithm name (e.g. "SHA-256", "SHA-384", "SHA-512").
+     * @return Base64Url-encoded hash.
+     * @throws NoSuchAlgorithmException If the algorithm is not supported.
+     */
+    public static String createHash(String input, String algorithm) throws NoSuchAlgorithmException {
+        MessageDigest digest = MessageDigest.getInstance(algorithm);
         byte[] encodedHash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
         return Base64.getUrlEncoder().withoutPadding().encodeToString(encodedHash);
+    }
+
+    /**
+     * Map an SD-JWT {@code _sd_alg} value to a JCA {@link MessageDigest} algorithm name.
+     *
+     * <p>Defaults to {@code "SHA-256"} when the claim is absent or empty, as required by
+     * the SD-JWT specification.</p>
+     *
+     * @param sdAlg The {@code _sd_alg} claim value (may be {@code null}).
+     * @return The corresponding JCA algorithm name.
+     * @throws NoSuchAlgorithmException If the algorithm is not recognised.
+     */
+    public static String resolveHashAlgorithm(String sdAlg) throws NoSuchAlgorithmException {
+        if (sdAlg == null || sdAlg.isEmpty() || "sha-256".equalsIgnoreCase(sdAlg)) {
+            return "SHA-256";
+        } else if ("sha-384".equalsIgnoreCase(sdAlg)) {
+            return "SHA-384";
+        } else if ("sha-512".equalsIgnoreCase(sdAlg)) {
+            return "SHA-512";
+        } else {
+            throw new NoSuchAlgorithmException("Unsupported SD-JWT hash algorithm: " + sdAlg);
+        }
     }
     
     /**

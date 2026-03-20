@@ -74,6 +74,17 @@ public class VCVerificationServiceImpl implements VCVerificationService {
     private static final Log LOG = LogFactory.getLog(VCVerificationServiceImpl.class);
     private static final Gson GSON = new Gson();
 
+    /**
+     * Maximum allowed age (in milliseconds) for a Key Binding JWT {@code iat} claim.
+     * KB-JWTs older than this are rejected to prevent replay attacks.
+     */
+    private static final long KB_JWT_MAX_AGE_MS = 5 * 60 * 1000;
+
+    /**
+     * Clock skew tolerance (in milliseconds) for {@code exp}, {@code nbf}, and {@code iat} checks.
+     */
+    private static final long CLOCK_SKEW_TOLERANCE_MS = 60 * 1000;
+
     private static final String[] SUPPORTED_CONTENT_TYPES = {
             VerificationUtil.CONTENT_TYPE_VC_LD_JSON,
             VerificationUtil.CONTENT_TYPE_JWT,
@@ -197,10 +208,13 @@ public class VCVerificationServiceImpl implements VCVerificationService {
         String credentialType = credential.getPrimaryType();
         String issuer = credential.getIssuerId();
 
-        // 1. Check expiration
-        if (credential.getExpirationDate() != null && isExpired(credential)) {
-            return new VCVerificationResultDTO(vcIndex, VCVerificationStatus.EXPIRED,
-                    "Credential has expired");
+        // 1. Check expiration (with clock-skew tolerance)
+        if (credential.getExpirationDate() != null) {
+            Date expWithSkew = new Date(credential.getExpirationDate().getTime() + CLOCK_SKEW_TOLERANCE_MS);
+            if (new Date().after(expWithSkew)) {
+                return new VCVerificationResultDTO(vcIndex, VCVerificationStatus.EXPIRED,
+                        "Credential has expired");
+            }
         }
         credential.setExpirationChecked(true);
 
@@ -320,7 +334,11 @@ public class VCVerificationServiceImpl implements VCVerificationService {
         try {
             // Parse header once and reuse
             Map<String, Object> header = VerificationUtil.parseJwtPart(parts[0]);
-            String alg = header.containsKey("alg") ? header.get("alg").toString() : "RS256";
+            if (!header.containsKey("alg")) {
+                throw new CredentialVerificationException(
+                        "JWT header is missing required 'alg' parameter");
+            }
+            String alg = header.get("alg").toString();
             String kid = header.containsKey("kid") ? header.get("kid").toString() : null;
 
             // Get issuer DID from credential
@@ -335,10 +353,6 @@ public class VCVerificationServiceImpl implements VCVerificationService {
             PublicKey publicKey;
 
             if (issuer != null && issuer.startsWith("did:")) {
-                // Bug fix: use getPublicKeyFromReference(kid) when kid is a full DID URL
-                // (e.g., "did:web:example.com#key-1") so the resolver finds the exact key.
-                // Falling back to getPublicKey(issuer, null) uses getFirstAssertionMethod()
-                // which picks the wrong key when a DID document contains multiple keys.
                 if (kid != null && kid.startsWith("did:") && kid.contains("#")) {
                     publicKey = didResolverService.getPublicKeyFromReference(kid);
                 } else {
@@ -642,6 +656,10 @@ public class VCVerificationServiceImpl implements VCVerificationService {
                     claims.put(claimName, VerificationUtil.parseJsonElement(claimValue));
                 }
             } catch (Exception e) {
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Failed to parse SD-JWT disclosure: "
+                            + VerificationUtil.removeCRLF(e.getMessage()), e);
+                }
             }
         }
         credential.setCredentialSubject(claims);
@@ -1075,7 +1093,7 @@ public class VCVerificationServiceImpl implements VCVerificationService {
         VCVerificationResultDTO result = verifyCredentialInternal(credential, 0);
         if (!result.isSuccess()) {
             throw new CredentialVerificationException(VCVerificationStatus.INVALID,
-                    "JWT VC issuer verification failed: " + result.getDescription());
+                    "JWT VC issuer verification failed: " + result.getError());
         }
         return true;
     }
@@ -1120,7 +1138,7 @@ public class VCVerificationServiceImpl implements VCVerificationService {
         VCVerificationResultDTO result = verifyCredentialInternal(credential, 0);
         if (!result.isSuccess()) {
             throw new CredentialVerificationException(VCVerificationStatus.INVALID,
-                    "JSON-LD VC issuer verification failed: " + result.getDescription());
+                    "JSON-LD VC issuer verification failed: " + result.getError());
         }
         return true;
     }
@@ -1231,30 +1249,39 @@ public class VCVerificationServiceImpl implements VCVerificationService {
                 throw new CredentialVerificationException("Issuer JWT signature verification failed.");
             }
 
-            // 2. Verify Issuer JWT Time Claims
+            // 2. Verify Issuer JWT Time Claims (with clock-skew tolerance)
             Date exp = signedIssuerJwt.getJWTClaimsSet().getExpirationTime();
             Date nbf = signedIssuerJwt.getJWTClaimsSet().getNotBeforeTime();
             Date now = new Date();
 
-            if (exp != null && now.after(exp)) {
+            if (exp != null && now.after(new Date(exp.getTime() + CLOCK_SKEW_TOLERANCE_MS))) {
                 throw new CredentialVerificationException("SD-JWT expired.");
             }
-            if (nbf != null && now.before(nbf)) {
+            if (nbf != null && now.before(new Date(nbf.getTime() - CLOCK_SKEW_TOLERANCE_MS))) {
                 throw new CredentialVerificationException("SD-JWT not valid yet.");
             }
 
             // 3. Verify Disclosures against _sd in Issuer JWT
             Map<String, Object> issuerClaims = signedIssuerJwt.getJWTClaimsSet().getClaims();
-            Map<String, String> disclosureDigestMap = new HashMap<>(); 
+
+            // P0-1: Honour _sd_alg claim for disclosure hashing
+            String sdAlgClaim = issuerClaims.containsKey("_sd_alg")
+                    ? issuerClaims.get("_sd_alg").toString() : null;
+            String hashAlgorithm = VerificationUtil.resolveHashAlgorithm(sdAlgClaim);
+
+            Map<String, String> disclosureDigestMap = new HashMap<>();
             for (String d : disclosures) {
-                disclosureDigestMap.put(hashDisclosure(d), d);
+                disclosureDigestMap.put(hashDisclosure(d, hashAlgorithm), d);
             }
 
             // Reconstruct the verified claims map
             Map<String, Object> verifiedClaims = new HashMap<>(issuerClaims);
             verifiedClaims.remove("_sd");
             verifiedClaims.remove("_sd_alg");
-            
+
+            // Track which disclosure digests were matched by an _sd entry
+            java.util.Set<String> matchedDigests = new java.util.HashSet<>();
+
             if (issuerClaims.containsKey("_sd")) {
                 Object sdObj = issuerClaims.get("_sd");
                 if (sdObj instanceof List) {
@@ -1263,8 +1290,9 @@ public class VCVerificationServiceImpl implements VCVerificationService {
                         if (digestObj instanceof String) {
                             String digest = (String) digestObj;
                             if (disclosureDigestMap.containsKey(digest)) {
+                                matchedDigests.add(digest);
                                 String disclosure = disclosureDigestMap.get(digest);
-                                String decoded = new String(Base64.getUrlDecoder().decode(disclosure), 
+                                String decoded = new String(Base64.getUrlDecoder().decode(disclosure),
                                         StandardCharsets.UTF_8);
                                 JSONArray arr = (JSONArray) net.minidev.json.JSONValue.parse(decoded);
                                 if (arr != null && arr.size() >= 3) {
@@ -1278,13 +1306,41 @@ public class VCVerificationServiceImpl implements VCVerificationService {
                 }
             }
 
+            // P0-2: Reject presentations with unmatched disclosures
+            if (matchedDigests.size() != disclosureDigestMap.size()) {
+                java.util.Set<String> unmatched = new java.util.HashSet<>(disclosureDigestMap.keySet());
+                unmatched.removeAll(matchedDigests);
+                throw new CredentialVerificationException(
+                        "SD-JWT contains " + unmatched.size()
+                                + " disclosure(s) whose hash does not appear in the _sd array.");
+            }
+
             // 4. Verify Key Binding JWT (KB-JWT)
             if (keyBindingJwtString != null) {
                 SignedJWT kbJwt = SignedJWT.parse(keyBindingJwtString);
-                
+
+                // P0-3: Validate KB-JWT typ header (must be "kb+jwt" per SD-JWT spec)
+                com.nimbusds.jose.JOSEObjectType kbTyp = kbJwt.getHeader().getType();
+                if (kbTyp == null || !"kb+jwt".equalsIgnoreCase(kbTyp.toString())) {
+                    throw new CredentialVerificationException(
+                            "Key Binding JWT typ header must be 'kb+jwt', got: " + kbTyp);
+                }
+
+                // P0-3: Validate KB-JWT iat (must be present and recent)
+                Date kbIat = kbJwt.getJWTClaimsSet().getIssueTime();
+                if (kbIat == null) {
+                    throw new CredentialVerificationException(
+                            "Key Binding JWT is missing required 'iat' claim.");
+                }
+                if (now.getTime() - kbIat.getTime() > KB_JWT_MAX_AGE_MS + CLOCK_SKEW_TOLERANCE_MS) {
+                    throw new CredentialVerificationException(
+                            "Key Binding JWT 'iat' is too old (older than "
+                                    + (KB_JWT_MAX_AGE_MS / 1000) + "s).");
+                }
+
                 String kbNonce = (String) kbJwt.getJWTClaimsSet().getClaim("nonce");
                 Object kbAudObj = kbJwt.getJWTClaimsSet().getClaim("aud");
-                String kbAud = kbAudObj instanceof String ? (String) kbAudObj : 
+                String kbAud = kbAudObj instanceof String ? (String) kbAudObj :
                               (kbAudObj instanceof List ? ((List<?>) kbAudObj).get(0).toString() : null);
 
                 if (expectedNonce != null) {
@@ -1306,8 +1362,8 @@ public class VCVerificationServiceImpl implements VCVerificationService {
                 if (sdHash == null) {
                     throw new CredentialVerificationException("sd_hash missing in Key Binding JWT.");
                 }
-                
-                String calculatedSdHash = hashSd(issuerJwtString, disclosures);
+
+                String calculatedSdHash = hashSd(issuerJwtString, disclosures, hashAlgorithm);
                 byte[] calculatedSdHashBytes = calculatedSdHash.getBytes(StandardCharsets.UTF_8);
                 byte[] sdHashBytes = sdHash.getBytes(StandardCharsets.UTF_8);
                 if (!MessageDigest.isEqual(calculatedSdHashBytes, sdHashBytes)) {
@@ -1324,9 +1380,23 @@ public class VCVerificationServiceImpl implements VCVerificationService {
                 Map<String, Object> jwkMap = (Map<String, Object>) cnf.get("jwk");
                 com.nimbusds.jose.jwk.JWK holderKey = com.nimbusds.jose.jwk.JWK.parse(jwkMap);
 
-                com.nimbusds.jose.JWSVerifier verifier = 
+                // P0-4: Support non-EC key types in KB-JWT signature verification
+                PublicKey holderPublicKey;
+                com.nimbusds.jose.jwk.KeyType keyType = holderKey.getKeyType();
+                if (com.nimbusds.jose.jwk.KeyType.EC.equals(keyType)) {
+                    holderPublicKey = holderKey.toECKey().toPublicKey();
+                } else if (com.nimbusds.jose.jwk.KeyType.RSA.equals(keyType)) {
+                    holderPublicKey = holderKey.toRSAKey().toPublicKey();
+                } else if (com.nimbusds.jose.jwk.KeyType.OKP.equals(keyType)) {
+                    holderPublicKey = holderKey.toOctetKeyPair().toPublicKey();
+                } else {
+                    throw new CredentialVerificationException(
+                            "Unsupported holder key type in cnf.jwk: " + keyType);
+                }
+
+                com.nimbusds.jose.JWSVerifier verifier =
                     new com.nimbusds.jose.crypto.factories.DefaultJWSVerifierFactory()
-                        .createJWSVerifier(kbJwt.getHeader(), holderKey.toECKey().toPublicKey());
+                        .createJWSVerifier(kbJwt.getHeader(), holderPublicKey);
 
                 if (!kbJwt.verify(verifier)) {
                     throw new CredentialVerificationException("Key Binding JWT signature invalid.");
@@ -1483,18 +1553,19 @@ public class VCVerificationServiceImpl implements VCVerificationService {
 
 
 
-    private String hashDisclosure(String disclosure) throws NoSuchAlgorithmException {
-        return VerificationUtil.createHash(disclosure);
+    private String hashDisclosure(String disclosure, String algorithm) throws NoSuchAlgorithmException {
+        return VerificationUtil.createHash(disclosure, algorithm);
     }
 
-    private String hashSd(String issuerJwt, List<String> disclosures) throws NoSuchAlgorithmException {
+    private String hashSd(String issuerJwt, List<String> disclosures, String algorithm)
+            throws NoSuchAlgorithmException {
         StringBuilder sb = new StringBuilder();
         sb.append(issuerJwt);
         for (String d : disclosures) {
             sb.append("~").append(d);
         }
         sb.append("~");
-        return VerificationUtil.createHash(sb.toString());
+        return VerificationUtil.createHash(sb.toString(), algorithm);
     }
 
     /**

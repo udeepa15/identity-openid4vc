@@ -375,20 +375,25 @@ public class SignatureVerifier {
     }
 
     /**
-     * Extract algorithm from JWT/JWS header.
+     * Extract algorithm from JWT/JWS header using proper JSON parsing.
+     *
+     * @param headerJson The decoded JWT header JSON string.
+     * @return The algorithm string.
+     * @throws CredentialVerificationException If the header does not contain an {@code alg} field.
      */
-    private String extractAlgorithmFromHeader(String headerJson) {
-        // Simple extraction - in production use proper JSON parsing
-        if (headerJson.contains("\"alg\"")) {
-            int start = headerJson.indexOf("\"alg\"") + 6;
-            int colonIndex = headerJson.indexOf(":", start);
-            int quoteStart = headerJson.indexOf("\"", colonIndex);
-            int quoteEnd = headerJson.indexOf("\"", quoteStart + 1);
-            if (quoteStart > 0 && quoteEnd > quoteStart) {
-                return headerJson.substring(quoteStart + 1, quoteEnd);
+    private String extractAlgorithmFromHeader(String headerJson) throws CredentialVerificationException {
+        try {
+            com.google.gson.JsonObject header =
+                    com.google.gson.JsonParser.parseString(headerJson).getAsJsonObject();
+            if (!header.has("alg") || header.get("alg").isJsonNull()) {
+                throw new CredentialVerificationException(
+                        "JWT header is missing required 'alg' parameter");
             }
+            return header.get("alg").getAsString();
+        } catch (com.google.gson.JsonSyntaxException e) {
+            throw new CredentialVerificationException(
+                    "Failed to parse JWT header JSON: " + e.getMessage(), e);
         }
-        return "RS256"; // Default
     }
 
     /**

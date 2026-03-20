@@ -357,6 +357,9 @@ public class StatusListServiceImpl implements StatusListService {
      * Decode the status list from Base64 + GZIP format.
      */
     private byte[] decodeStatusList(String encodedList) throws RevocationCheckException {
+        // Maximum allowed decompressed size (2 MB) to prevent zip-bomb attacks.
+        final int maxDecodedSize = 2 * 1024 * 1024;
+
         try {
             // Base64 decode
             byte[] compressed = Base64.getDecoder().decode(encodedList);
@@ -370,19 +373,14 @@ public class StatusListServiceImpl implements StatusListService {
                 int bytesRead;
                 while ((bytesRead = gzis.read(buffer)) != -1) {
                     baos.write(buffer, 0, bytesRead);
+                    if (baos.size() > maxDecodedSize) {
+                        throw RevocationCheckException.decodingError(
+                                new IOException("Decompressed status list exceeds maximum allowed size of "
+                                        + maxDecodedSize + " bytes"));
+                    }
                 }
 
-                byte[] bitstring = baos.toByteArray();
-
-                // Validate minimum size per spec (optional but recommended)
-                // Validate minimum size per spec (optional but recommended)
-                /*
-                 * if (bitstring.length < MIN_BITSTRING_SIZE) {
-                 * Log warning or throw exception if strict mode is enabled
-                 * }
-                 */
-
-                return bitstring;
+                return baos.toByteArray();
             }
 
         } catch (IllegalArgumentException e) {

@@ -25,8 +25,6 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
 import org.apache.commons.lang.StringUtils;
 import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
-import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.DescriptorMapDTO;
-import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.PresentationSubmissionDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VPSubmissionDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VPSubmissionValidationException;
 
@@ -135,8 +133,6 @@ public final class VPSubmissionValidator {
 
         try {
             validatePresentationSubmissionJsonStructure(submissionJson);
-            PresentationSubmissionDTO submission = GSON.fromJson(
-                    submissionJson, PresentationSubmissionDTO.class);
         } catch (JsonSyntaxException e) {
             throw new VPSubmissionValidationException(
                     "Invalid presentation_submission JSON: " + e.getMessage());
@@ -229,44 +225,6 @@ public final class VPSubmissionValidator {
     }
 
     /**
-     * Validate descriptor map entry.
-     *
-     * @param descriptor Descriptor map entry
-     * @param index      Index in array
-     * @throws VPSubmissionValidationException If validation fails
-     */
-    private static void validateDescriptorMap(final DescriptorMapDTO descriptor,
-            final int index)
-            throws VPSubmissionValidationException {
-
-        if (descriptor == null) {
-            throw new VPSubmissionValidationException(
-                    "descriptor_map[" + index + "] cannot be null");
-        }
-
-        if (StringUtils.isBlank(descriptor.getId())) {
-            throw new VPSubmissionValidationException(
-                    "descriptor_map[" + index + "].id is required");
-        }
-
-        if (StringUtils.isBlank(descriptor.getFormat())) {
-            throw new VPSubmissionValidationException(
-                    "descriptor_map[" + index + "].format is required");
-        }
-
-        if (StringUtils.isBlank(descriptor.getPath())) {
-            throw new VPSubmissionValidationException(
-                    "descriptor_map[" + index + "].path is required");
-        }
-
-        // Validate path is valid JSONPath
-        if (!isValidJsonPath(descriptor.getPath())) {
-            throw new VPSubmissionValidationException(
-                    "descriptor_map[" + index + "].path is not valid JSONPath");
-        }
-    }
-
-    /**
      * Check if string is valid JSONPath.
      *
      * @param path Path to check
@@ -281,3 +239,4 @@ public final class VPSubmissionValidator {
         return path.startsWith("$") || path.startsWith("@");
     }
 }
+

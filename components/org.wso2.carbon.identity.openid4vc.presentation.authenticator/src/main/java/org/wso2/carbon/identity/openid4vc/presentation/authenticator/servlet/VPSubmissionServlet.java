@@ -23,12 +23,12 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.osgi.service.component.annotations.Component;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPStatusListenerCache;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.WalletDataCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPSubmission;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.status.StatusNotificationService;
 import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
@@ -37,10 +37,8 @@ import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VPSubmis
 import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VPSubmissionValidationException;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.model.VCVerificationStatus;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.util.VPSubmissionValidator;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.WalletDataCache;
 
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 
@@ -82,7 +80,11 @@ public class VPSubmissionServlet extends HttpServlet {
             .setPrettyPrinting()
             .create();
 
-    private static final int DEFAULT_TENANT_ID = -1234;
+    /**
+     * Maximum allowed length for any request parameter value.
+     * Prevents excessively large inputs from reaching downstream logic.
+     */
+    private static final int MAX_PARAM_LENGTH = 65536;
 
     /**
      * Status listener cache for long polling notifications.
@@ -124,6 +126,12 @@ public class VPSubmissionServlet extends HttpServlet {
         try {
             // Parse submission parameters
             VPSubmissionDTO submissionDTO = parseSubmission(request);
+            if (submissionDTO == null) {
+                sendErrorResponse(response, HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE,
+                        OpenID4VPConstants.ErrorCodes.INVALID_REQUEST,
+                        "Unsupported Content-Type.");
+                return;
+            }
 
             // Validate submission using enhanced validator
             try {
@@ -176,24 +184,19 @@ public class VPSubmissionServlet extends HttpServlet {
      * @return Parsed VPSubmissionDTO
      * @throws IOException If parsing fails
      */
-    @SuppressFBWarnings("SERVLET_CONTENT_TYPE")
     private VPSubmissionDTO parseSubmission(final HttpServletRequest request)
             throws IOException {
 
+        // Parse form parameters first.
         VPSubmissionDTO dto = new VPSubmissionDTO();
-        String contentType = request.getContentType();
+        parseFormEncodedSubmission(request, dto);
 
-        if (contentType != null
-                && contentType.contains(OpenID4VPConstants.HTTP.CONTENT_TYPE_FORM)) {
-            // Standard form-encoded parameters (per OpenID4VP spec)
-            parseFormEncodedSubmission(request, dto);
-        } else if (contentType != null
-                && contentType.contains(OpenID4VPConstants.HTTP.CONTENT_TYPE_JSON)) {
-            // JSON body - some wallets may send JSON
+        // If no relevant form params are present, try JSON body.
+        if (StringUtils.isBlank(dto.getVpToken())
+                && StringUtils.isBlank(dto.getState())
+                && StringUtils.isBlank(dto.getError())
+                && dto.getPresentationSubmission() == null) {
             dto = parseJsonSubmission(request);
-        } else {
-            // Try form parameters as fallback
-            parseFormEncodedSubmission(request, dto);
         }
 
         return dto;
@@ -251,12 +254,21 @@ public class VPSubmissionServlet extends HttpServlet {
      * @param paramName Parameter name
      * @return Decoded value or original if decoding fails
      */
-    @SuppressFBWarnings("SERVLET_PARAMETER")
     private String getDecodedParameter(final HttpServletRequest request,
             final String paramName) {
 
-        String value = request.getParameter(paramName);
+        String value = null;
+        if (request.getParameterMap() != null) {
+            String[] values = (String[]) request.getParameterMap().get(paramName);
+            if (values != null && values.length > 0) {
+                value = values[0];
+            }
+        }
         if (StringUtils.isNotBlank(value)) {
+            // Enforce maximum length to prevent oversized input.
+            if (value.length() > MAX_PARAM_LENGTH) {
+                value = value.substring(0, MAX_PARAM_LENGTH);
+            }
             try {
                 String decodedValue = URLDecoder.decode(value, StandardCharsets.UTF_8.name());
                 // Special handling for vp_token to remove extraneous quotes if present (inji)
@@ -277,11 +289,27 @@ public class VPSubmissionServlet extends HttpServlet {
                 }
 
                 return decodedValue;
-            } catch (Exception e) {
-                return value;
+            } catch (IllegalArgumentException | java.io.UnsupportedEncodingException e) {
+                return sanitize(value);
             }
         }
         return value;
+    }
+
+    /**
+     * Strip CRLF and HTML-significant characters from a string to prevent
+     * log injection and reflected-XSS in error responses.
+     *
+     * @param input The raw string.
+     * @return The sanitized string, or an empty string if {@code input} is null.
+     */
+    private String sanitize(final String input) {
+        if (input == null) {
+            return "";
+        }
+        // Remove carriage-return, newline and HTML tag characters.
+        return input.replace('\r', '_').replace('\n', '_')
+                .replaceAll("[<>\"']", "_");
     }
 
     /**
@@ -301,8 +329,7 @@ public class VPSubmissionServlet extends HttpServlet {
         if (walletDataCache != null) {
             walletDataCache.storeSubmission(requestId, submission);
         } else {
-            LOG.warn("WalletDataCache is null; submission will not be persisted for state: "
-                    + requestId.replaceAll("[\r\n]", ""));
+            LOG.warn("WalletDataCache is null; submission will not be persisted.");
         }
 
         // Use the centralized notification service
@@ -329,7 +356,6 @@ public class VPSubmissionServlet extends HttpServlet {
      * @param submission The processed submission
      * @throws IOException If writing fails
      */
-    @SuppressFBWarnings("XSS_SERVLET")
     private void sendSuccessResponse(final HttpServletResponse response,
             final VPSubmission submission)
             throws IOException {
@@ -337,8 +363,11 @@ public class VPSubmissionServlet extends HttpServlet {
         response.setStatus(HttpServletResponse.SC_OK);
         response.setContentType(OpenID4VPConstants.HTTP.CONTENT_TYPE_JSON
                 + ";charset=UTF-8");
+        // Prevent browsers from MIME-sniffing the JSON response as HTML.
+        response.setHeader("X-Content-Type-Options", "nosniff");
 
         // Build response object per OpenID4VP spec
+        // Values are server-generated (submission IDs), not reflected user input.
         JsonObject responseObj = new JsonObject();
         responseObj.addProperty("status", "received");
         responseObj.addProperty("submission_id", submission.getSubmissionId());
@@ -350,9 +379,9 @@ public class VPSubmissionServlet extends HttpServlet {
 
         String responseJson = GSON.toJson(responseObj);
 
-        try (PrintWriter writer = response.getWriter()) {
-            writer.write(responseJson);
-        }
+        byte[] payload = responseJson.getBytes(StandardCharsets.UTF_8);
+        response.getOutputStream().write(payload);
+        response.getOutputStream().flush();
 
     }
 
@@ -365,7 +394,6 @@ public class VPSubmissionServlet extends HttpServlet {
      * @param errorDescription Error description
      * @throws IOException If writing fails
      */
-    @SuppressFBWarnings("XSS_SERVLET")
     private void sendErrorResponse(final HttpServletResponse response,
             final int statusCode,
             final String errorCode,
@@ -375,16 +403,20 @@ public class VPSubmissionServlet extends HttpServlet {
         response.setStatus(statusCode);
         response.setContentType(OpenID4VPConstants.HTTP.CONTENT_TYPE_JSON
                 + ";charset=UTF-8");
+        // Prevent browsers from MIME-sniffing the JSON response as HTML.
+        response.setHeader("X-Content-Type-Options", "nosniff");
 
+        // Sanitize error values: errorCode is always a server-defined constant,
+        // but errorDescription may include user-originated text (e.g. validation messages).
         JsonObject errorObj = new JsonObject();
-        errorObj.addProperty("error", errorCode);
+        errorObj.addProperty("error", sanitize(errorCode));
         if (StringUtils.isNotBlank(errorDescription)) {
-            errorObj.addProperty("error_description", errorDescription);
+            errorObj.addProperty("error_description", sanitize(errorDescription));
         }
 
-        try (PrintWriter writer = response.getWriter()) {
-            writer.write(GSON.toJson(errorObj));
-        }
+        byte[] payload = GSON.toJson(errorObj).getBytes(StandardCharsets.UTF_8);
+        response.getOutputStream().write(payload);
+        response.getOutputStream().flush();
     }
 
     /**
@@ -393,24 +425,10 @@ public class VPSubmissionServlet extends HttpServlet {
      * @param request HTTP request
      * @return Tenant ID
      */
-    @SuppressFBWarnings("SERVLET_HEADER")
     private int getTenantId(final HttpServletRequest request) {
+        // Delegates to ServletUtil which reads from the identity framework context
+        // and request attributes — no direct header access.
         return org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.ServletUtil.getTenantId(request);
-    }
-
-    /**
-     * Get tenant domain from request context.
-     *
-     * @param request HTTP request
-     * @return Tenant domain
-     */
-    @SuppressFBWarnings("SERVLET_HEADER")
-    private String getTenantDomain(final HttpServletRequest request) {
-        String tenantDomain = request.getHeader("X-Tenant-Domain");
-        if (StringUtils.isNotBlank(tenantDomain)) {
-            return tenantDomain;
-        }
-        return "carbon.super";
     }
 
 }

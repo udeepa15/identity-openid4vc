@@ -41,6 +41,12 @@ public final class HttpClientUtil {
     private static final int HTTP_READ_TIMEOUT = 5000;
     private static final int HTTP_OK = 200;
 
+    /**
+     * Maximum allowed response body size (1 MB).
+     * Prevents out-of-memory conditions from oversized responses.
+     */
+    private static final int MAX_RESPONSE_SIZE = 1024 * 1024;
+
     private HttpClientUtil() {
         // Prevent instantiation
     }
@@ -93,6 +99,10 @@ public final class HttpClientUtil {
             int bytesRead;
             while ((bytesRead = is.read(buffer)) != -1) {
                 baos.write(buffer, 0, bytesRead);
+                if (baos.size() > MAX_RESPONSE_SIZE) {
+                    throw new IOException(
+                            "Response body exceeds maximum allowed size of " + MAX_RESPONSE_SIZE + " bytes");
+                }
             }
             return baos.toString(StandardCharsets.UTF_8.name());
         } finally {
