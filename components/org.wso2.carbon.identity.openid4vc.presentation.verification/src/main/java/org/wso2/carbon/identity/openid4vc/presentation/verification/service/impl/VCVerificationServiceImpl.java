@@ -373,21 +373,13 @@ public class VCVerificationServiceImpl implements VCVerificationService {
     private boolean verifySdJwtSignature(VerifiableCredential credential)
             throws CredentialVerificationException {
 
-        // SD-JWT format: <issuer-jwt>~<disclosure1>~<disclosure2>~...~<kb-jwt>
-        String rawCredential = credential.getRawCredential();
-        String[] parts = rawCredential.split("~");
-
-        if (parts.length < 1) {
-            throw new CredentialVerificationException("Invalid SD-JWT format");
-        }
-
-        // Verify the issuer JWT (first part)
-        String issuerJwt = parts[0];
+        // Use the canonical SD-JWT splitter — issuer JWT is always the first field.
+        SdJwtParts sdJwtParts = parseSdJwtParts(credential.getRawCredential());
 
         // Create a temporary credential for JWT verification
         VerifiableCredential tempCred = new VerifiableCredential();
         tempCred.setFormat(VerifiableCredential.Format.JWT);
-        tempCred.setRawCredential(issuerJwt);
+        tempCred.setRawCredential(sdJwtParts.issuerJwt);
         tempCred.setIssuer(credential.getIssuer());
         tempCred.setIssuerId(credential.getIssuerId());
 
@@ -597,31 +589,17 @@ public class VCVerificationServiceImpl implements VCVerificationService {
     private VerifiableCredential parseSdJwtCredential(String sdJwtString)
             throws CredentialVerificationException {
 
-        String[] parts = sdJwtString.split("~");
-        if (parts.length < 1) {
-            throw new CredentialVerificationException("Invalid SD-JWT format");
-        }
+        SdJwtParts sdJwtParts = parseSdJwtParts(sdJwtString);
 
         try {
             // Parse the issuer JWT first
-            VerifiableCredential credential = parseJwtCredential(parts[0]);
+            VerifiableCredential credential = parseJwtCredential(sdJwtParts.issuerJwt);
             credential.setFormat(VerifiableCredential.Format.SD_JWT);
             credential.setRawCredential(sdJwtString);
-
-            // Parse disclosures
-            List<String> disclosures = new ArrayList<>();
-            for (int i = 1; i < parts.length; i++) {
-                String part = parts[i].trim();
-                if (!part.isEmpty()) {
-                    // Check if this is the key binding JWT (last part, contains dots)
-                    if (i == parts.length - 1 && part.split("\\.").length == 3) {
-                        credential.setKeyBindingJwt(part);
-                    } else {
-                        disclosures.add(part);
-                    }
-                }
+            credential.setDisclosures(sdJwtParts.disclosures);
+            if (sdJwtParts.keyBindingJwt != null) {
+                credential.setKeyBindingJwt(sdJwtParts.keyBindingJwt);
             }
-            credential.setDisclosures(disclosures);
 
             // Process disclosures to extract revealed claims
             processDisclosures(credential);
@@ -1074,33 +1052,32 @@ public class VCVerificationServiceImpl implements VCVerificationService {
     public boolean verifyJWTVCIssuer(String vcJwt, String tenantDomain) throws CredentialVerificationException {
 
         try {
-
-            // 1. Validate JWT format
-            String[] parts = vcJwt.split("\\.");
-            if (parts.length != 3) {
-                throw new CredentialVerificationException(VCVerificationStatus.INVALID,
-                        "Invalid JWT format");
-            }
-
-            // 2. Verify signature using existing verification
-
+            // Delegate to verify(); it performs format validation and signature check internally.
             VCVerificationResultDTO result = verify(vcJwt, "application/vc+jwt");
-
             if (!result.isSuccess()) {
-
                 throw new CredentialVerificationException(VCVerificationStatus.INVALID,
                         "JWT signature verification failed");
             }
-
             return true;
-
         } catch (CredentialVerificationException e) {
             throw e;
         } catch (Exception e) {
-
             throw new CredentialVerificationException(
                     "JWT VC issuer verification failed: " + e.getMessage(), e);
         }
+    }
+
+    @Override
+    public boolean verifyJWTVCIssuer(VerifiableCredential credential, String tenantDomain)
+            throws CredentialVerificationException {
+
+        // Verify using the pre-parsed credential — no re-parsing required.
+        VCVerificationResultDTO result = verifyCredentialInternal(credential, 0);
+        if (!result.isSuccess()) {
+            throw new CredentialVerificationException(VCVerificationStatus.INVALID,
+                    "JWT VC issuer verification failed: " + result.getDescription());
+        }
+        return true;
     }
 
     @Override
@@ -1108,8 +1085,7 @@ public class VCVerificationServiceImpl implements VCVerificationService {
             throws CredentialVerificationException {
 
         try {
-
-            // 1. Validate issuer field exists
+            // Validate issuer field exists
             if (!vcJsonObject.has("issuer")) {
                 throw new CredentialVerificationException(VCVerificationStatus.INVALID,
                         "Missing issuer field");
@@ -1120,26 +1096,33 @@ public class VCVerificationServiceImpl implements VCVerificationService {
                         "Invalid issuer format");
             }
 
-            // 2. Verify using existing verification
-
             String vcString = GSON.toJson(vcJsonObject);
             VCVerificationResultDTO result = verify(vcString, "application/vc+ld+json");
-
             if (!result.isSuccess()) {
-
                 throw new CredentialVerificationException(VCVerificationStatus.INVALID,
                         "JSON-LD signature verification failed");
             }
-
             return true;
 
         } catch (CredentialVerificationException e) {
             throw e;
         } catch (Exception e) {
-
             throw new CredentialVerificationException(
                     "JSON-LD VC issuer verification failed: " + e.getMessage(), e);
         }
+    }
+
+    @Override
+    public boolean verifyJSONLDVCIssuer(VerifiableCredential credential, String tenantDomain)
+            throws CredentialVerificationException {
+
+        // Verify using the pre-parsed credential — no re-parsing required.
+        VCVerificationResultDTO result = verifyCredentialInternal(credential, 0);
+        if (!result.isSuccess()) {
+            throw new CredentialVerificationException(VCVerificationStatus.INVALID,
+                    "JSON-LD VC issuer verification failed: " + result.getDescription());
+        }
+        return true;
     }
 
     @Override
@@ -1156,8 +1139,8 @@ public class VCVerificationServiceImpl implements VCVerificationService {
         }
 
         if (VerificationUtil.NORMALIZED_VC_SD_JWT.equals(detectedFormat)) {
-            String issuerJwt = vpToken.contains("~") ? vpToken.split("~")[0] : vpToken;
-            boolean trusted = verifyJWTVCIssuer(issuerJwt, tenantDomain);
+            SdJwtParts sdJwtParts = parseSdJwtParts(vpToken);
+            boolean trusted = verifyJWTVCIssuer(sdJwtParts.issuerJwt, tenantDomain);
             if (!trusted) {
                 throw new CredentialVerificationException(VCVerificationStatus.INVALID,
                         "SD-JWT credential from untrusted issuer");
@@ -1183,14 +1166,15 @@ public class VCVerificationServiceImpl implements VCVerificationService {
         for (VerifiableCredential vc : vp.getVerifiableCredentials()) {
             index++;
             if (vc.isJwt() || vc.isSdJwt()) {
-                boolean trusted = verifyJWTVCIssuer(vc.getRawCredential(), tenantDomain);
+                // R1: Use pre-parsed VC overload — avoids re-parsing the raw credential string.
+                boolean trusted = verifyJWTVCIssuer(vc, tenantDomain);
                 if (!trusted) {
                     throw new CredentialVerificationException(VCVerificationStatus.INVALID,
                             "Credential " + index + " from untrusted issuer: " + vc.getIssuerId());
                 }
             } else if (vc.isJsonLd()) {
-                JsonObject vcObj = JsonParser.parseString(vc.getRawCredential()).getAsJsonObject();
-                boolean trusted = verifyJSONLDVCIssuer(vcObj, tenantDomain);
+                // R1: Use pre-parsed VC overload — avoids a redundant JSON serialization/parse cycle.
+                boolean trusted = verifyJSONLDVCIssuer(vc, tenantDomain);
                 if (!trusted) {
                     throw new CredentialVerificationException(VCVerificationStatus.INVALID,
                             "Credential " + index + " from untrusted issuer: " + vc.getIssuerId());
@@ -1227,24 +1211,11 @@ public class VCVerificationServiceImpl implements VCVerificationService {
         }
 
         try {
-            // Split the SD-JWT
-            String[] parts = vpToken.split("~");
-            if (parts.length < 1) {
-                throw new CredentialVerificationException("Invalid SD-JWT format.");
-            }
-
-            String issuerJwtString = parts[0];
-            List<String> disclosures = new ArrayList<>();
-            String keyBindingJwtString = null;
-
-            for (int i = 1; i < parts.length; i++) {
-                String part = parts[i];
-                if (i == parts.length - 1 && part.contains(".")) {
-                    keyBindingJwtString = part;
-                } else {
-                    disclosures.add(part);
-                }
-            }
+            // Parse the SD-JWT into its three canonical parts using the shared helper.
+            SdJwtParts sdJwtParts = parseSdJwtParts(vpToken);
+            String issuerJwtString = sdJwtParts.issuerJwt;
+            List<String> disclosures = sdJwtParts.disclosures;
+            String keyBindingJwtString = sdJwtParts.keyBindingJwt;
 
             // 1. Verify Issuer JWT Signature
             VerifiableCredential paramCred = new VerifiableCredential();
@@ -1526,7 +1497,60 @@ public class VCVerificationServiceImpl implements VCVerificationService {
         return VerificationUtil.createHash(sb.toString());
     }
 
+    /**
+     * Parse an SD-JWT token into its three canonical sections.
+     *
+     * <p>Format: {@code <issuer-jwt>~[<disclosure>~]*[<kb-jwt>]}</p>
+     *
+     * <p>The last {@code ~}-delimited segment is treated as the Key Binding JWT if
+     * it is non-empty and contains embedded dots (i.e. is itself a 3-part JWT).
+     * All segments between the first and the optional KB-JWT are disclosure values.</p>
+     *
+     * @param sdJwt The raw SD-JWT string
+     * @return A {@link SdJwtParts} instance holding issuerJwt, disclosures, and keyBindingJwt
+     * @throws CredentialVerificationException if the token does not contain at least an issuer JWT
+     */
+    private SdJwtParts parseSdJwtParts(String sdJwt) throws CredentialVerificationException {
+        String[] parts = sdJwt.split("~", -1);
+        if (parts.length < 1 || parts[0].isEmpty()) {
+            throw new CredentialVerificationException("Invalid SD-JWT format: missing issuer JWT");
+        }
+        String issuerJwt = parts[0];
+        List<String> disclosures = new ArrayList<>();
+        String keyBindingJwt = null;
+        for (int i = 1; i < parts.length; i++) {
+            String part = parts[i].trim();
+            if (part.isEmpty()) {
+                continue;
+            }
+            // The last non-empty segment is the KB-JWT when it is itself a 3-part JWT.
+            if (i == parts.length - 1 && part.split("\\.").length == 3) {
+                keyBindingJwt = part;
+            } else {
+                disclosures.add(part);
+            }
+        }
+        return new SdJwtParts(issuerJwt, disclosures, keyBindingJwt);
+    }
 
+    /**
+     * Canonical holder for the three sections of a parsed SD-JWT token.
+     *
+     * @param issuerJwt     The issuer-signed JWT (always present)
+     * @param disclosures   Ordered list of base64url-encoded disclosure values
+     * @param keyBindingJwt The Key Binding JWT, or {@code null} when absent
+     */
+    private static final class SdJwtParts {
+        private final String issuerJwt;
+        private final List<String> disclosures;
+        private final String keyBindingJwt;
+
+        private SdJwtParts(String issuerJwt, List<String> disclosures, String keyBindingJwt) {
+            this.issuerJwt = issuerJwt;
+            this.disclosures = disclosures;
+            this.keyBindingJwt = keyBindingJwt;
+        }
+    }
 
     @edu.umd.cs.findbugs.annotations.SuppressFBWarnings({"REC_CATCH_EXCEPTION", "CRLF_INJECTION_LOGS"})
     private String resolveJwksUri(String issuer) throws CredentialVerificationException {
@@ -1706,21 +1730,30 @@ public class VCVerificationServiceImpl implements VCVerificationService {
      *
      * <p>Steps:
      * <ol>
-     *   <li>Verify the VP token (signature + credential verification).</li>
-     *   <li>Extract {@code credentialSubject} claims from the VP payload.</li>
+     *   <li>Parse the VP token once into a {@link VerifiablePresentation}.</li>
+     *   <li>Verify each embedded credential (signature, expiry, etc.).</li>
+     *   <li>Extract {@code credentialSubject} claims from the already-parsed object.</li>
      *   <li>Optionally enforce Presentation Definition constraints.</li>
      * </ol>
+     *
+     * <p>This avoids the previous double-parse pattern where the raw token string was
+     * passed to {@code verifyVPToken} (which parsed it) and then passed <em>again</em>
+     * to {@code VerificationUtil.extractClaimsFromVpToken} (which parsed it a second
+     * time). The parsed {@link VerifiablePresentation} is now used for both steps.
      */
     private VPVerificationResponseDTO verifyJwtOrJsonLdPresentation(String vpToken,
             String detectedFormat,
             String pdJson)
             throws CredentialVerificationException {
 
-        // Verify signature / credentials inside the VP.
-        verifyVPToken(vpToken);
+        // R4: Parse the VP exactly once.
+        VerifiablePresentation parsedVp = parsePresentation(vpToken);
 
-        // Extract claims from the VP payload.
-        Map<String, Object> verifiedClaims = VerificationUtil.extractClaimsFromVpToken(vpToken, detectedFormat);
+        // Verify signature / credentials inside the parsed VP.
+        verifyPresentation(parsedVp);
+
+        // Extract claims from the already-parsed VP object — no re-parse of raw string.
+        Map<String, Object> verifiedClaims = extractClaimsFromPresentation(parsedVp, vpToken, detectedFormat);
 
         // Enforce PD constraints if a definition was provided.
         if (pdJson != null && !pdJson.isEmpty()) {
@@ -1728,6 +1761,34 @@ public class VCVerificationServiceImpl implements VCVerificationService {
         }
 
         return VPVerificationResponseDTO.success(verifiedClaims, detectedFormat);
+    }
+
+    /**
+     * Extract verified claims from an already-parsed {@link VerifiablePresentation}.
+     *
+     * <p>Tries to build the claims map from the parsed object first (JWT VPs expose
+     * {@code getJwtClaims()}; JSON-LD VPs expose the credential subject directly).
+     * Falls back to the utility method that re-parses the raw token only when the
+     * parsed object does not carry a usable claims map (e.g. for opaque VP types).
+     *
+     * @param parsedVp       The already-parsed presentation
+     * @param rawVpToken     The original raw VP token string (fallback only)
+     * @param detectedFormat The format string used by the fallback extractor
+     * @return A non-null (possibly empty) map of verified claims
+     */
+    private Map<String, Object> extractClaimsFromPresentation(
+            VerifiablePresentation parsedVp,
+            String rawVpToken,
+            String detectedFormat) {
+
+        // Prefer claims already in the parsed VP object to avoid a second raw token parse.
+        Map<String, Object> jwtClaims = parsedVp.getJwtClaims();
+        if (jwtClaims != null && !jwtClaims.isEmpty()) {
+            return jwtClaims;
+        }
+
+        // Fallback: use the utility extractor (parses the raw string).
+        return VerificationUtil.extractClaimsFromVpToken(rawVpToken, detectedFormat);
     }
 
 }

@@ -177,6 +177,8 @@ public interface VCVerificationService {
 
     /**
      * Verify JWT VC issuer against trusted allowlist.
+    /**
+     * Verify JWT VC issuer against trusted allowlist.
      * Performs DID resolution and signature verification.
      * 
      * @param vcJwt The JWT VC token
@@ -185,6 +187,20 @@ public interface VCVerificationService {
      * @throws CredentialVerificationException if verification fails
      */
     boolean verifyJWTVCIssuer(String vcJwt, String tenantDomain) 
+            throws CredentialVerificationException;
+
+    /**
+     * Verify JWT VC issuer from an already-parsed {@link VerifiableCredential}.
+     *
+     * <p>Preferred over {@link #verifyJWTVCIssuer(String, String)} when the caller
+     * already has a parsed credential, as it avoids an extra parse cycle.</p>
+     *
+     * @param credential   The pre-parsed VerifiableCredential
+     * @param tenantDomain The tenant domain
+     * @return true if issuer is trusted and signature is valid
+     * @throws CredentialVerificationException if verification fails
+     */
+    boolean verifyJWTVCIssuer(VerifiableCredential credential, String tenantDomain)
             throws CredentialVerificationException;
 
     /**
@@ -198,9 +214,28 @@ public interface VCVerificationService {
      */
     boolean verifyJSONLDVCIssuer(com.google.gson.JsonObject vcJsonObject, String tenantDomain) 
             throws CredentialVerificationException;
+
+    /**
+     * Verify JSON-LD VC issuer from an already-parsed {@link VerifiableCredential}.
+     *
+     * <p>Preferred over {@link #verifyJSONLDVCIssuer(JsonObject, String)} when the caller
+     * already has a parsed credential, as it avoids an extra serialization/parse cycle.</p>
+     *
+     * @param credential   The pre-parsed VerifiableCredential
+     * @param tenantDomain The tenant domain
+     * @return true if issuer is trusted and signature is valid
+     * @throws CredentialVerificationException if verification fails
+     */
+    boolean verifyJSONLDVCIssuer(VerifiableCredential credential, String tenantDomain)
+            throws CredentialVerificationException;
+
     /**
      * Pre-check: verify all VC issuer trust in a VP token before persisting it,
      * using presentation_submission format to identify VP token type.
+     *
+     * @deprecated Issuer trust is now performed inside
+     * {@link #verifyPresentation(String, String, String, int)}. This method is retained
+     * for backward compatibility but callers should migrate to {@code verifyPresentation}.
      *
      * @param vpToken                    The VP token
      * @param presentationSubmissionJson The presentation_submission JSON string
@@ -208,6 +243,7 @@ public interface VCVerificationService {
      * @throws CredentialVerificationException If any credential is from an untrusted issuer
      *                                         or if the VP token cannot be parsed
      */
+    @Deprecated
     void verifyAllIssuerTrust(String vpToken, String presentationSubmissionJson, String tenantDomain)
             throws CredentialVerificationException;
 

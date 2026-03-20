@@ -29,18 +29,15 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.osgi.service.component.annotations.Component;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPStatusListenerCache;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.WalletDataCache;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPSubmission;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.status.StatusNotificationService;
 import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
 import org.wso2.carbon.identity.openid4vc.presentation.common.util.OpenID4VPUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VPSubmissionDTO;
-import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.CredentialVerificationException;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VPSubmissionValidationException;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.model.VCVerificationStatus;
-import org.wso2.carbon.identity.openid4vc.presentation.verification.service.VCVerificationService;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.util.VPSubmissionValidator;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.WalletDataCache;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -138,23 +135,6 @@ public class VPSubmissionServlet extends HttpServlet {
                 return;
             }
 
-            // Get tenant domain and verify all VCs in the VP
-            String tenantDomain = getTenantDomain(request);
-
-            try {
-                VCVerificationService vcVerifier = VPServiceDataHolder.getInstance()
-                        .getVCVerificationService();
-                String presentationSubmissionJson = submissionDTO.getPresentationSubmission() != null
-                    ? submissionDTO.getPresentationSubmission().toString()
-                    : null;
-                vcVerifier.verifyAllIssuerTrust(submissionDTO.getVpToken(), presentationSubmissionJson,
-                    tenantDomain);
-            } catch (CredentialVerificationException e) {
-                sendErrorResponse(response, HttpServletResponse.SC_FORBIDDEN,
-                        "untrusted_issuer",
-                        "Credential from untrusted issuer: " + e.getMessage());
-                return;
-            }
 
             // Get tenant ID
             int tenantId = getTenantId(request);
