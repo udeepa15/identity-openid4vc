@@ -86,29 +86,6 @@ public final class VerificationUtil {
     }
 
     /**
-     * Unquotes a JSON string if it's encased in extra quotes.
-     * 
-     * @param jsonString The input string.
-     * @return The unquoted string.
-     */
-    public static String unquoteJsonString(String jsonString) {
-        if (jsonString == null) {
-            return null;
-        }
-        String trimmed = jsonString.trim();
-        if (trimmed.startsWith("\"") && trimmed.endsWith("\"")) {
-            try {
-                return GSON.fromJson(trimmed, String.class);
-            } catch (Exception e) {
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("Failed to unquote JSON string, using original", e);
-                }
-            }
-        }
-        return jsonString;
-    }
-
-    /**
      * Creates a SHA-256 Base64URL-encoded hash for a given string input.
      * 
      * @param input The string to hash.

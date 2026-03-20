@@ -492,9 +492,6 @@ public class VCVerificationServiceImpl implements VCVerificationService {
             throw new CredentialVerificationException("Credential string is null or empty");
         }
 
-        // Fix: Remove extra quotes if present (e.g. from incorrect JSON serialization)
-        vcString = VerificationUtil.unquoteJsonString(vcString);
-
         String normalizedContentType = VerificationUtil.normalizeContentType(contentType);
 
         try {
