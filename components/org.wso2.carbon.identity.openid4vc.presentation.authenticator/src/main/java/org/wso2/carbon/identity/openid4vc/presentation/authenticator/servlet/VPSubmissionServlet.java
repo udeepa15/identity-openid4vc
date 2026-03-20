@@ -278,7 +278,7 @@ public class VPSubmissionServlet extends HttpServlet {
         if (StringUtils.isNotBlank(value)) {
             try {
                 String decodedValue = URLDecoder.decode(value, StandardCharsets.UTF_8.name());
-
+                // Special handling for vp_token to remove extraneous quotes if present (inji)
                 if (OpenID4VPConstants.ResponseParams.VP_TOKEN.equals(paramName)) {
                     String sanitizedValue = decodedValue.trim();
 
