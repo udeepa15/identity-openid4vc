@@ -68,15 +68,6 @@ public class RevocationCheckResult {
         this.checkedAt = System.currentTimeMillis();
     }
 
-    /**
-     * Constructor with status.
-     *
-     * @param status The revocation status
-     */
-    public RevocationCheckResult(Status status) {
-        this.status = status;
-        this.checkedAt = System.currentTimeMillis();
-    }
 
     /**
      * Constructor with status and message.
@@ -99,32 +90,6 @@ public class RevocationCheckResult {
      */
     public static RevocationCheckResult valid() {
         return new RevocationCheckResult(Status.VALID, "Credential is valid");
-    }
-
-    /**
-     * Create a result indicating the credential is revoked.
-     *
-     * @param purpose The status purpose (e.g., "revocation")
-     * @return RevocationCheckResult with REVOKED status
-     */
-    public static RevocationCheckResult revoked(String purpose) {
-        RevocationCheckResult result = new RevocationCheckResult(Status.REVOKED,
-                "Credential has been revoked");
-        result.setStatusPurpose(purpose);
-        return result;
-    }
-
-    /**
-     * Create a result indicating the credential is suspended.
-     *
-     * @param purpose The status purpose
-     * @return RevocationCheckResult with SUSPENDED status
-     */
-    public static RevocationCheckResult suspended(String purpose) {
-        RevocationCheckResult result = new RevocationCheckResult(Status.SUSPENDED,
-                "Credential has been suspended");
-        result.setStatusPurpose(purpose);
-        return result;
     }
 
     /**
@@ -272,11 +237,6 @@ public class RevocationCheckResult {
 
         public Builder message(String message) {
             result.message = message;
-            return this;
-        }
-
-        public Builder cached(boolean cached) {
-            result.cached = cached;
             return this;
         }
 

@@ -252,18 +252,6 @@ public class VCVerificationServiceImpl implements VCVerificationService {
     }
 
     @Override
-    public List<VCVerificationResultDTO> verifyVPToken(String vpToken)
-            throws CredentialVerificationException {
-
-        if (vpToken == null || vpToken.trim().isEmpty()) {
-            throw new CredentialVerificationException("VP token is null or empty");
-        }
-
-        VerifiablePresentation presentation = parsePresentation(vpToken);
-        return verifyPresentation(presentation);
-    }
-
-    @Override
     public List<VCVerificationResultDTO> verifyPresentation(VerifiablePresentation presentation)
             throws CredentialVerificationException {
 
@@ -1808,9 +1796,7 @@ public class VCVerificationServiceImpl implements VCVerificationService {
      * </ol>
      *
      * <p>This avoids the previous double-parse pattern where the raw token string was
-     * passed to {@code verifyVPToken} (which parsed it) and then passed <em>again</em>
-     * to {@code VerificationUtil.extractClaimsFromVpToken} (which parsed it a second
-     * time). The parsed {@link VerifiablePresentation} is now used for both steps.
+     * parsed multiple times. The parsed {@link VerifiablePresentation} is now used for all steps.
      */
     private VPVerificationResponseDTO verifyJwtOrJsonLdPresentation(String vpToken,
             String detectedFormat,

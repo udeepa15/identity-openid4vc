@@ -78,18 +78,6 @@ public interface VCVerificationService {
             throws CredentialVerificationException;
 
     /**
-     * Verify a VP token and all contained credentials.
-     * Parses the VP token, extracts all verifiable credentials,
-     * and verifies each one.
-     *
-     * @param vpToken The VP token (JWT or JSON-LD string)
-     * @return List of VCVerificationResultDTO for each credential
-     * @throws CredentialVerificationException If VP parsing fails
-     */
-    List<VCVerificationResultDTO> verifyVPToken(String vpToken)
-            throws CredentialVerificationException;
-
-    /**
      * Verify a parsed Verifiable Presentation.
      *
      * @param presentation The parsed VerifiablePresentation

@@ -182,19 +182,6 @@ public class VerifiablePresentation {
         return verifiableCredentials != null ? verifiableCredentials.size() : 0;
     }
 
-    /**
-     * Get a credential by index.
-     *
-     * @param index The credential index
-     * @return The credential or null if index is out of bounds
-     */
-    public VerifiableCredential getCredential(int index) {
-        if (verifiableCredentials != null && index >= 0 && index < verifiableCredentials.size()) {
-            return verifiableCredentials.get(index);
-        }
-        return null;
-    }
-
     @edu.umd.cs.findbugs.annotations.SuppressFBWarnings("EI_EXPOSE_REP")
     public VerifiableCredential.Proof getProof() {
         return proof;
@@ -278,35 +265,6 @@ public class VerifiablePresentation {
     }
 
     /**
-     * Get the issuer (subject) from JWT claims.
-     *
-     * @return The issuer/subject or null
-     */
-    public String getJwtSubject() {
-        if (jwtClaims != null && jwtClaims.containsKey("sub")) {
-            return jwtClaims.get("sub").toString();
-        }
-        return null;
-    }
-
-    /**
-     * Get the audience from JWT claims.
-     *
-     * @return The audience or null
-     */
-    public String getJwtAudience() {
-        if (jwtClaims != null && jwtClaims.containsKey("aud")) {
-            Object aud = jwtClaims.get("aud");
-            if (aud instanceof List) {
-                List<?> audList = (List<?>) aud;
-                return !audList.isEmpty() ? audList.get(0).toString() : null;
-            }
-            return aud.toString();
-        }
-        return null;
-    }
-
-    /**
      * Get the nonce from JWT claims.
      *
      * @return The nonce or null
@@ -316,88 +274,6 @@ public class VerifiablePresentation {
             return jwtClaims.get("nonce").toString();
         }
         return nonce;
-    }
-
-    /**
-     * Check if all credentials in this presentation have valid signatures.
-     *
-     * @return true if all credentials are signature verified
-     */
-    public boolean areAllCredentialsVerified() {
-        if (verifiableCredentials == null || verifiableCredentials.isEmpty()) {
-            return false;
-        }
-        for (VerifiableCredential vc : verifiableCredentials) {
-            if (!vc.isSignatureVerified()) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    /**
-     * Check if any credential in this presentation has expired.
-     *
-     * @return true if any credential is expired
-     */
-    public boolean hasExpiredCredential() {
-        if (verifiableCredentials != null) {
-            for (VerifiableCredential vc : verifiableCredentials) {
-                if (vc.isExpired()) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Get the first expired credential.
-     *
-     * @return The first expired credential or null
-     */
-    public VerifiableCredential getFirstExpiredCredential() {
-        if (verifiableCredentials != null) {
-            for (VerifiableCredential vc : verifiableCredentials) {
-                if (vc.isExpired()) {
-                    return vc;
-                }
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Get all credential types in this presentation.
-     *
-     * @return List of credential types
-     */
-    public List<String> getAllCredentialTypes() {
-        List<String> types = new ArrayList<>();
-        if (verifiableCredentials != null) {
-            for (VerifiableCredential vc : verifiableCredentials) {
-                types.add(vc.getPrimaryType());
-            }
-        }
-        return types;
-    }
-
-    /**
-     * Get all credential issuers in this presentation.
-     *
-     * @return List of issuer IDs
-     */
-    public List<String> getAllIssuers() {
-        List<String> issuers = new ArrayList<>();
-        if (verifiableCredentials != null) {
-            for (VerifiableCredential vc : verifiableCredentials) {
-                String issuer = vc.getIssuerId();
-                if (issuer != null && !issuers.contains(issuer)) {
-                    issuers.add(issuer);
-                }
-            }
-        }
-        return issuers;
     }
 
     @Override

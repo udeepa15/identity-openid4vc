@@ -507,30 +507,6 @@ public class VerifiableCredential {
     }
 
     /**
-     * Check if the credential is not yet valid based on issuanceDate.
-     *
-     * @return true if not yet valid
-     */
-    public boolean isNotYetValid() {
-        if (issuanceDate == null) {
-            return false;
-        }
-        return new Date().before(issuanceDate);
-    }
-
-    /**
-     * Get the verification method from the proof.
-     *
-     * @return Verification method URI or null
-     */
-    public String getVerificationMethod() {
-        if (proof != null) {
-            return proof.getVerificationMethod();
-        }
-        return null;
-    }
-
-    /**
      * Get a claim value from the credential subject.
      *
      * @param claimName The claim name
@@ -541,17 +517,6 @@ public class VerifiableCredential {
             return credentialSubject.get(claimName);
         }
         return null;
-    }
-
-    /**
-     * Get a string claim value from the credential subject.
-     *
-     * @param claimName The claim name
-     * @return The claim value as string or null
-     */
-    public String getStringClaim(String claimName) {
-        Object value = getClaim(claimName);
-        return value != null ? value.toString() : null;
     }
 
     @Override
