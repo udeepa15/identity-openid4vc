@@ -141,9 +141,6 @@ public class VPSubmissionServlet extends HttpServlet {
             // Get tenant domain and verify all VCs in the VP
             String tenantDomain = getTenantDomain(request);
 
-            // Delegate issuer trust pre-check entirely to the verification service.
-            // This replaces the former servlet-local verifyAllCredentialIssuers() method,
-            // removing the duplicate VP/VC parsing logic.
             try {
                 VCVerificationService vcVerifier = VPServiceDataHolder.getInstance()
                         .getVCVerificationService();
@@ -159,7 +156,7 @@ public class VPSubmissionServlet extends HttpServlet {
             int tenantId = getTenantId(request);
             String requestId = submissionDTO.getState();
 
-            // Build VPSubmission object in-memory (NO database storage!)
+            // Build VPSubmission object in-memory
             String presentationSubmissionJson = submissionDTO.getPresentationSubmission() != null
                     ? submissionDTO.getPresentationSubmission().toString()
                     : null;
