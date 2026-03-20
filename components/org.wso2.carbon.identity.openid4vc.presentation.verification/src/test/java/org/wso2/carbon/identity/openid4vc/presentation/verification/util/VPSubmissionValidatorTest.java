@@ -19,7 +19,6 @@
 package org.wso2.carbon.identity.openid4vc.presentation.verification.util;
 
 import org.testng.annotations.Test;
-import org.wso2.carbon.identity.openid4vc.presentation.management.model.PresentationDefinition;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VPSubmissionDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VPSubmissionValidationException;
 
@@ -46,18 +45,5 @@ public class VPSubmissionValidatorTest {
         dto.setState("state123");
         assertThrows(VPSubmissionValidationException.class, () -> 
             VPSubmissionValidator.validateSubmission(dto));
-    }
-
-    @Test
-    public void testValidateSubmissionMatchesDefinitionMismatch() {
-        org.wso2.carbon.identity.openid4vc.presentation.verification.dto.PresentationSubmissionDTO submission = 
-            new org.wso2.carbon.identity.openid4vc.presentation.verification.dto.PresentationSubmissionDTO();
-        submission.setDefinitionId("def1");
-        
-        PresentationDefinition definition = new PresentationDefinition();
-        definition.setDefinitionId("def2");
-        
-        assertThrows(VPSubmissionValidationException.class, () -> 
-            VPSubmissionValidator.validateSubmissionMatchesDefinition(submission, definition));
     }
 }

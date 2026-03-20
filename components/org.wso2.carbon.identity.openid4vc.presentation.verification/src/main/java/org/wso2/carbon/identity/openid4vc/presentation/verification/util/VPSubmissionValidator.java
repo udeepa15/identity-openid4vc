@@ -19,17 +19,17 @@
 package org.wso2.carbon.identity.openid4vc.presentation.verification.util;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
 import org.apache.commons.lang.StringUtils;
 import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
-import org.wso2.carbon.identity.openid4vc.presentation.management.model.PresentationDefinition;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.DescriptorMapDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.PresentationSubmissionDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VPSubmissionDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VPSubmissionValidationException;
 
-import java.util.List;
 
 /**
  * Utility class for validating VP submissions.
@@ -134,9 +134,9 @@ public final class VPSubmissionValidator {
             final JsonObject submissionJson) throws VPSubmissionValidationException {
 
         try {
+            validatePresentationSubmissionJsonStructure(submissionJson);
             PresentationSubmissionDTO submission = GSON.fromJson(
                     submissionJson, PresentationSubmissionDTO.class);
-            validatePresentationSubmission(submission);
         } catch (JsonSyntaxException e) {
             throw new VPSubmissionValidationException(
                     "Invalid presentation_submission JSON: " + e.getMessage());
@@ -144,40 +144,88 @@ public final class VPSubmissionValidator {
     }
 
     /**
-     * Validate presentation submission DTO.
+     * Validate strict JSON structure for DIF Presentation Exchange MUST fields.
      *
-     * @param submission Presentation submission DTO
-     * @throws VPSubmissionValidationException If validation fails
+     * @param submissionJson Presentation submission as JsonObject.
+     * @throws VPSubmissionValidationException If validation fails.
      */
-    public static void validatePresentationSubmission(
-            final PresentationSubmissionDTO submission)
+    private static void validatePresentationSubmissionJsonStructure(final JsonObject submissionJson)
             throws VPSubmissionValidationException {
 
-        if (submission == null) {
+        if (submissionJson == null) {
             throw new VPSubmissionValidationException(
                     "presentation_submission cannot be null");
         }
 
-        if (StringUtils.isBlank(submission.getId())) {
+        if (!isNonBlankStringField(submissionJson, "id")) {
             throw new VPSubmissionValidationException(
-                    "presentation_submission.id is required");
+                    "presentation_submission.id is required and must be a string");
         }
 
-        if (StringUtils.isBlank(submission.getDefinitionId())) {
+        if (!isNonBlankStringField(submissionJson, "definition_id")) {
             throw new VPSubmissionValidationException(
-                    "presentation_submission.definition_id is required");
+                    "presentation_submission.definition_id is required and must be a string");
         }
 
-        List<DescriptorMapDTO> descriptorMap = submission.getDescriptorMap();
-        if (descriptorMap == null || descriptorMap.isEmpty()) {
+        if (!submissionJson.has("descriptor_map") || !submissionJson.get("descriptor_map").isJsonArray()) {
+            throw new VPSubmissionValidationException(
+                    "presentation_submission.descriptor_map is required and must be an array");
+        }
+
+        JsonArray descriptorMap = submissionJson.getAsJsonArray("descriptor_map");
+        if (descriptorMap.size() == 0) {
             throw new VPSubmissionValidationException(
                     "presentation_submission.descriptor_map is required");
         }
 
-        // Validate each descriptor map entry
         for (int i = 0; i < descriptorMap.size(); i++) {
-            validateDescriptorMap(descriptorMap.get(i), i);
+            JsonElement descriptorElement = descriptorMap.get(i);
+            if (!descriptorElement.isJsonObject()) {
+                throw new VPSubmissionValidationException(
+                        "descriptor_map[" + i + "] must be an object");
+            }
+
+            JsonObject descriptorObject = descriptorElement.getAsJsonObject();
+            if (!isNonBlankStringField(descriptorObject, "id")) {
+                throw new VPSubmissionValidationException(
+                        "descriptor_map[" + i + "].id is required and must be a string");
+            }
+
+            if (!isNonBlankStringField(descriptorObject, "format")) {
+                throw new VPSubmissionValidationException(
+                        "descriptor_map[" + i + "].format is required and must be a string");
+            }
+
+            if (!isNonBlankStringField(descriptorObject, "path")) {
+                throw new VPSubmissionValidationException(
+                        "descriptor_map[" + i + "].path is required and must be a string");
+            }
+
+            if (!isValidJsonPath(descriptorObject.get("path").getAsString())) {
+                throw new VPSubmissionValidationException(
+                        "descriptor_map[" + i + "].path is not valid JSONPath");
+            }
         }
+    }
+
+    /**
+     * Check whether a field exists as a non-empty string.
+     *
+     * @param object JSON object.
+     * @param fieldName Field name.
+     * @return true if valid.
+     */
+    private static boolean isNonBlankStringField(final JsonObject object,
+            final String fieldName) {
+
+        if (object == null || StringUtils.isBlank(fieldName)
+                || !object.has(fieldName) || object.get(fieldName).isJsonNull()) {
+            return false;
+        }
+
+        JsonElement field = object.get(fieldName);
+        return field.isJsonPrimitive() && field.getAsJsonPrimitive().isString()
+                && StringUtils.isNotBlank(field.getAsString());
     }
 
     /**
@@ -232,35 +280,4 @@ public final class VPSubmissionValidator {
         // Basic JSONPath validation - must start with $ or @
         return path.startsWith("$") || path.startsWith("@");
     }
-
-    /**
-     * Validate that submission matches presentation definition.
-     *
-     * @param submission Presentation submission
-     * @param definition Presentation definition
-     * @throws VPSubmissionValidationException If validation fails
-     */
-    public static void validateSubmissionMatchesDefinition(
-            final PresentationSubmissionDTO submission,
-            final PresentationDefinition definition)
-            throws VPSubmissionValidationException {
-
-        if (submission == null || definition == null) {
-            throw new VPSubmissionValidationException(
-                    "Submission and definition cannot be null");
-        }
-
-        String defId = definition.getDefinitionId();
-        String submissionDefId = submission.getDefinitionId();
-
-        if (!defId.equals(submissionDefId)) {
-            throw new VPSubmissionValidationException(
-                    "Submission definition_id '" + submissionDefId
-                            + "' does not match request definition_id '" + defId + "'");
-        }
-
-        // Additional validation can be added here to verify that
-        // all required input descriptors are satisfied
-    }
-
 }
