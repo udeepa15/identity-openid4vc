@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, WSO2 LLC. (http://www.wso2.com).
+ * Copyright (c) 2025-2026, WSO2 LLC. (http://www.wso2.com).
  *
  * WSO2 LLC. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -46,25 +46,6 @@ public class VPSubmissionValidatorTest {
         dto.setState("state123");
         assertThrows(VPSubmissionValidationException.class, () -> 
             VPSubmissionValidator.validateSubmission(dto));
-    }
-
-    @Test
-    public void testValidateVPTokenEmpty() {
-        assertThrows(VPSubmissionValidationException.class, () -> 
-            VPSubmissionValidator.validateVPToken(""));
-    }
-
-    @Test
-    public void testValidateJwtVpInvalid() {
-        assertThrows(VPSubmissionValidationException.class, () -> 
-            VPSubmissionValidator.validateVPToken("header.payload")); // Missing signature part or not 3 dots
-    }
-
-    @Test
-    public void testValidateJsonLdVPNoType() {
-        String json = "{\"id\": \"vp1\"}";
-        assertThrows(VPSubmissionValidationException.class, () -> 
-            VPSubmissionValidator.validateVPToken(json));
     }
 
     @Test

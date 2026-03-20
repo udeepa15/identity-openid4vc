@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, WSO2 LLC. (http://www.wso2.com).
+ * Copyright (c) 2025-2026, WSO2 LLC. (http://www.wso2.com).
  *
  * WSO2 LLC. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -29,9 +29,7 @@ import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.Presenta
 import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VPSubmissionDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VPSubmissionValidationException;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 /**
  * Utility class for validating VP submissions.
@@ -40,19 +38,6 @@ import java.util.Set;
 public final class VPSubmissionValidator {
 
     private static final Gson GSON = new Gson();
-
-    /**
-     * Supported VP token formats.
-     */
-    private static final Set<String> SUPPORTED_FORMATS = new HashSet<>();
-
-    static {
-        SUPPORTED_FORMATS.add(OpenID4VPConstants.VCFormats.JWT_VP);
-        SUPPORTED_FORMATS.add(OpenID4VPConstants.VCFormats.JWT_VP_JSON);
-        SUPPORTED_FORMATS.add(OpenID4VPConstants.VCFormats.LDP_VP);
-        SUPPORTED_FORMATS.add(OpenID4VPConstants.VCFormats.VC_SD_JWT);
-        SUPPORTED_FORMATS.add(OpenID4VPConstants.VCFormats.MSO_MDOC);
-    }
 
     private VPSubmissionValidator() {
         // Prevent instantiation
@@ -87,16 +72,17 @@ public final class VPSubmissionValidator {
         // For successful submission, vp_token is required
         if (StringUtils.isBlank(dto.getVpToken())) {
             throw new VPSubmissionValidationException(
-                    "vp_token is required for successful submission");
+                    "vp_token is required");
         }
 
-        // Validate VP token format
-        validateVPToken(dto.getVpToken());
+        // presentation_submission is now required
+        if (dto.getPresentationSubmission() == null || dto.getPresentationSubmission().entrySet().isEmpty()) {
+            throw new VPSubmissionValidationException(
+                    "presentation_submission is required");
+        }
 
         // Validate presentation_submission if provided
-        if (dto.getPresentationSubmission() != null) {
-            validatePresentationSubmissionJson(dto.getPresentationSubmission());
-        }
+        validatePresentationSubmissionJson(dto.getPresentationSubmission());
     }
 
     /**
@@ -136,196 +122,6 @@ public final class VPSubmissionValidator {
                 || OpenID4VPConstants.ErrorCodes.VP_FORMATS_NOT_SUPPORTED.equals(errorCode)
                 // Allow other error codes (extensible)
                 || errorCode.matches("^[a-z_]+$");
-    }
-
-    /**
-     * Validate VP token format.
-     *
-     * @param vpToken VP token to validate
-     * @throws VPSubmissionValidationException If validation fails
-     */
-    public static void validateVPToken(final String vpToken)
-            throws VPSubmissionValidationException {
-
-        if (StringUtils.isBlank(vpToken)) {
-            throw new VPSubmissionValidationException("VP token cannot be empty");
-        }
-
-        // VP token could be:
-        // 1. JWT format (3 parts separated by dots)
-        // 2. SD-JWT format (multiple parts with ~)
-        // 3. JSON-LD format (JSON object)
-        // 4. Array of any of the above
-
-        String trimmed = vpToken.trim();
-
-        // Check if it's a JSON array
-        if (trimmed.startsWith("[")) {
-            validateVPTokenArray(trimmed);
-            return;
-        }
-
-        String format = VerificationUtil.detectFormat(trimmed);
-        if (VerificationUtil.CONTENT_TYPE_SD_JWT.equals(format)) {
-            validateSdJwtVP(trimmed);
-            return;
-        } else if (VerificationUtil.CONTENT_TYPE_JWT.equals(format)) {
-            validateJwtVP(trimmed);
-            return;
-        } else if (VerificationUtil.CONTENT_TYPE_VC_LD_JSON.equals(format) && trimmed.startsWith("{")) {
-            validateJsonLdVP(trimmed);
-            return;
-        }
-
-        throw new VPSubmissionValidationException(
-                "VP token format is not recognized");
-    }
-
-    /**
-     * Validate VP token array.
-     *
-     * @param vpTokenArray JSON array of VP tokens
-     * @throws VPSubmissionValidationException If validation fails
-     */
-    private static void validateVPTokenArray(final String vpTokenArray)
-            throws VPSubmissionValidationException {
-
-        try {
-            com.google.gson.JsonArray array = com.google.gson.JsonParser.parseString(vpTokenArray)
-                    .getAsJsonArray();
-
-            if (array.size() == 0) {
-                throw new VPSubmissionValidationException(
-                        "VP token array cannot be empty");
-            }
-
-            // Validate each element
-            for (int i = 0; i < array.size(); i++) {
-                com.google.gson.JsonElement element = array.get(i);
-                if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isString()) {
-                    String token = element.getAsString();
-                    validateVPToken(token);
-                } else if (element.isJsonObject()) {
-                    validateJsonLdVP(element.toString());
-                } else {
-                    throw new VPSubmissionValidationException(
-                            "Invalid VP token element at index " + i);
-                }
-            }
-        } catch (JsonSyntaxException e) {
-            throw new VPSubmissionValidationException(
-                    "Invalid VP token array JSON: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Validate JSON-LD VP.
-     *
-     * @param vpJson JSON-LD VP
-     * @throws VPSubmissionValidationException If validation fails
-     */
-    private static void validateJsonLdVP(final String vpJson)
-            throws VPSubmissionValidationException {
-
-        try {
-            JsonObject vp = com.google.gson.JsonParser.parseString(vpJson)
-                    .getAsJsonObject();
-
-            // Check for required fields
-            if (!vp.has("type")) {
-                throw new VPSubmissionValidationException(
-                        "JSON-LD VP missing 'type' field");
-            }
-
-            // Verify it contains VerifiablePresentation type
-            com.google.gson.JsonElement typeElement = vp.get("type");
-            boolean hasVPType = false;
-
-            if (typeElement.isJsonArray()) {
-                for (com.google.gson.JsonElement t : typeElement.getAsJsonArray()) {
-                    if ("VerifiablePresentation".equals(t.getAsString())) {
-                        hasVPType = true;
-                        break;
-                    }
-                }
-            } else if (typeElement.isJsonPrimitive()) {
-                hasVPType = "VerifiablePresentation".equals(
-                        typeElement.getAsString());
-            }
-
-            if (!hasVPType) {
-                throw new VPSubmissionValidationException(
-                        "VP must have type 'VerifiablePresentation'");
-            }
-
-        } catch (JsonSyntaxException e) {
-            throw new VPSubmissionValidationException(
-                    "Invalid JSON-LD VP: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Validate SD-JWT VP.
-     *
-     * @param sdJwt SD-JWT VP token
-     * @throws VPSubmissionValidationException If validation fails
-     */
-    private static void validateSdJwtVP(final String sdJwt)
-            throws VPSubmissionValidationException {
-
-        // SD-JWT format: <Issuer-signed JWT>~<Disclosure 1>~...~<KB-JWT>
-        String[] parts = sdJwt.split("~");
-        if (parts.length < 1) {
-            throw new VPSubmissionValidationException(
-                    "Invalid SD-JWT format");
-        }
-
-        // First part should be a valid JWT
-        if (StringUtils.isBlank(parts[0]) || parts[0].split("\\.").length != 3) {
-            throw new VPSubmissionValidationException(
-                    "SD-JWT issuer-signed part is not valid JWT");
-        }
-    }
-
-    /**
-     * Validate JWT VP.
-     *
-     * @param jwt JWT VP token
-     * @throws VPSubmissionValidationException If validation fails
-     */
-    private static void validateJwtVP(final String jwt)
-            throws VPSubmissionValidationException {
-
-        String[] parts = jwt.split("\\.");
-        if (parts.length != 3) {
-            throw new VPSubmissionValidationException(
-                    "Invalid JWT format - expected 3 parts");
-        }
-
-        // Validate Base64URL encoding of each part
-        for (int i = 0; i < parts.length; i++) {
-            if (!isValidBase64Url(parts[i])) {
-                throw new VPSubmissionValidationException(
-                        "Invalid Base64URL encoding in JWT part " + (i + 1));
-            }
-        }
-    }
-
-
-
-    /**
-     * Check if string is valid Base64URL.
-     *
-     * @param str String to check
-     * @return true if valid Base64URL
-     */
-    private static boolean isValidBase64Url(final String str) {
-
-        if (str == null) {
-            return false;
-        }
-        // Base64URL uses: A-Z, a-z, 0-9, -, _
-        return str.matches("^[A-Za-z0-9_-]*$");
     }
 
     /**
