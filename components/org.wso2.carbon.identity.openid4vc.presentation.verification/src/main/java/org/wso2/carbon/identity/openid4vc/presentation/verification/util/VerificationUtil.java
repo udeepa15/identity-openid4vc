@@ -233,7 +233,6 @@ public final class VerificationUtil {
             if ("vc sd-jwt".equals(format) ||
                 "vc_sd_jwt".equals(format) ||
                 "vc_sd-jwt".equals(format) ||
-                "vc+sd-jwt".equals(format) ||
                 "dc+sd-jwt".equals(format)) {
                 format = NORMALIZED_VC_SD_JWT;
             }
