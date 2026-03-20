@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, WSO2 LLC. (http://www.wso2.com).
+ * Copyright (c) 2025-2026, WSO2 LLC. (http://www.wso2.com).
  *
  * WSO2 LLC. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -1146,17 +1146,20 @@ public class VCVerificationServiceImpl implements VCVerificationService {
     }
 
     @Override
-    public void verifyAllIssuerTrust(String vpToken, String tenantDomain)
+    public void verifyAllIssuerTrust(String vpToken, String presentationSubmissionJson, String tenantDomain)
             throws CredentialVerificationException {
 
         if (vpToken == null || vpToken.trim().isEmpty()) {
             return;
         }
 
-        // SD-JWT format: <issuer-jwt>~<disclosure1>~...~<kb-jwt>
-        // There is no wrapping VP container — the issuer JWT itself is the credential.
-        if (vpToken.contains("~")) {
-            String issuerJwt = vpToken.split("~")[0];
+        String detectedFormat = null;
+        if (presentationSubmissionJson != null && !presentationSubmissionJson.trim().isEmpty()) {
+            detectedFormat = VerificationUtil.extractFormatFromSubmission(presentationSubmissionJson);
+        }
+
+        if (VerificationUtil.NORMALIZED_VC_SD_JWT.equals(detectedFormat)) {
+            String issuerJwt = vpToken.contains("~") ? vpToken.split("~")[0] : vpToken;
             boolean trusted = verifyJWTVCIssuer(issuerJwt, tenantDomain);
             if (!trusted) {
                 throw new CredentialVerificationException(VCVerificationStatus.INVALID,

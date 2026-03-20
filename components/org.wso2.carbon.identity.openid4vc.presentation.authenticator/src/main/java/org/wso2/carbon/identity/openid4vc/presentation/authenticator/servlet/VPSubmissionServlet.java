@@ -144,7 +144,11 @@ public class VPSubmissionServlet extends HttpServlet {
             try {
                 VCVerificationService vcVerifier = VPServiceDataHolder.getInstance()
                         .getVCVerificationService();
-                vcVerifier.verifyAllIssuerTrust(submissionDTO.getVpToken(), tenantDomain);
+                String presentationSubmissionJson = submissionDTO.getPresentationSubmission() != null
+                    ? submissionDTO.getPresentationSubmission().toString()
+                    : null;
+                vcVerifier.verifyAllIssuerTrust(submissionDTO.getVpToken(), presentationSubmissionJson,
+                    tenantDomain);
             } catch (CredentialVerificationException e) {
                 sendErrorResponse(response, HttpServletResponse.SC_FORBIDDEN,
                         "untrusted_issuer",

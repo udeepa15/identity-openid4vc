@@ -229,7 +229,12 @@ public final class VerificationUtil {
             }
             String format = firstDescriptor.get("format").getAsString().trim().toLowerCase(java.util.Locale.ENGLISH);
 
-            if ("vc sd-jwt".equals(format) || "vc_sd_jwt".equals(format) || "vc_sd-jwt".equals(format)) {
+            // Normalize all SD-JWT format variants
+            if ("vc sd-jwt".equals(format) ||
+                "vc_sd_jwt".equals(format) ||
+                "vc_sd-jwt".equals(format) ||
+                "vc+sd-jwt".equals(format) ||
+                "dc+sd-jwt".equals(format)) {
                 format = NORMALIZED_VC_SD_JWT;
             }
             return format;

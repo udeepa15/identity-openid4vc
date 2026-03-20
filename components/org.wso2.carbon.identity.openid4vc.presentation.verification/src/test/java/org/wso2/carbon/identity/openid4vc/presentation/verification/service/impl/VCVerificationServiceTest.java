@@ -151,9 +151,9 @@ public class VCVerificationServiceTest {
     @Test
     public void testVerifyAllIssuerTrust_BlankToken_NoException() throws Exception {
         // Blank / null token must be a no-op — not an error
-        vcVerificationService.verifyAllIssuerTrust(null, "carbon.super");
-        vcVerificationService.verifyAllIssuerTrust("", "carbon.super");
-        vcVerificationService.verifyAllIssuerTrust("   ", "carbon.super");
+        vcVerificationService.verifyAllIssuerTrust(null, null, "carbon.super");
+        vcVerificationService.verifyAllIssuerTrust("", null, "carbon.super");
+        vcVerificationService.verifyAllIssuerTrust("   ", null, "carbon.super");
     }
 
     @Test
@@ -167,7 +167,9 @@ public class VCVerificationServiceTest {
         String sig = "c2lnbmF0dXJl";
         String jwtVp = header + "." + payload + "." + sig;
 
-        vcVerificationService.verifyAllIssuerTrust(jwtVp, "carbon.super");
+        String presentationSubmissionJson =
+            "{\"descriptor_map\":[{\"id\":\"input1\",\"format\":\"jwt_vp\",\"path\":\"$\"}]}";
+        vcVerificationService.verifyAllIssuerTrust(jwtVp, presentationSubmissionJson, "carbon.super");
     }
 
     @Test
@@ -176,7 +178,9 @@ public class VCVerificationServiceTest {
         String jsonLdVp = "{\"@context\":[\"https://www.w3.org/2018/credentials/v1\"],"
                 + "\"type\":[\"VerifiablePresentation\"],\"holder\":\"did:web:holder\"}";
 
-        vcVerificationService.verifyAllIssuerTrust(jsonLdVp, "carbon.super");
+        String presentationSubmissionJson =
+            "{\"descriptor_map\":[{\"id\":\"input1\",\"format\":\"ldp_vp\",\"path\":\"$\"}]}";
+        vcVerificationService.verifyAllIssuerTrust(jsonLdVp, presentationSubmissionJson, "carbon.super");
     }
 
     @Test(expectedExceptions = CredentialVerificationException.class)
@@ -190,7 +194,9 @@ public class VCVerificationServiceTest {
         String fakeIssuerJwt = "eyJhbGciOiJFUzI1NiJ9.eyJpc3MiOiJkaWQ6d2ViOmV2aWwuY29tIn0.sig";
         String sdJwt = fakeIssuerJwt + "~WyJzYWx0IiwiZ2l2ZW5OYW1lIiwiSm9obiJd";
 
-        spy.verifyAllIssuerTrust(sdJwt, "carbon.super");
+        String presentationSubmissionJson =
+            "{\"descriptor_map\":[{\"id\":\"input1\",\"format\":\"vc+sd-jwt\",\"path\":\"$\"}]}";
+        spy.verifyAllIssuerTrust(sdJwt, presentationSubmissionJson, "carbon.super");
         // Must throw CredentialVerificationException
     }
 
@@ -203,7 +209,9 @@ public class VCVerificationServiceTest {
         String fakeIssuerJwt = "eyJhbGciOiJFUzI1NiJ9.eyJpc3MiOiJkaWQ6d2ViOmV4YW1wbGUuY29tIn0.sig";
         String sdJwt = fakeIssuerJwt + "~WyJzYWx0IiwiZ2l2ZW5OYW1lIiwiSm9obiJd";
 
-        spy.verifyAllIssuerTrust(sdJwt, "carbon.super");
+        String presentationSubmissionJson =
+            "{\"descriptor_map\":[{\"id\":\"input1\",\"format\":\"vc+sd-jwt\",\"path\":\"$\"}]}";
+        spy.verifyAllIssuerTrust(sdJwt, presentationSubmissionJson, "carbon.super");
         // Must complete without exception
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, WSO2 LLC. (http://www.wso2.com).
+ * Copyright (c) 2025-2026, WSO2 LLC. (http://www.wso2.com).
  *
  * WSO2 LLC. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -199,18 +199,16 @@ public interface VCVerificationService {
     boolean verifyJSONLDVCIssuer(com.google.gson.JsonObject vcJsonObject, String tenantDomain) 
             throws CredentialVerificationException;
     /**
-     * Pre-check: verify all VC issuer trust in a VP token before persisting it.
-     * Parses the VP token using the existing {@link #parsePresentation(String)} path
-     * and checks each embedded credential's issuer via the standard verification pipeline.
+     * Pre-check: verify all VC issuer trust in a VP token before persisting it,
+     * using presentation_submission format to identify VP token type.
      *
-     * <p>Supports JWT VP, JSON-LD VP, and SD-JWT tokens.</p>
-     *
-     * @param vpToken      The VP token (JWT VP, JSON-LD VP, or SD-JWT)
-     * @param tenantDomain The tenant domain
+     * @param vpToken                    The VP token
+     * @param presentationSubmissionJson The presentation_submission JSON string
+     * @param tenantDomain               The tenant domain
      * @throws CredentialVerificationException If any credential is from an untrusted issuer
      *                                         or if the VP token cannot be parsed
      */
-    void verifyAllIssuerTrust(String vpToken, String tenantDomain)
+    void verifyAllIssuerTrust(String vpToken, String presentationSubmissionJson, String tenantDomain)
             throws CredentialVerificationException;
 
     /**
