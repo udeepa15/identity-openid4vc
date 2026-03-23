@@ -612,7 +612,6 @@ public class VCVerificationServiceImpl implements VCVerificationService {
     /**
      * Process SD-JWT disclosures to extract claims.
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings("DE_MIGHT_IGNORE")
     private void processDisclosures(VerifiableCredential credential) {
         if (credential.getDisclosures() == null) {
             return;
@@ -636,10 +635,10 @@ public class VCVerificationServiceImpl implements VCVerificationService {
                     JsonElement claimValue = arr.get(2);
                     claims.put(claimName, VerificationUtil.parseJsonElement(claimValue));
                 }
-            } catch (Exception e) {
+            } catch (Exception ignored) {
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("Failed to parse SD-JWT disclosure: "
-                            + VerificationUtil.removeCRLF(e.getMessage()), e);
+                            + VerificationUtil.removeCRLF(ignored.getMessage()), ignored);
                 }
             }
         }
@@ -1603,7 +1602,6 @@ public class VCVerificationServiceImpl implements VCVerificationService {
         }
     }
 
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings("CRLF_INJECTION_LOGS")
     private String resolveJwksUri(String issuer) throws CredentialVerificationException {
         try {
             // 1. Fetch Issuer Metadata
@@ -1619,8 +1617,8 @@ public class VCVerificationServiceImpl implements VCVerificationService {
                     metadata = HttpClientUtil.fetchJson(oidcMetadataUrl);
                 } catch (RuntimeException | java.io.IOException e) {
                     if (LOG.isDebugEnabled()) {
-                        LOG.debug("Failed to fetch OIDC metadata from "
-                                + VerificationUtil.removeCRLF(oidcMetadataUrl), e);
+                        LOG.debug(String.format("Failed to fetch OIDC metadata from %s",
+                                oidcMetadataUrl.replaceAll("[\\r\\n]", "")), e);
                     }
                 }
             }
@@ -1652,8 +1650,8 @@ public class VCVerificationServiceImpl implements VCVerificationService {
                         }
                     } catch (RuntimeException | java.io.IOException e) {
                         if (LOG.isDebugEnabled()) {
-                            LOG.debug("Failed to fetch OIDC metadata from auth server: " + 
-                            VerificationUtil.removeCRLF(authServerMetadataUrl), e);
+                            LOG.debug(String.format("Failed to fetch OIDC metadata from auth server: %s",
+                                    authServerMetadataUrl.replaceAll("[\\r\\n]", "")), e);
                         }
                     }
                     
