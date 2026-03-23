@@ -20,7 +20,6 @@ package org.wso2.carbon.identity.openid4vc.presentation.verification.util;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -59,7 +58,6 @@ public final class HttpClientUtil {
      * @return The response body as a String, or null if the status is not HTTP_OK.
      * @throws IOException If an I/O error occurs or the URL is invalid.
      */
-    @SuppressFBWarnings("URLCONNECTION_SSRF_FD")
     public static String fetchContent(final String urlString, Map<String, String> headers) throws IOException {
         URI uri;
         try {

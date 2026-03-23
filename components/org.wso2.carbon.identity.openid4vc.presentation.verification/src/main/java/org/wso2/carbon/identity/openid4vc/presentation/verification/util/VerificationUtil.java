@@ -25,7 +25,6 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.nimbusds.jose.util.Base64URL;
 import com.nimbusds.jwt.SignedJWT;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.CredentialVerificationException;
@@ -259,7 +258,6 @@ public final class VerificationUtil {
     /**
      * Extract nonce and audience from VP token.
      */
-    @SuppressFBWarnings("REC_CATCH_EXCEPTION")
     public static String[] extractNonceAndAudienceFromVpToken(String vpToken, String detectedFormat) {
         try {
             if (NORMALIZED_VC_SD_JWT.equals(detectedFormat)) {
@@ -275,7 +273,7 @@ public final class VerificationUtil {
                                     : (audObj instanceof java.util.List
                                     ? ((java.util.List<?>) audObj).get(0).toString() : null);
                             return new String[]{nonce, aud};
-                        } catch (Exception e) {
+                        } catch (java.text.ParseException e) {
                             if (LOG.isDebugEnabled()) {
                                 LOG.debug("Could not parse KB-JWT to extract nonce/aud.", e);
                             }
@@ -305,7 +303,8 @@ public final class VerificationUtil {
                     }
                 }
             }
-        } catch (Exception e) {
+        } catch (com.google.gson.JsonSyntaxException | IllegalArgumentException | 
+            IllegalStateException | ClassCastException e) {
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Could not extract nonce/audience from VP token.", e);
             }
@@ -316,7 +315,6 @@ public final class VerificationUtil {
     /**
      * Extract credentialSubject claims from a JWT-VP or JSON-LD VP token into a flat Map.
      */
-    @SuppressFBWarnings("REC_CATCH_EXCEPTION")
     public static Map<String, Object> extractClaimsFromVpToken(String vpToken, String detectedFormat) {
         Map<String, Object> claims = new HashMap<>();
         try {
@@ -334,9 +332,10 @@ public final class VerificationUtil {
             if (vpData != null) {
                 flattenVpCredentialSubject(vpData, claims);
             }
-        } catch (Exception e) {
+        } catch (com.google.gson.JsonSyntaxException | ClassCastException | 
+            IllegalStateException | IllegalArgumentException e) {
             if (LOG.isDebugEnabled()) {
-                LOG.debug("Could not extract claims from VP token: " + e.getMessage());
+                LOG.debug("Could not extract claims from VP token.", e);
             }
         }
         return claims;

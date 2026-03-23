@@ -33,7 +33,9 @@ import org.wso2.carbon.identity.openid4vc.presentation.verification.service.Stat
 import java.util.Date;
 
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertNotNull;
+import static org.testng.Assert.assertThrows;
 import static org.testng.Assert.assertTrue;
 
 public class VCVerificationServiceTest {
@@ -214,4 +216,72 @@ public class VCVerificationServiceTest {
         spy.verifyAllIssuerTrust(sdJwt, presentationSubmissionJson, "carbon.super");
         // Must complete without exception
     }
+
+        @Test
+        public void testParsePresentationNullOrInvalid() {
+        assertThrows(CredentialVerificationException.class,
+            () -> vcVerificationService.parsePresentation(null));
+        assertThrows(CredentialVerificationException.class,
+            () -> vcVerificationService.parsePresentation("not-a-jwt"));
+        }
+
+        @Test
+        public void testParsePresentationJwtAndVerifyNonce() throws Exception {
+
+        String vcJwt = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9."
+            + "eyJpc3MiOiJkaWQ6d2ViOmV4YW1wbGUuY29tIiwianRpIjoiaHR0cHM6Ly9leGFtcGxlLmNvbS92Yy8xIn0.sig";
+        String vpPayloadJson = "{\"iss\":\"did:web:holder\",\"nonce\":\"nonce-1\","
+            + "\"jti\":\"vp-1\",\"vp\":{\"verifiableCredential\":[\"" + vcJwt + "\"]}}";
+
+        String header = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9";
+        String payload = java.util.Base64.getUrlEncoder().withoutPadding()
+            .encodeToString(vpPayloadJson.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        String vpJwt = header + "." + payload + ".sig";
+
+        assertEquals(vcVerificationService.parsePresentation(vpJwt).getCredentialCount(), 1);
+        assertTrue(vcVerificationService.verifyNonce(vpJwt, "nonce-1"));
+        assertFalse(vcVerificationService.verifyNonce(vpJwt, "nonce-2"));
+        assertTrue(vcVerificationService.verifyNonce(vpJwt, null));
+        }
+
+        @Test
+        public void testContentTypeSupportAndSupportedTypesArrayIsolation() {
+
+        assertTrue(vcVerificationService.isContentTypeSupported(null));
+        assertTrue(vcVerificationService.isContentTypeSupported("application/jwt"));
+        assertTrue(vcVerificationService.isContentTypeSupported("application/jwt; charset=UTF-8"));
+        assertFalse(vcVerificationService.isContentTypeSupported("text/plain"));
+
+        String[] supported = vcVerificationService.getSupportedContentTypes();
+        assertTrue(supported.length > 0);
+        String original = supported[0];
+        supported[0] = "mutated";
+        assertEquals(vcVerificationService.getSupportedContentTypes()[0], original);
+        }
+
+        @Test
+        public void testVerifyJsonLdVcIssuerValidationErrors() {
+
+        assertThrows(CredentialVerificationException.class,
+            () -> vcVerificationService.verifyJSONLDVCIssuer(new com.google.gson.JsonObject(), "carbon.super"));
+
+        com.google.gson.JsonObject invalidIssuerType = new com.google.gson.JsonObject();
+        invalidIssuerType.add("issuer", new com.google.gson.JsonArray());
+        assertThrows(CredentialVerificationException.class,
+            () -> vcVerificationService.verifyJSONLDVCIssuer(invalidIssuerType, "carbon.super"));
+        }
+
+        @Test
+        public void testVerifyJwtVcIssuerInvalidJwtThrows() {
+
+        assertThrows(CredentialVerificationException.class,
+            () -> vcVerificationService.verifyJWTVCIssuer("invalid-jwt", "carbon.super"));
+        }
+
+        @Test
+        public void testVerifyAllIssuerTrustInvalidSubmissionFormatThrows() {
+
+        assertThrows(CredentialVerificationException.class,
+            () -> vcVerificationService.verifyAllIssuerTrust("abc", "{\"descriptor_map\":[]}", "carbon.super"));
+        }
 }

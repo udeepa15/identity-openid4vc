@@ -120,7 +120,6 @@ public class VCVerificationServiceImpl implements VCVerificationService {
      *
      * @param didResolverService DID resolver service
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings("EI_EXPOSE_REP2")
     public VCVerificationServiceImpl(DIDResolverService didResolverService) {
         this.didResolverService = didResolverService;
         this.signatureVerifier = new SignatureVerifier();
@@ -134,7 +133,6 @@ public class VCVerificationServiceImpl implements VCVerificationService {
      * @param didResolverService DID resolver service
      * @param statusListService  Status list service
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings("EI_EXPOSE_REP2")
     public VCVerificationServiceImpl(DIDResolverService didResolverService,
             StatusListService statusListService) {
         this.didResolverService = didResolverService;
@@ -150,7 +148,6 @@ public class VCVerificationServiceImpl implements VCVerificationService {
      * @param statusListService            Status list service
      * @param presentationDefinitionService Service for resolving Presentation Definitions by ID
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings("EI_EXPOSE_REP2")
     public VCVerificationServiceImpl(DIDResolverService didResolverService,
             StatusListService statusListService,
             PresentationDefinitionService presentationDefinitionService) {
@@ -279,7 +276,6 @@ public class VCVerificationServiceImpl implements VCVerificationService {
     }
 
     @Override
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings("REC_CATCH_EXCEPTION")
     public boolean verifySignature(VerifiableCredential credential)
             throws CredentialVerificationException {
 
@@ -478,7 +474,6 @@ public class VCVerificationServiceImpl implements VCVerificationService {
 
 
     @Override
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings("REC_CATCH_EXCEPTION")
     public VerifiableCredential parseCredential(String vcString, String contentType)
             throws CredentialVerificationException {
 
@@ -505,7 +500,7 @@ public class VCVerificationServiceImpl implements VCVerificationService {
 
         } catch (CredentialVerificationException e) {
             throw e;
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             throw new CredentialVerificationException(
                     "Failed to parse credential: " + e.getMessage(), e);
         }
@@ -516,7 +511,6 @@ public class VCVerificationServiceImpl implements VCVerificationService {
     /**
      * Parse a JWT credential.
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings("REC_CATCH_EXCEPTION")
     private VerifiableCredential parseJwtCredential(String jwtString)
             throws CredentialVerificationException {
 
@@ -587,7 +581,6 @@ public class VCVerificationServiceImpl implements VCVerificationService {
     /**
      * Parse a SD-JWT credential.
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings("REC_CATCH_EXCEPTION")
     private VerifiableCredential parseSdJwtCredential(String sdJwtString)
             throws CredentialVerificationException {
 
@@ -619,7 +612,7 @@ public class VCVerificationServiceImpl implements VCVerificationService {
     /**
      * Process SD-JWT disclosures to extract claims.
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings({ "REC_CATCH_EXCEPTION", "DE_MIGHT_IGNORE" })
+    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings("DE_MIGHT_IGNORE")
     private void processDisclosures(VerifiableCredential credential) {
         if (credential.getDisclosures() == null) {
             return;
@@ -656,7 +649,6 @@ public class VCVerificationServiceImpl implements VCVerificationService {
     /**
      * Parse a JSON-LD credential.
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings("REC_CATCH_EXCEPTION")
     private VerifiableCredential parseJsonLdCredential(String jsonString)
             throws CredentialVerificationException {
 
@@ -1611,7 +1603,7 @@ public class VCVerificationServiceImpl implements VCVerificationService {
         }
     }
 
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings({"REC_CATCH_EXCEPTION", "CRLF_INJECTION_LOGS"})
+    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings("CRLF_INJECTION_LOGS")
     private String resolveJwksUri(String issuer) throws CredentialVerificationException {
         try {
             // 1. Fetch Issuer Metadata
@@ -1625,7 +1617,7 @@ public class VCVerificationServiceImpl implements VCVerificationService {
                         : issuer + "/.well-known/openid-configuration";
                 try {
                     metadata = HttpClientUtil.fetchJson(oidcMetadataUrl);
-                } catch (Exception e) {
+                } catch (RuntimeException | java.io.IOException e) {
                     if (LOG.isDebugEnabled()) {
                         LOG.debug("Failed to fetch OIDC metadata from "
                                 + VerificationUtil.removeCRLF(oidcMetadataUrl), e);
@@ -1658,7 +1650,7 @@ public class VCVerificationServiceImpl implements VCVerificationService {
                         if (authServerMetadata != null && authServerMetadata.has("jwks_uri")) {
                             return authServerMetadata.get("jwks_uri").getAsString();
                         }
-                    } catch (Exception e) {
+                    } catch (RuntimeException | java.io.IOException e) {
                         if (LOG.isDebugEnabled()) {
                             LOG.debug("Failed to fetch OIDC metadata from auth server: " + 
                             VerificationUtil.removeCRLF(authServerMetadataUrl), e);
@@ -1675,7 +1667,7 @@ public class VCVerificationServiceImpl implements VCVerificationService {
                     // If we just return null here, it will throw "Failed to resolve JWKS URI".
                 }
             }
-        } catch (Exception e) {
+        } catch (RuntimeException | java.io.IOException e) {
             throw new CredentialVerificationException("Failed to resolve JWKS URI: " + e.getMessage(), e);
         }
         return null;
@@ -1699,7 +1691,6 @@ public class VCVerificationServiceImpl implements VCVerificationService {
      * </ol>
      */
     @Override
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings("REC_CATCH_EXCEPTION")
     public VPVerificationResponseDTO verifyPresentation(String vpToken,
             String submissionJson,
             String presentationDefinitionId,
@@ -1727,7 +1718,8 @@ public class VCVerificationServiceImpl implements VCVerificationService {
                 if (pd != null) {
                     effectivePdJson = PresentationDefinitionUtil.buildDefinitionJson(pd);
                 }
-            } catch (Exception e) {
+            } catch (RuntimeException |
+                     org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException e) {
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("Could not resolve PresentationDefinition with ID: "
                             + presentationDefinitionId + ". PD constraints will be skipped.", e);

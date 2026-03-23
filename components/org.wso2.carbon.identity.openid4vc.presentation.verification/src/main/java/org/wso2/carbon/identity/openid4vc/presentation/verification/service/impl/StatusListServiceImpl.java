@@ -22,7 +22,6 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.lang.StringUtils;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.RevocationCheckException;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.model.RevocationCheckResult;
@@ -288,8 +287,11 @@ public class StatusListServiceImpl implements StatusListService {
     /**
      * Fetch the status list credential from a URL.
      */
-    @SuppressFBWarnings("URLCONNECTION_SSRF_FD")
     private String fetchStatusListCredential(String url) throws RevocationCheckException {
+        if (StringUtils.isBlank(url) || (!url.startsWith("http://") && !url.startsWith("https://"))) {
+            throw RevocationCheckException.networkError(url, 
+                    new IOException("Invalid URL scheme for Status List Credential"));
+        }
         try {
             Map<String, String> headers = new HashMap<>();
             headers.put("Accept", "application/vc+ld+json, application/json");
