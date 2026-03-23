@@ -199,7 +199,10 @@ public class VPVerificationResponseDTO {
      * @return Unmodifiable map of verified claims
      */
     public Map<String, Object> getVerifiedClaims() {
-        return verifiedClaims != null ? new java.util.HashMap<>(verifiedClaims) : null;
+        if (verifiedClaims == null) {
+            return null;
+        }
+        return Collections.unmodifiableMap(new HashMap<>(verifiedClaims));
     }
 
     /**
