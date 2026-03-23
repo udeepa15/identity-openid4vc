@@ -6,7 +6,7 @@
 set -e
 
 # Configuration
-DROPINS_DIR="/Users/udeepa/Desktop/VC/IS-Packs/v3/wso2is-7.2-7.1-SNAPSHOT/repository/components/dropins"
+DROPINS_DIR="/Users/udeepa/Desktop/VC/IS-Packs/beta/wso2is-7.3-2.0-beta-SNAPSHOT/repository/components/dropins"
 PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
 COMPONENTS_DIR="$PROJECT_ROOT/components"
 
