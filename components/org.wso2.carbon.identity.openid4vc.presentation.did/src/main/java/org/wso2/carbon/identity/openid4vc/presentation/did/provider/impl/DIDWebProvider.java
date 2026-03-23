@@ -128,8 +128,9 @@ public class DIDWebProvider implements DIDProvider {
                 relationships.add(keyId);
 
             } catch (Exception e) {
+                org.apache.commons.logging.LogFactory.getLog(DIDWebProvider.class)
+                        .error("Error while generating verification method for did:web", e);
             }
-
             didDocument.setVerificationMethod(verificationMethods);
             didDocument.setAuthentication(relationships);
             didDocument.setAssertionMethod(relationships);
@@ -168,18 +169,42 @@ public class DIDWebProvider implements DIDProvider {
      * Get the EdDSA key alias for the given tenant.
      */
     private String getEdDSAKeyAlias(int tenantId) throws VPException {
-        if (tenantId == org.wso2.carbon.utils.multitenancy.MultitenantConstants.SUPER_TENANT_ID) {
-            return "wso2carbon_ed";
-        } else {
-            String tenantDomain = org.wso2.carbon.context.PrivilegedCarbonContext
-                    .getThreadLocalCarbonContext().getTenantDomain();
-            try {
-                return org.wso2.carbon.core.util.KeyStoreUtil.getTenantEdKeyAlias(tenantDomain);
-            } catch (org.wso2.carbon.CarbonException e) {
-                throw new VPException(
-                        "Failed to retrieve EdDSA key alias for tenant domain: " + tenantDomain, e);
+        try {
+            String tenantDomain = org.wso2.carbon.utils.multitenancy
+                    .MultitenantConstants.SUPER_TENANT_DOMAIN_NAME;
+            if (tenantId != org.wso2.carbon.utils.multitenancy
+                    .MultitenantConstants.SUPER_TENANT_ID) {
+                tenantDomain = org.wso2.carbon.context.PrivilegedCarbonContext
+                        .getThreadLocalCarbonContext().getTenantDomain();
             }
+
+            java.security.KeyStore keystore = org.wso2.carbon.identity.core
+                    .IdentityKeyStoreResolver.getInstance()
+                    .getKeyStore(tenantDomain, org.wso2.carbon.identity.core
+                            .util.IdentityKeyStoreResolverConstants
+                            .InboundProtocol.OAUTH);
+
+            if (keystore != null) {
+                java.util.Enumeration<String> enumeration = keystore.aliases();
+                while (enumeration.hasMoreElements()) {
+                    String alias = enumeration.nextElement();
+                    if (keystore.isKeyEntry(alias)) {
+                        java.security.cert.Certificate cert = keystore
+                                .getCertificate(alias);
+                        if (cert != null && cert.getPublicKey() instanceof
+                                java.security.interfaces.EdECPublicKey) {
+                            return alias;
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            throw new VPException(
+                    "Failed to retrieve EdDSA key alias for tenant: " +
+                            tenantId, e);
         }
+        throw new VPException(
+                "No EdDSA key found in the keystore for tenant: " + tenantId);
     }
 
     /**
