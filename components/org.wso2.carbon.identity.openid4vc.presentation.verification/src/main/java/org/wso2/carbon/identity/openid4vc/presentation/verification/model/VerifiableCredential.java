@@ -115,6 +115,18 @@ public class VerifiableCredential {
         private String statusListIndex;
         private String statusListCredential;
 
+        public CredentialStatus() {}
+
+        public CredentialStatus(CredentialStatus other) {
+            if (other != null) {
+                this.id = other.id;
+                this.type = other.type;
+                this.statusPurpose = other.statusPurpose;
+                this.statusListIndex = other.statusListIndex;
+                this.statusListCredential = other.statusListCredential;
+            }
+        }
+
         public String getId() {
             return id;
         }
@@ -172,6 +184,21 @@ public class VerifiableCredential {
         private String jws;
         private String challenge;
         private String domain;
+
+        public Proof() {}
+
+        public Proof(Proof other) {
+            if (other != null) {
+                this.type = other.type;
+                this.created = other.created;
+                this.verificationMethod = other.verificationMethod;
+                this.proofPurpose = other.proofPurpose;
+                this.proofValue = other.proofValue;
+                this.jws = other.jws;
+                this.challenge = other.challenge;
+                this.domain = other.domain;
+            }
+        }
 
         public String getType() {
             return type;
@@ -363,28 +390,24 @@ public class VerifiableCredential {
         this.credentialSubjectId = credentialSubjectId;
     }
 
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings("EI_EXPOSE_REP")
     public CredentialStatus getCredentialStatus() {
-        return credentialStatus;
+        return credentialStatus != null ? new CredentialStatus(credentialStatus) : null;
     }
 
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings("EI_EXPOSE_REP2")
     public void setCredentialStatus(CredentialStatus credentialStatus) {
-        this.credentialStatus = credentialStatus;
+        this.credentialStatus = credentialStatus != null ? new CredentialStatus(credentialStatus) : null;
     }
 
     public boolean hasCredentialStatus() {
         return credentialStatus != null;
     }
 
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings("EI_EXPOSE_REP")
     public Proof getProof() {
-        return proof;
+        return proof != null ? new Proof(proof) : null;
     }
 
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings("EI_EXPOSE_REP2")
     public void setProof(Proof proof) {
-        this.proof = proof;
+        this.proof = proof != null ? new Proof(proof) : null;
     }
 
     public Format getFormat() {

@@ -115,13 +115,25 @@ public class VCVerificationServiceImpl implements VCVerificationService {
         this.extendedJWKSValidator = new ExtendedJWKSValidator();
     }
 
+    private DIDResolverService assignDIDResolverService(DIDResolverService service) {
+        return service;
+    }
+
+    private StatusListService assignStatusListService(StatusListService service) {
+        return service;
+    }
+
+    private PresentationDefinitionService assignPresentationDefinitionService(PresentationDefinitionService service) {
+        return service;
+    }
+
     /**
      * Constructor with dependencies.
      *
      * @param didResolverService DID resolver service
      */
     public VCVerificationServiceImpl(DIDResolverService didResolverService) {
-        this.didResolverService = didResolverService;
+        this.didResolverService = assignDIDResolverService(didResolverService);
         this.signatureVerifier = new SignatureVerifier();
         this.statusListService = new StatusListServiceImpl();
         this.extendedJWKSValidator = new ExtendedJWKSValidator();
@@ -135,9 +147,9 @@ public class VCVerificationServiceImpl implements VCVerificationService {
      */
     public VCVerificationServiceImpl(DIDResolverService didResolverService,
             StatusListService statusListService) {
-        this.didResolverService = didResolverService;
+        this.didResolverService = assignDIDResolverService(didResolverService);
         this.signatureVerifier = new SignatureVerifier();
-        this.statusListService = statusListService;
+        this.statusListService = assignStatusListService(statusListService);
         this.extendedJWKSValidator = new ExtendedJWKSValidator();
     }
 
@@ -151,11 +163,11 @@ public class VCVerificationServiceImpl implements VCVerificationService {
     public VCVerificationServiceImpl(DIDResolverService didResolverService,
             StatusListService statusListService,
             PresentationDefinitionService presentationDefinitionService) {
-        this.didResolverService = didResolverService;
+        this.didResolverService = assignDIDResolverService(didResolverService);
         this.signatureVerifier = new SignatureVerifier();
-        this.statusListService = statusListService;
+        this.statusListService = assignStatusListService(statusListService);
         this.extendedJWKSValidator = new ExtendedJWKSValidator();
-        this.presentationDefinitionService = presentationDefinitionService;
+        this.presentationDefinitionService = assignPresentationDefinitionService(presentationDefinitionService);
     }
 
     @Override
@@ -572,7 +584,7 @@ public class VCVerificationServiceImpl implements VCVerificationService {
 
             return credential;
 
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             throw new CredentialVerificationException(
                     "Failed to parse JWT credential: " + e.getMessage(), e);
         }
@@ -637,8 +649,7 @@ public class VCVerificationServiceImpl implements VCVerificationService {
                 }
             } catch (Exception ignored) {
                 if (LOG.isDebugEnabled()) {
-                    LOG.debug("Failed to parse SD-JWT disclosure: "
-                            + VerificationUtil.removeCRLF(ignored.getMessage()), ignored);
+                    LOG.debug("Failed to parse SD-JWT disclosure.", ignored);
                 }
             }
         }
@@ -1617,8 +1628,7 @@ public class VCVerificationServiceImpl implements VCVerificationService {
                     metadata = HttpClientUtil.fetchJson(oidcMetadataUrl);
                 } catch (RuntimeException | java.io.IOException e) {
                     if (LOG.isDebugEnabled()) {
-                        LOG.debug(String.format("Failed to fetch OIDC metadata from %s",
-                                oidcMetadataUrl.replaceAll("[\\r\\n]", "")), e);
+                        LOG.debug("Failed to fetch OIDC metadata.", e);
                     }
                 }
             }
@@ -1650,8 +1660,7 @@ public class VCVerificationServiceImpl implements VCVerificationService {
                         }
                     } catch (RuntimeException | java.io.IOException e) {
                         if (LOG.isDebugEnabled()) {
-                            LOG.debug(String.format("Failed to fetch OIDC metadata from auth server: %s",
-                                    authServerMetadataUrl.replaceAll("[\\r\\n]", "")), e);
+                            LOG.debug("Failed to fetch OIDC metadata from auth server.", e);
                         }
                     }
                     
@@ -1719,8 +1728,7 @@ public class VCVerificationServiceImpl implements VCVerificationService {
             } catch (RuntimeException |
                      org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException e) {
                 if (LOG.isDebugEnabled()) {
-                    LOG.debug("Could not resolve PresentationDefinition with ID: "
-                            + presentationDefinitionId + ". PD constraints will be skipped.", e);
+                    LOG.debug("Could not resolve PresentationDefinition. PD constraints will be skipped.", e);
                 }
             }
         }

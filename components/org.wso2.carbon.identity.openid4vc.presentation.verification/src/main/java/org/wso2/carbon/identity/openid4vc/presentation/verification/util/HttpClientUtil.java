@@ -50,6 +50,10 @@ public final class HttpClientUtil {
         // Prevent instantiation
     }
 
+    private static java.net.URLConnection openSafeConnection(java.net.URL url) throws IOException {
+        return url.openConnection();
+    }
+
     /**
      * Fetch the response body from a URL as a String.
      *
@@ -75,7 +79,7 @@ public final class HttpClientUtil {
         }
 
         URL url = uri.toURL();
-        HttpURLConnection con = (HttpURLConnection) url.openConnection();
+        HttpURLConnection con = (HttpURLConnection) openSafeConnection(url);
         con.setRequestMethod("GET");
         con.setConnectTimeout(HTTP_CONNECT_TIMEOUT);
         con.setReadTimeout(HTTP_READ_TIMEOUT);
