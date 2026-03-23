@@ -1616,23 +1616,10 @@ public class VCVerificationServiceImpl implements VCVerificationService {
     private String resolveJwksUri(String issuer) throws CredentialVerificationException {
         try {
             // 1. Fetch Issuer Metadata
-            String metadataUrl = issuer.endsWith("/") ? issuer + ".well-known/openid-credential-issuer"
-                    : issuer + "/.well-known/openid-credential-issuer";
+            String metadataUrl = issuer.endsWith("/") ? issuer + ".well-known/jwt-vc-issuer"
+                    : issuer + "/.well-known/jwt-vc-issuer";
 
             JsonObject metadata = HttpClientUtil.fetchJson(metadataUrl);
-            if (metadata == null) {
-                // If standard metadata fails, optionally check openid-configuration (standard OIDC)
-                String oidcMetadataUrl = issuer.endsWith("/") ? issuer + ".well-known/openid-configuration"
-                        : issuer + "/.well-known/openid-configuration";
-                try {
-                    metadata = HttpClientUtil.fetchJson(oidcMetadataUrl);
-                } catch (RuntimeException | java.io.IOException e) {
-                    if (LOG.isDebugEnabled()) {
-                        LOG.debug("Failed to fetch OIDC metadata.", e);
-                    }
-                }
-            }
-
             if (metadata == null) {
                 return null;
             }
@@ -1642,38 +1629,6 @@ public class VCVerificationServiceImpl implements VCVerificationService {
                 return metadata.get("jwks_uri").getAsString();
             }
 
-            // 3. Fallback: Check authorization_servers
-            if (metadata.has("authorization_servers")) {
-                JsonArray authServers = metadata.getAsJsonArray("authorization_servers");
-                if (authServers.size() > 0) {
-                    String authServer = authServers.get(0).getAsString();
-                    
-                    // Try to fetch OIDC metadata for this auth server
-                    String authServerMetadataUrl = authServer.endsWith("/") ? authServer + 
-                    ".well-known/openid-configuration"
-                            : authServer + "/.well-known/openid-configuration";
-                    
-                    try {
-                        JsonObject authServerMetadata = HttpClientUtil.fetchJson(authServerMetadataUrl);
-                        if (authServerMetadata != null && authServerMetadata.has("jwks_uri")) {
-                            return authServerMetadata.get("jwks_uri").getAsString();
-                        }
-                    } catch (RuntimeException | java.io.IOException e) {
-                        if (LOG.isDebugEnabled()) {
-                            LOG.debug("Failed to fetch OIDC metadata from auth server.", e);
-                        }
-                    }
-                    
-                    // Keep the hardcoded fallback as a last resort, but maybe log a warning?
-                    // Or relies on the metadata fetch above.
-                    // Given the user's specific error, the hardcoded path was WRONG. 
-                    // So we probably shouldn't fallback to it if it's known to be wrong for their case.
-                    // But for backward compatibility? 
-                    // The user's error showed .../oauth2/token/oauth2/jwks.
-                    // It seems the authServer variable was `.../oauth2/token`.
-                    // If we just return null here, it will throw "Failed to resolve JWKS URI".
-                }
-            }
         } catch (RuntimeException | java.io.IOException e) {
             throw new CredentialVerificationException("Failed to resolve JWKS URI: " + e.getMessage(), e);
         }
