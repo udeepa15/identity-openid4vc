@@ -240,9 +240,16 @@ public class RevocationCheckResult {
             return this;
         }
 
-        @edu.umd.cs.findbugs.annotations.SuppressFBWarnings("EI_EXPOSE_REP")
         public RevocationCheckResult build() {
-            return result;
+            RevocationCheckResult res = new RevocationCheckResult();
+            res.setStatus(result.getStatus());
+            res.setStatusPurpose(result.getStatusPurpose());
+            res.setStatusListCredentialUrl(result.getStatusListCredentialUrl());
+            res.setStatusIndex(result.getStatusIndex());
+            res.setMessage(result.getMessage());
+            res.setCheckedAt(result.getCheckedAt());
+            res.setCached(result.isCached());
+            return res;
         }
     }
 

@@ -50,7 +50,6 @@ public class ExtendedJWKSValidator {
      * @return true if valid.
      * @throws CredentialVerificationException If verification fails.
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings({"REC_CATCH_EXCEPTION", "CRLF_INJECTION_LOGS"})
     public boolean validateSignature(String jwtString, String jwksUri, String algorithm)
             throws CredentialVerificationException {
 
@@ -81,20 +80,16 @@ public class ExtendedJWKSValidator {
             jwtProcessor.process(jwtString, null);
 
             if (log.isDebugEnabled()) {
-                String safeJwksUri = jwksUri != null ? jwksUri.replaceAll("[\r\n]", "") : "null";
-                log.debug("Successfully verified JWT signature using JWKS: " + safeJwksUri);
+                log.debug("Successfully verified JWT signature using JWKS.");
             }
             return true;
 
-        } catch (Exception e) {
+        } catch (java.text.ParseException | com.nimbusds.jose.proc.BadJOSEException | 
+            com.nimbusds.jose.JOSEException | java.net.URISyntaxException | 
+            java.net.MalformedURLException | RuntimeException e) {
             // Log the specific error for debugging
             if (log.isDebugEnabled()) {
-                String safeJwksUri = jwksUri != null ? jwksUri.replaceAll("[\r\n]", "") : "null";
-                String safeAlg = algorithm != null ? algorithm.replaceAll("[\r\n]", "") : "null";
-                String safeError = e.getMessage() != null ? e.getMessage().replaceAll("[\r\n]", "") : "null";
-                
-                log.debug("Signature verification failed for JWKS: " + safeJwksUri + ", alg: " + safeAlg +
-                        ". Error: " + safeError, e);
+                log.debug("Signature verification failed.", e);
             }
             throw new CredentialVerificationException("Signature verification failed: " + e.getMessage(), e);
         }
