@@ -18,7 +18,6 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
 import org.wso2.carbon.identity.openid4vc.presentation.did.service.DIDDocumentService;
@@ -32,7 +31,7 @@ import org.wso2.carbon.user.core.service.RealmService;
  * Data holder for OpenID4VP services.
  * Provides access to OSGi services across the component.
  */
-public class VPServiceDataHolder {
+public final class VPServiceDataHolder {
 
     private static volatile VPServiceDataHolder instance;
 
@@ -52,7 +51,6 @@ public class VPServiceDataHolder {
      * 
      * @return VPServiceDataHolder instance
      */
-    @SuppressFBWarnings("MS_EXPOSE_REP")
     public static VPServiceDataHolder getInstance() {
         if (instance == null) {
             synchronized (VPServiceDataHolder.class) {
@@ -69,7 +67,6 @@ public class VPServiceDataHolder {
      * 
      * @return RealmService instance
      */
-    @SuppressFBWarnings("EI_EXPOSE_REP")
     public RealmService getRealmService() {
         return realmService;
     }
@@ -79,7 +76,6 @@ public class VPServiceDataHolder {
      * 
      * @param realmService RealmService instance
      */
-    @SuppressFBWarnings("EI_EXPOSE_REP2")
     public void setRealmService(RealmService realmService) {
         this.realmService = realmService;
     }
@@ -89,7 +85,6 @@ public class VPServiceDataHolder {
      * 
      * @return VPRequestService instance
      */
-    @SuppressFBWarnings("EI_EXPOSE_REP")
     public VPRequestService getVPRequestService() {
         return vpRequestService;
     }
@@ -99,7 +94,6 @@ public class VPServiceDataHolder {
      * 
      * @param vpRequestService VPRequestService instance
      */
-    @SuppressFBWarnings("EI_EXPOSE_REP2")
     public void setVPRequestService(VPRequestService vpRequestService) {
         this.vpRequestService = vpRequestService;
     }
@@ -109,7 +103,6 @@ public class VPServiceDataHolder {
      * 
      * @return PresentationDefinitionService instance
      */
-    @SuppressFBWarnings("EI_EXPOSE_REP")
     public PresentationDefinitionService getPresentationDefinitionService() {
         return presentationDefinitionService;
     }
@@ -119,7 +112,6 @@ public class VPServiceDataHolder {
      * 
      * @param presentationDefinitionService PresentationDefinitionService instance
      */
-    @SuppressFBWarnings("EI_EXPOSE_REP2")
     public void setPresentationDefinitionService(
             PresentationDefinitionService presentationDefinitionService) {
         this.presentationDefinitionService = presentationDefinitionService;
@@ -130,7 +122,6 @@ public class VPServiceDataHolder {
      * 
      * @return VCVerificationService instance
      */
-    @SuppressFBWarnings("EI_EXPOSE_REP")
     public VCVerificationService getVCVerificationService() {
         if (vcVerificationService == null) {
             vcVerificationService = new VCVerificationServiceImpl();
@@ -143,7 +134,6 @@ public class VPServiceDataHolder {
      * 
      * @param vcVerificationService VCVerificationService instance
      */
-    @SuppressFBWarnings("EI_EXPOSE_REP2")
     public void setVCVerificationService(VCVerificationService vcVerificationService) {
         this.vcVerificationService = vcVerificationService;
     }
@@ -153,7 +143,6 @@ public class VPServiceDataHolder {
      * 
      * @return DIDDocumentService instance
      */
-    @SuppressFBWarnings("EI_EXPOSE_REP")
     public DIDDocumentService getDIDDocumentService() {
         if (didDocumentService == null) {
             didDocumentService = new DIDDocumentServiceImpl();
@@ -166,17 +155,14 @@ public class VPServiceDataHolder {
      * 
      * @param didDocumentService DIDDocumentService instance
      */
-    @SuppressFBWarnings("EI_EXPOSE_REP2")
     public void setDIDDocumentService(DIDDocumentService didDocumentService) {
         this.didDocumentService = didDocumentService;
     }
 
-    @SuppressFBWarnings("EI_EXPOSE_REP")
     public ApplicationManagementService getApplicationManagementService() {
         return applicationManagementService;
     }
 
-    @SuppressFBWarnings("EI_EXPOSE_REP2")
     public void setApplicationManagementService(ApplicationManagementService applicationManagementService) {
         this.applicationManagementService = applicationManagementService;
     }

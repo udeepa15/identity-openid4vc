@@ -35,6 +35,48 @@
     String requestUri = request.getParameter("requestUri");
     String qrContent = request.getParameter("qrContent");
 
+    if (sessionDataKey == null) {
+        Object v = request.getAttribute("openid4vp_ui_session_data_key");
+        sessionDataKey = v instanceof String ? (String) v : null;
+    }
+    if (requestId == null) {
+        Object v = request.getAttribute("openid4vp_ui_request_id");
+        requestId = v instanceof String ? (String) v : null;
+    }
+    if (transactionId == null) {
+        Object v = request.getAttribute("openid4vp_ui_transaction_id");
+        transactionId = v instanceof String ? (String) v : null;
+    }
+    if (requestUri == null) {
+        Object v = request.getAttribute("openid4vp_ui_request_uri");
+        requestUri = v instanceof String ? (String) v : null;
+    }
+    if (qrContent == null) {
+        Object v = request.getAttribute("openid4vp_ui_qr_content");
+        qrContent = v instanceof String ? (String) v : null;
+    }
+
+    if (sessionDataKey == null) {
+        Object v = request.getSession().getAttribute("openid4vp_ui_session_data_key");
+        sessionDataKey = v instanceof String ? (String) v : null;
+    }
+    if (requestId == null) {
+        Object v = request.getSession().getAttribute("openid4vp_ui_request_id");
+        requestId = v instanceof String ? (String) v : null;
+    }
+    if (transactionId == null) {
+        Object v = request.getSession().getAttribute("openid4vp_ui_transaction_id");
+        transactionId = v instanceof String ? (String) v : null;
+    }
+    if (requestUri == null) {
+        Object v = request.getSession().getAttribute("openid4vp_ui_request_uri");
+        requestUri = v instanceof String ? (String) v : null;
+    }
+    if (qrContent == null) {
+        Object v = request.getSession().getAttribute("openid4vp_ui_qr_content");
+        qrContent = v instanceof String ? (String) v : null;
+    }
+
     // Decode URL-encoded parameters
     if (requestUri != null) {
         requestUri = URLDecoder.decode(requestUri, "UTF-8");

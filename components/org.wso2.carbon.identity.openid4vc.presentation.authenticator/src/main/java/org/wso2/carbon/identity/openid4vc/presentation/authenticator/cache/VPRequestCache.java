@@ -18,7 +18,6 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
 
@@ -36,9 +35,7 @@ import java.util.concurrent.TimeUnit;
  * Provides fast access to active VP requests during the authorization flow.
  * Entries are automatically expired based on configurable TTL.
  */
-public class VPRequestCache {
-
-    private static volatile VPRequestCache instance;
+public final class VPRequestCache {
 
     private final Map<String, VPRequestCacheEntry> cacheByRequestId;
     private final Map<String, String> transactionToRequestIdMap;
@@ -109,16 +106,19 @@ public class VPRequestCache {
      *
      * @return VPRequestCache instance
      */
-    @SuppressFBWarnings("MS_EXPOSE_REP")
-    public static VPRequestCache getInstance() {
-        if (instance == null) {
-            synchronized (VPRequestCache.class) {
-                if (instance == null) {
-                    instance = new VPRequestCache();
-                }
-            }
+    public static synchronized VPRequestCache getInstance() {
+        return Holder.INSTANCE;
+    }
+
+    /**
+     * Lazy-loaded singleton holder.
+     */
+    private static final class Holder {
+
+        private static final VPRequestCache INSTANCE = new VPRequestCache();
+
+        private Holder() {
         }
-        return instance;
     }
 
     /**

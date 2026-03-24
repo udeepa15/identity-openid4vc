@@ -19,7 +19,6 @@
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator;
 
 import com.google.gson.JsonObject;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -35,7 +34,6 @@ import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 import org.wso2.carbon.identity.application.common.model.FederatedAuthenticatorConfig;
 import org.wso2.carbon.identity.application.common.model.IdentityProvider;
 import org.wso2.carbon.identity.application.common.model.Property;
-import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPStatusListenerCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.WalletDataCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestCreateDTO;
@@ -46,13 +44,15 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPReq
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPSubmission;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.QRCodeUtil;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.SecurityUtils;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.ServletUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
 import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VPVerificationResponseDTO;
 import org.wso2.carbon.idp.mgt.IdentityProviderManager;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -62,9 +62,7 @@ import java.util.UUID;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-
-//import java.nio.charset.StandardCharsets;
-//import java.security.MessageDigest;
+import javax.servlet.ServletException;
 
 /**
  * OpenID4VP Wallet Authenticator for WSO2 Identity Server.
@@ -94,6 +92,11 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
     // Session data keys
     private static final String SESSION_VP_REQUEST_ID = "openid4vp_request_id";
     private static final String SESSION_TRANSACTION_ID = "openid4vp_transaction_id";
+    private static final String UI_SESSION_DATA_KEY = "openid4vp_ui_session_data_key";
+    private static final String UI_REQUEST_ID = "openid4vp_ui_request_id";
+    private static final String UI_TRANSACTION_ID = "openid4vp_ui_transaction_id";
+    private static final String UI_REQUEST_URI = "openid4vp_ui_request_uri";
+    private static final String UI_QR_CONTENT = "openid4vp_ui_qr_content";
 
     // Configuration property keys
     private static final String PROP_PRESENTATION_DEFINITION_ID = "presentationDefinitionId";
@@ -102,6 +105,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
     private static final String PROP_CLIENT_ID = "ClientId";
     private static final String PROP_DID_METHOD = "DIDMethod";
     private static final String PROP_SUBJECT_CLAIM = "SubjectClaim";
+    private static final String DEFAULT_LOGIN_PAGE = "/authenticationendpoint/wallet_login.jsp";
 
     private static final int DISPLAY_ORDER_3 = 3;
     private static final int DISPLAY_ORDER_4 = 4;
@@ -155,11 +159,6 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
     }
 
     @Override
-    @SuppressFBWarnings(
-            value = "UNVALIDATED_REDIRECT",
-            justification = "The redirect target (loginPage) is sourced exclusively from server-side configuration " +
-                    "(IdentityUtil.getProperty or the hardcoded default). It is NOT user-supplied input. " 
-    )
     protected void initiateAuthenticationRequest(HttpServletRequest request,
             HttpServletResponse response,
             AuthenticationContext context)
@@ -186,20 +185,19 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
                     vpRequestResponse.getRequestUri(),
                     vpRequestResponse.getAuthorizationDetails().getClientId());
 
-            // Redirect to login page with QR code data
-            String loginPage = getLoginPage(context);
-            String queryParams = buildQueryParams(vpRequestResponse, qrContent, context);
+            // Pass wallet UI data via request attributes and forward to a fixed internal JSP.
+            request.setAttribute(UI_SESSION_DATA_KEY, context.getContextIdentifier());
+            request.setAttribute(UI_REQUEST_ID, vpRequestResponse.getRequestId());
+            request.setAttribute(UI_TRANSACTION_ID, vpRequestResponse.getTransactionId());
+            request.setAttribute(UI_REQUEST_URI, vpRequestResponse.getRequestUri());
+            request.setAttribute(UI_QR_CONTENT, qrContent);
 
-            String redirectUrl = loginPage + queryParams;
-            if (!SecurityUtils.isSafeRedirectUri(redirectUrl)) {
-                throw new AuthenticationFailedException("Invalid redirect URL");
-            }
-            response.sendRedirect(redirectUrl);
+            request.getRequestDispatcher(DEFAULT_LOGIN_PAGE).forward(request, response);
 
         } catch (VPException e) {
             throw new AuthenticationFailedException("Failed to create VP request", e);
-        } catch (IOException e) {
-            throw new AuthenticationFailedException("Failed to redirect to login page", e);
+        } catch (ServletException | IOException e) {
+            throw new AuthenticationFailedException("Failed to route to login page", e);
         }
     }
 
@@ -275,22 +273,22 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             String actualNonce = verificationResult.getNonce();
             String actualAudience = verificationResult.getAudience();
 
-            //if (expectedNonce != null) {
-            //    if (actualNonce == null || !MessageDigest.isEqual(
-            //            expectedNonce.getBytes(StandardCharsets.UTF_8),
-            //            actualNonce.getBytes(StandardCharsets.UTF_8))) {
-            //        throw new AuthenticationFailedException(
-            //                "VP verification failed: Nonce mismatch (potential replay attack)");
-            //    }
-            //}
-            //if (expectedAudience != null) {
-            //    if (actualAudience == null || !MessageDigest.isEqual(
-            //            expectedAudience.getBytes(StandardCharsets.UTF_8),
-            //            actualAudience.getBytes(StandardCharsets.UTF_8))) {
-            //        throw new AuthenticationFailedException(
-            //                "VP verification failed: Audience mismatch (potential replay attack)");
-            //    }
-            //}
+            if (expectedNonce != null) {
+                if (actualNonce == null || !MessageDigest.isEqual(
+                        expectedNonce.getBytes(StandardCharsets.UTF_8),
+                        actualNonce.getBytes(StandardCharsets.UTF_8))) {
+                    throw new AuthenticationFailedException(
+                            "VP verification failed: Nonce mismatch (potential replay attack)");
+                }
+            }
+            if (expectedAudience != null) {
+                if (actualAudience == null || !MessageDigest.isEqual(
+                        expectedAudience.getBytes(StandardCharsets.UTF_8),
+                        actualAudience.getBytes(StandardCharsets.UTF_8))) {
+                    throw new AuthenticationFailedException(
+                            "VP verification failed: Audience mismatch (potential replay attack)");
+                }
+            }
 
             Map<String, Object> verifiedClaims = new HashMap<>(verificationResult.getVerifiedClaims());
 
@@ -457,13 +455,13 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             throws AuthenticationFailedException, LogoutFailedException {
 
         // Check if this is a polling request
-        String poll = getSafeParameter(request, PARAM_POLL);
+        String poll = ServletUtil.getValidatedAlphaNumParameter(request, PARAM_POLL);
         if ("true".equals(poll)) {
             return handlePollRequest(request, response, context);
         }
 
         // Check if status is being reported
-        String status = getSafeParameter(request, PARAM_STATUS);
+        String status = ServletUtil.getValidatedAlphaNumParameter(request, PARAM_STATUS);
         if (StringUtils.isNotBlank(status)) {
             return handleStatusCallback(request, response, context, status);
         }
@@ -567,9 +565,6 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
     /**
      * Create a VP request for the authentication session.
      */
-    @SuppressFBWarnings(value = "CRLF_INJECTION_LOGS",
-            justification = "Logged values are sanitized via sanitizeForLog() to" 
-                    + " strip CR/LF characters.")
     private VPRequestResponseDTO createVPRequest(AuthenticationContext context) throws VPException {
         Map<String, String> authenticatorProperties = context.getAuthenticatorProperties();
 
@@ -604,7 +599,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         String presentationDefId = resolvePresentationDefinitionId(context);
 
         if (log.isInfoEnabled()) {
-            log.info("Resolved Presentation Definition ID: " + sanitizeForLog(presentationDefId));
+            log.info("Resolved presentation definition ID for the authentication flow.");
         }
 
         if (StringUtils.isNotBlank(presentationDefId)) {
@@ -630,11 +625,6 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
     }
 
     /**
-     * Resolve the presentation definition ID for the application.
-
-    /**
-     * Resolve the presentation definition ID for the application.
-    /**
      * Resolve the IDP's ClaimMappings reliably from the authentication context.
      *
      * <p>When the framework sets up a federated flow, {@code context.getExternalIdP()} may be null
@@ -645,9 +635,6 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      * @param context Authentication context
      * @return IDP claim mappings, never null (empty array if none configured)
      */
-    @SuppressFBWarnings(value = { "REC_CATCH_EXCEPTION", "CRLF_INJECTION_LOGS" },
-            justification = "Exception is intentionally swallowed; an empty mapping array is the safe fallback. " +
-                    "Log message sanitized via sanitizeForLog() before being passed to logger.")
     private ClaimMapping[] resolveIdpClaimMappings(AuthenticationContext context) {
 
         // Fast path: ExternalIdP is already populated.
@@ -667,10 +654,9 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
                     return mappings != null ? mappings : new ClaimMapping[0];
                 }
             }
-        } catch (Exception e) {
+        } catch (org.wso2.carbon.idp.mgt.IdentityProviderManagementException e) {
             if (log.isDebugEnabled()) {
-                log.debug("Could not resolve IDP claim mappings from SequenceConfig: " 
-                        + sanitizeForLog(e.getMessage()));
+                log.debug("Could not resolve IDP claim mappings from SequenceConfig.", e);
             }
         }
         return new ClaimMapping[0];
@@ -689,9 +675,6 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      * @param idpClaimMappings Resolved IDP claim mappings
      * @return Remote claim name for the subject, or null if not determinable
      */
-    @SuppressFBWarnings(value = "CRLF_INJECTION_LOGS",
-            justification = "Log message sanitized via sanitizeForLog() before" 
-                    + " being passed to logger.")
     private String resolveSubjectRemoteClaim(AuthenticationContext context, ClaimMapping[] idpClaimMappings) {
         try {
             String userIdClaimUri = resolveConfiguredSubjectClaimUri(context);
@@ -719,7 +702,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             }
         } catch (Exception e) {
             if (log.isDebugEnabled()) {
-                log.debug("Could not resolve subject remote claim: " + sanitizeForLog(e.getMessage()));
+                log.debug("Could not resolve subject remote claim.", e);
             }
         }
         return null;
@@ -742,9 +725,6 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      * @param context Authentication context
      * @return Configured subject claim URI, or null
      */
-    @SuppressFBWarnings(value = { "REC_CATCH_EXCEPTION", "CRLF_INJECTION_LOGS" },
-            justification = "Exception is intentionally swallowed; null is the safe fallback. "
-                    + "Log message sanitized via sanitizeForLog() before being passed to logger.")
     private String resolveConfiguredSubjectClaimUri(AuthenticationContext context) {
 
         try {
@@ -767,9 +747,9 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
                     return idp.getClaimConfig().getUserClaimURI();
                 }
             }
-        } catch (Exception e) {
+        } catch (org.wso2.carbon.idp.mgt.IdentityProviderManagementException e) {
             if (log.isDebugEnabled()) {
-                log.debug("Could not resolve configured subject claim: " + sanitizeForLog(e.getMessage()));
+                log.debug("Could not resolve configured subject claim.", e);
             }
         }
         return null;
@@ -812,10 +792,6 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      * @return Presentation definition ID or null
      * @throws VPException If error occurs during resolution
      */
-    @SuppressFBWarnings(value = { "DE_MIGHT_IGNORE", "REC_CATCH_EXCEPTION", "CRLF_INJECTION_LOGS" },
-            justification = "CRLF_INJECTION_LOGS: logged values are sanitized via sanitizeForLog(). "
-                    + "DE_MIGHT_IGNORE/REC_CATCH_EXCEPTION: exception is" 
-                    + "intentionally swallowed as config may not be available.")
     private String resolvePresentationDefinitionId(AuthenticationContext context) throws VPException {
 
 
@@ -854,17 +830,18 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
                             .getIdPByName(idpName, tenantDomain);
                     if (idp != null) {
                     if (log.isInfoEnabled()) {
-                        log.info("Found IDP: " + sanitizeForLog(idp.getIdentityProviderName()));
+                        log.info("Found IDP while resolving presentation definition ID.");
                     }
                     for (FederatedAuthenticatorConfig fedAuthConfig : idp.getFederatedAuthenticatorConfigs()) {
                         if (log.isInfoEnabled()) {
-                            log.info("Checking fedAuthConfig: " + sanitizeForLog(fedAuthConfig.getName()));
+                            log.info("Checking federated authenticator configuration "
+                                    + "for presentation definition ID.");
                         }
                         if (getName().equals(fedAuthConfig.getName())) {
                             for (Property property : fedAuthConfig.getProperties()) {
                                 if (log.isInfoEnabled()) {
-                                    log.info("Checking property: " + sanitizeForLog(property.getName())
-                                            + " with value: " + sanitizeForLog(property.getValue()));
+                                    log.info("Checking federated authenticator property "
+                                            + "for presentation definition ID.");
                                 }
                                 if (PROP_PRESENTATION_DEFINITION_ID.equals(property.getName())) {
                                     configId = property.getValue();
@@ -876,7 +853,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
                     }
                 } else {
                     if (log.isInfoEnabled()) {
-                        log.info("IDP is null for idpName: " + sanitizeForLog(idpName));
+                        log.info("IDP could not be resolved for presentation definition ID lookup.");
                     }
                 }
             }
@@ -884,16 +861,15 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
 
         if (StringUtils.isNotBlank(configId)) {
             if (log.isInfoEnabled()) {
-                log.info("Final resolved configId: " + sanitizeForLog(configId));
+                log.info("Successfully resolved presentation definition ID from authenticator configuration.");
             }
             return configId;
         }
 
-    } catch (Exception e) {
+    } catch (org.wso2.carbon.idp.mgt.IdentityProviderManagementException e) {
         // Ignored: Config might not be available
         if (log.isInfoEnabled()) {
-            log.info("Exception occurred while resolving presentation definition ID: " 
-                    + sanitizeForLog(e.getMessage()), e);
+            log.info("Exception occurred while resolving presentation definition ID.", e);
         }
     }
 
@@ -921,7 +897,6 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      * @param context Authentication context
      * @return Tenant ID
      */
-    @SuppressFBWarnings("CRLF_INJECTION_LOGS")
     private int getTenantId(final AuthenticationContext context) {
         // Default to super tenant
         int tenantId = SUPER_TENANT_ID_PLACEHOLDER;
@@ -933,63 +908,12 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             } catch (Exception e) {
                 // Ignored: Failed to resolve tenant ID, using default
                 if (log.isDebugEnabled()) {
-                    log.debug("Failed to resolve tenant ID for domain: " + sanitizeForLog(tenantDomain), e);
+                    log.debug("Failed to resolve tenant ID. Using default super tenant ID.", e);
                 }
             }
         }
 
         return tenantId;
-    }
-
-    /**
-     * Get login page URL.
-     *
-     * @param context Authentication context
-     * @return Login page URL
-     */
-    private String getLoginPage(final AuthenticationContext context) {
-        String loginPage = IdentityUtil.getProperty("OpenID4VP.LoginPage");
-        if (StringUtils.isBlank(loginPage)) {
-            loginPage = "/authenticationendpoint/wallet_login.jsp";
-        }
-        return loginPage;
-    }
-
-    /**
-     * Build query parameters for the redirect.
-     *
-     * @param vpRequestResponse VP request response
-     * @param qrContent         QR content
-     * @param context           Authentication context
-     * @return Query parameters string
-     */
-    private String buildQueryParams(final VPRequestResponseDTO vpRequestResponse,
-            final String qrContent,
-            final AuthenticationContext context) {
-        StringBuilder params = new StringBuilder();
-        params.append("?");
-        params.append("sessionDataKey=")
-                .append(context.getContextIdentifier());
-        params.append("&requestId=")
-                .append(vpRequestResponse.getRequestId());
-        params.append("&transactionId=").append(
-                vpRequestResponse.getTransactionId());
-        params.append("&requestUri=").append(urlEncode(
-                vpRequestResponse.getRequestUri()));
-        params.append("&qrContent=").append(urlEncode(qrContent));
-
-        return params.toString();
-    }
-
-    /**
-     * URL encode a string.
-     */
-    private String urlEncode(String value) {
-        try {
-            return java.net.URLEncoder.encode(value, "UTF-8");
-        } catch (java.io.UnsupportedEncodingException e) {
-            return value;
-        }
     }
 
     /**
@@ -1023,7 +947,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      */
     @Override
     public String getContextIdentifier(final HttpServletRequest request) {
-        return getSafeParameter(request, "sessionDataKey");
+        return ServletUtil.getValidatedAlphaNumParameter(request, "sessionDataKey");
     }
 
     /**
@@ -1034,10 +958,10 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      */
     @Override
     public boolean canHandle(final HttpServletRequest request) {
-        String sessionDataKey = getSafeParameter(request, "sessionDataKey");
-        String vpRequestId = getSafeParameter(request, PARAM_VP_REQUEST_ID);
-        String poll = getSafeParameter(request, PARAM_POLL);
-        String status = getSafeParameter(request, PARAM_STATUS);
+        String sessionDataKey = ServletUtil.getValidatedAlphaNumParameter(request, "sessionDataKey");
+        String vpRequestId = ServletUtil.getValidatedAlphaNumParameter(request, PARAM_VP_REQUEST_ID);
+        String poll = ServletUtil.getValidatedAlphaNumParameter(request, PARAM_POLL);
+        String status = ServletUtil.getValidatedAlphaNumParameter(request, PARAM_STATUS);
 
         // Handle polling requests from login page
         if (StringUtils.isNotBlank(poll)
@@ -1119,36 +1043,5 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         configProperties.add(subjectClaim);
 
         return configProperties;
-    }
-
-
-    /**
-     * Sanitize a string for safe inclusion in log messages by removing CR and LF characters.
-     *
-     * @param input The string to sanitize
-     * @return Sanitized string, or empty string if input is null
-     */
-    private static String sanitizeForLog(String input) {
-        if (input == null) {
-            return "";
-        }
-        return input.replace("\r", "").replace("\n", "");
-    }
-
-    /**
-     * Retrieves a parameter from the HTTP request and validates it against a strict alphanumeric pattern.
-     * This acts as a sanitizer to resolve SERVLET_PARAMETER SpotBugs warnings.
-     *
-     * @param request The HTTP servlet request.
-     * @param paramName The name of the parameter to retrieve.
-     * @return The parameter value if it is valid, null otherwise.
-     */
-    @SuppressFBWarnings("SERVLET_PARAMETER")
-    private String getSafeParameter(HttpServletRequest request, String paramName) {
-        String value = request.getParameter(paramName);
-        if (StringUtils.isNotBlank(value) && value.matches("^[a-zA-Z0-9_.-]+$")) {
-            return value;
-        }
-        return null;
     }
 }

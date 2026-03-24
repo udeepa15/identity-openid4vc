@@ -18,7 +18,6 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.status;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPStatusListenerCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPSubmission;
@@ -202,7 +201,6 @@ public class StatusNotificationService {
     /**
      * Notify all registered status change listeners.
      */
-    @SuppressFBWarnings({ "REC_CATCH_EXCEPTION", "DE_MIGHT_IGNORE" })
     private void notifyStatusChangeListeners(final String requestId,
             final VPRequestStatus newStatus,
             final VPSubmission submission) {
@@ -210,8 +208,8 @@ public class StatusNotificationService {
         for (StatusChangeListener listener : statusChangeListeners) {
             try {
                 listener.onStatusChange(requestId, newStatus, submission);
-            } catch (Exception e) {
-                // Ignore exception from listener to avoid disrupting notification flow
+            } catch (RuntimeException e) {
+                // Ignore runtime exceptions from listener to avoid disrupting notification flow
             }
         }
     }

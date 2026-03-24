@@ -18,7 +18,6 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.osgi.framework.BundleContext;
 import org.osgi.service.component.ComponentContext;
 import org.osgi.service.component.annotations.Activate;
@@ -51,10 +50,9 @@ public class VPServiceRegistrationComponent {
 
     private static final Logger LOG = LoggerFactory.getLogger(VPServiceRegistrationComponent.class);
 
-    private static volatile boolean authenticatorRegistered = false;
+    private boolean authenticatorRegistered = false;
 
     @Activate
-    @SuppressFBWarnings({ "ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD", "DE_MIGHT_IGNORE", "REC_CATCH_EXCEPTION" })
     protected void activate(ComponentContext context) {
         try {
             // Only register once to avoid duplicates
@@ -84,12 +82,11 @@ public class VPServiceRegistrationComponent {
 
             authenticatorRegistered = true;
 
-        } catch (Exception e) {
+        } catch (Throwable e) {
             LOG.error("Error while activating OpenID4VP service registration component.", e);
         }
     }
 
-    @SuppressFBWarnings("ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD")
     protected void deactivate(ComponentContext context) {
         // Services are automatically unregistered by OSGi
         VPServiceDataHolder.getInstance().setVPRequestService(null);

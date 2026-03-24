@@ -18,7 +18,6 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPSubmission;
 
 import java.util.Iterator;
@@ -35,9 +34,7 @@ import java.util.concurrent.TimeUnit;
  * When a client polls for VP request status, their listener is registered here.
  * When a VP submission arrives, listeners are notified.
  */
-public class VPStatusListenerCache {
-
-    private static volatile VPStatusListenerCache instance;
+public final class VPStatusListenerCache {
 
     /**
      * Default long polling timeout in milliseconds (60 seconds).
@@ -178,7 +175,6 @@ public class VPStatusListenerCache {
     /**
      * Private constructor for singleton.
      */
-    @SuppressFBWarnings("MC_OVERRIDABLE_METHOD_CALL_IN_CONSTRUCTOR")
     private VPStatusListenerCache() {
 
         this.listenersByRequestId = new ConcurrentHashMap<>();
@@ -203,17 +199,19 @@ public class VPStatusListenerCache {
      *
      * @return VPStatusListenerCache instance
      */
-    @SuppressFBWarnings("MS_EXPOSE_REP")
-    public static VPStatusListenerCache getInstance() {
+    public static synchronized VPStatusListenerCache getInstance() {
+        return Holder.INSTANCE;
+    }
 
-        if (instance == null) {
-            synchronized (VPStatusListenerCache.class) {
-                if (instance == null) {
-                    instance = new VPStatusListenerCache();
-                }
-            }
+    /**
+     * Lazy-loaded singleton holder.
+     */
+    private static final class Holder {
+
+        private static final VPStatusListenerCache INSTANCE = new VPStatusListenerCache();
+
+        private Holder() {
         }
-        return instance;
     }
 
     /**

@@ -162,4 +162,23 @@ public class ServletUtil {
 
         return Encode.forJava(value);
     }
+
+    /**
+     * Read a request parameter and allow only alpha-numeric plus underscore, dot and hyphen.
+     *
+     * @param request HTTP request.
+     * @param name Parameter name.
+     * @return Validated value or null.
+     */
+    public static String getValidatedAlphaNumParameter(final HttpServletRequest request, final String name) {
+
+        String value = getFirstParameter(request, name);
+        if (StringUtils.isBlank(value)) {
+            return null;
+        }
+        if (!value.matches("^[a-zA-Z0-9_.-]+$")) {
+            return null;
+        }
+        return value;
+    }
 }

@@ -18,7 +18,6 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.dao.impl;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPRequestCache;
@@ -50,7 +49,6 @@ public class VPRequestDAOImpl implements VPRequestDAO {
     }
 
     @Override
-    @SuppressFBWarnings("CRLF_INJECTION_LOGS")
     public VPRequest getVPRequestById(String requestId, int tenantId) throws VPException {
         // Retrieve from cache
         VPRequest request = vpRequestCache.getByRequestId(requestId);
@@ -58,7 +56,7 @@ public class VPRequestDAOImpl implements VPRequestDAO {
             if (log.isDebugEnabled()) {
                 log.debug(String.format("Cross-tenant access detected. Requested tenant: %d, " +
                                 "Actual tenant: %d for request ID: %s",
-                        tenantId, request.getTenantId(), requestId));
+                        tenantId, request.getTenantId(), sanitizeForLog(requestId)));
             }
             return null;
         }
@@ -66,7 +64,6 @@ public class VPRequestDAOImpl implements VPRequestDAO {
     }
 
     @Override
-    @SuppressFBWarnings("CRLF_INJECTION_LOGS")
     public VPRequest getVPRequestByTransactionId(String transactionId, int tenantId) throws VPException {
         // Retrieve from cache
         VPRequest request = vpRequestCache.getByTransactionId(transactionId);
@@ -74,7 +71,7 @@ public class VPRequestDAOImpl implements VPRequestDAO {
             if (log.isDebugEnabled()) {
                 log.debug(String.format("Cross-tenant access detected. Requested tenant: %d, " +
                                 "Actual tenant: %d for transaction ID: %s",
-                        tenantId, request.getTenantId(), transactionId));
+                        tenantId, request.getTenantId(), sanitizeForLog(transactionId)));
             }
             return null;
         }
@@ -138,5 +135,18 @@ public class VPRequestDAOImpl implements VPRequestDAO {
         // Iterating cache is expensive and not standard pattern, but supported if needed for admin APIs.
         // For now, returning empty list as this is rarely used in core flow.
         return new ArrayList<>();
+    }
+
+    /**
+     * Sanitize values for logging to prevent CRLF injection.
+     *
+     * @param value Value to sanitize
+     * @return Sanitized string
+     */
+    private String sanitizeForLog(Object value) {
+        if (value == null) {
+            return "null";
+        }
+        return value.toString().replaceAll("[\r\n]", "_");
     }
 }

@@ -18,7 +18,6 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPSubmission;
 
@@ -33,13 +32,10 @@ import java.util.concurrent.TimeUnit;
  * temporarily.
  * Implements TTL-based expiration mechanism.
  */
-public class WalletDataCache {
+public final class WalletDataCache {
 
-    private static final WalletDataCache INSTANCE = new WalletDataCache();
     private static final long DEFAULT_TTL_MINUTES = 5;
     private static final long CLEANUP_INTERVAL_MINUTES = 1;
-
-    private static volatile WalletDataCache walletDataCache;
 
     private final Map<String, CacheEntry> tokenCache;
     private final Map<String, ContextCacheEntry> contextCache;
@@ -66,13 +62,19 @@ public class WalletDataCache {
      *
      * @return WalletDataCache instance
      */
-    @SuppressFBWarnings("MS_EXPOSE_REP")
     public static synchronized WalletDataCache getInstance() {
+        return Holder.INSTANCE;
+    }
 
-        if (walletDataCache == null) {
-            walletDataCache = new WalletDataCache();
+    /**
+     * Lazy-loaded singleton holder.
+     */
+    private static final class Holder {
+
+        private static final WalletDataCache INSTANCE = new WalletDataCache();
+
+        private Holder() {
         }
-        return walletDataCache;
     }
 
     /**
@@ -306,32 +308,19 @@ public class WalletDataCache {
     /**
      * Cleanup expired entries from caches.
      */
-    @SuppressFBWarnings({ "DE_MIGHT_IGNORE", "REC_CATCH_EXCEPTION" })
     private void cleanupCaches() {
         try {
             // Clean up token cache
-            for (Map.Entry<String, CacheEntry> entry : tokenCache.entrySet()) {
-                if (entry.getValue().isExpired()) {
-                    tokenCache.remove(entry.getKey());
-                }
-            }
+            tokenCache.entrySet().removeIf(entry -> entry.getValue().isExpired());
 
             // Clean up context cache
-            for (Map.Entry<String, ContextCacheEntry> entry : contextCache.entrySet()) {
-                if (entry.getValue().isExpired()) {
-                    contextCache.remove(entry.getKey());
-                }
-            }
+            contextCache.entrySet().removeIf(entry -> entry.getValue().isExpired());
 
             // Clean up submission cache
-            for (Map.Entry<String, SubmissionCacheEntry> entry : submissionCache.entrySet()) {
-                if (entry.getValue().isExpired()) {
-                    submissionCache.remove(entry.getKey());
-                }
-            }
+            submissionCache.entrySet().removeIf(entry -> entry.getValue().isExpired());
 
-        } catch (Exception e) {
-            // Ignore exceptions during cleanup to ensure scheduler continues
+        } catch (RuntimeException e) {
+            // Ignore runtime exceptions during cleanup to ensure scheduler continues
         }
     }
 
