@@ -30,6 +30,7 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPReque
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestStatusDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPRequestExpiredException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPRequestNotFoundException;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
@@ -58,7 +59,7 @@ public class VPRequestServiceImpl implements VPRequestService {
      */
     public VPRequestServiceImpl() {
         this.vpRequestDAO = new VPRequestDAOImpl();
-        this.presentationDefinitionService = new PresentationDefinitionServiceImpl();
+        this.presentationDefinitionService = VPServiceDataHolder.getInstance().getPresentationDefinitionService();
     }
 
     /**
