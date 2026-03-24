@@ -18,8 +18,6 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.util;
 
-import org.apache.commons.lang.StringUtils;
-
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
