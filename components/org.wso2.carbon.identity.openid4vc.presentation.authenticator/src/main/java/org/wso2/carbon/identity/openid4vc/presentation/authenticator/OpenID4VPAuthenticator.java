@@ -60,9 +60,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
+import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.servlet.ServletException;
 
 /**
  * OpenID4VP Wallet Authenticator for WSO2 Identity Server.
@@ -75,6 +75,8 @@ import javax.servlet.ServletException;
 public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         implements FederatedApplicationAuthenticator, VPStatusListenerCache.StatusCallback {
 
+    // Use @Serial annotation for serialVersionUID
+    @java.io.Serial
     private static final long serialVersionUID = 1L;
 
     // Authenticator configuration properties
@@ -245,7 +247,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             // to validate against the session-bound expected values.
             VPVerificationResponseDTO verificationResult;
             try {
-                verificationResult = VPServiceDataHolder.getInstance()
+                verificationResult = VPServiceDataHolder
                         .getVCVerificationService()
                         .verifyPresentation(
                                 submission.getVpToken(),
@@ -403,7 +405,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
     private Map<ClaimMapping, String> mapVerifiedClaimsToLocal(Map<String, Object> verifiedClaims,
                                                                ClaimMapping[] idpClaimMappings) {
         Map<ClaimMapping, String> mappedClaims = new HashMap<>();
-        if (idpClaimMappings == null || idpClaimMappings.length == 0) {
+        if (idpClaimMappings == null) {
             // No IDP mappings configured.
             return mappedClaims;
         }
@@ -457,7 +459,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         // Check if this is a polling request
         String poll = ServletUtil.getValidatedAlphaNumParameter(request, PARAM_POLL);
         if ("true".equals(poll)) {
-            return handlePollRequest(request, response, context);
+            return handlePollRequest(response, context);
         }
 
         // Check if status is being reported
@@ -472,11 +474,9 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
     /**
      * Handle polling request from the login page.
      */
-    private AuthenticatorFlowStatus handlePollRequest(HttpServletRequest request,
-            HttpServletResponse response,
+    private AuthenticatorFlowStatus handlePollRequest(HttpServletResponse response,
             AuthenticationContext context)
             throws AuthenticationFailedException {
-
         String requestId = (String) context.getProperty(SESSION_VP_REQUEST_ID);
         if (StringUtils.isBlank(requestId)) {
             throw new AuthenticationFailedException("VP request ID not found in session");
@@ -586,7 +586,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         // Set client ID from config or generate from tenant
         String clientId = authenticatorProperties.get(PROP_CLIENT_ID);
         if (StringUtils.isBlank(clientId)) {
-            clientId = buildClientId(context);
+            clientId = buildClientId();
         }
         createDTO.setClientId(clientId);
 
@@ -792,7 +792,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      * @return Presentation definition ID or null
      * @throws VPException If error occurs during resolution
      */
-    private String resolvePresentationDefinitionId(AuthenticationContext context) throws VPException {
+    private String resolvePresentationDefinitionId(AuthenticationContext context) {
 
 
         try {
@@ -886,7 +886,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      * @param context Authentication context
      * @return Client ID
      */
-    private String buildClientId(final AuthenticationContext context) {
+    private String buildClientId() {
         // Use fixed DID for demo purposes as requested
         return "did:web:masked-unprofitably-ardith.ngrok-free.dev";
     }
@@ -920,7 +920,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      * Get VPRequestService instance.
      */
     private VPRequestService getVPRequestService() {
-        return VPServiceDataHolder.getInstance().getVPRequestService();
+        return VPServiceDataHolder.getVPRequestService();
     }
 
 
@@ -976,8 +976,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         }
 
         // Handle VP request callbacks
-        if (StringUtils.isNotBlank(vpRequestId)
-                && StringUtils.isNotBlank(sessionDataKey)) {
+        if (!StringUtils.isBlank(vpRequestId) && !StringUtils.isBlank(sessionDataKey)) {
             return true;
         }
 

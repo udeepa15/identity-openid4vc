@@ -71,7 +71,7 @@ public class VPRequestServiceImplTest {
                 "http://localhost:8080");
 
         // Inject Mock PresentationDefinitionService into DataHolder
-        VPServiceDataHolder.getInstance().setPresentationDefinitionService(presentationDefinitionService);
+        VPServiceDataHolder.setPresentationDefinitionService(presentationDefinitionService);
     }
 
     @AfterMethod

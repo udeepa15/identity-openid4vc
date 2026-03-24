@@ -21,6 +21,12 @@ package org.wso2.carbon.identity.openid4vc.presentation.authenticator.util;
 import org.apache.commons.lang.StringUtils;
 import org.owasp.encoder.Encode;
 
+import java.io.IOException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
+
 import javax.servlet.http.HttpServletRequest;
 
 /**
@@ -36,6 +42,7 @@ public class ServletUtil {
     private static final String TENANT_DOMAIN_PATTERN = "^[a-zA-Z0-9._-]+$";
     private static final String REQUEST_ID_PATTERN = "^[a-zA-Z0-9_-]{1,128}$";
     private static final String ALPHANUMERIC_PATTERN = "^[a-zA-Z0-9]*$";
+    private static final String PARAM_CACHE_ATTR = "openid4vp.parsedParams";
 
     private ServletUtil() {
     }
@@ -139,7 +146,8 @@ public class ServletUtil {
             return null;
         }
 
-        String value = request.getParameter(name);
+        Map<String, String> paramMap = getParsedParameters(request);
+        String value = paramMap.get(name);
         if (StringUtils.isBlank(value)) {
             return null;
         }
@@ -161,6 +169,60 @@ public class ServletUtil {
         }
 
         return Encode.forJava(value);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, String> getParsedParameters(final HttpServletRequest request) {
+
+        Object cached = request.getAttribute(PARAM_CACHE_ATTR);
+        if (cached instanceof Map) {
+            return (Map<String, String>) cached;
+        }
+
+        Map<String, String> params = new HashMap<>();
+        try {
+            String body = new String(request.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            parseParamString(body, params);
+        } catch (IOException e) {
+            // Ignore body parse failures and use available parameters.
+        }
+
+        request.setAttribute(PARAM_CACHE_ATTR, params);
+        return params;
+    }
+
+    private static void parseParamString(final String paramString, final Map<String, String> output) {
+
+        if (StringUtils.isBlank(paramString)) {
+            return;
+        }
+
+        String[] pairs = paramString.split("&");
+        for (String pair : pairs) {
+            if (StringUtils.isBlank(pair)) {
+                continue;
+            }
+            String[] kv = pair.split("=", 2);
+            String rawKey = kv.length > 0 ? kv[0] : null;
+            String rawValue = kv.length > 1 ? kv[1] : "";
+            String key = decode(rawKey);
+            String value = decode(rawValue);
+            if (StringUtils.isNotBlank(key) && !output.containsKey(key)) {
+                output.put(key, value);
+            }
+        }
+    }
+
+    private static String decode(final String value) {
+
+        if (value == null) {
+            return null;
+        }
+        try {
+            return URLDecoder.decode(value, StandardCharsets.UTF_8.name());
+        } catch (IllegalArgumentException | java.io.UnsupportedEncodingException e) {
+            return value;
+        }
     }
 
     /**

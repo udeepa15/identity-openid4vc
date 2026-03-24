@@ -53,9 +53,6 @@ public class VPSubmissionServletTest {
     private HttpServletResponse response;
     
     @Mock
-    private VPServiceDataHolder dataHolder;
-    
-    @Mock
     private VCVerificationService verificationService;
 
     private StringWriter responseWriter;
@@ -71,8 +68,7 @@ public class VPSubmissionServletTest {
         when(response.getWriter()).thenReturn(new PrintWriter(responseWriter));
 
         dataHolderMockedStatic = mockStatic(VPServiceDataHolder.class);
-        dataHolderMockedStatic.when(VPServiceDataHolder::getInstance).thenReturn(dataHolder);
-        when(dataHolder.getVCVerificationService()).thenReturn(verificationService);
+        dataHolderMockedStatic.when(VPServiceDataHolder::getVCVerificationService).thenReturn(verificationService);
 
         validatorMockedStatic = mockStatic(VPSubmissionValidator.class);
     }

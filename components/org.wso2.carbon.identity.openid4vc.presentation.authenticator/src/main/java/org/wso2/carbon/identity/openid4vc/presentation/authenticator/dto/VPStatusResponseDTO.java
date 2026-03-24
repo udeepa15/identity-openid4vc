@@ -28,6 +28,8 @@ import java.io.Serializable;
  */
 public class VPStatusResponseDTO implements Serializable {
 
+    private static final long serialVersionUID = -921459724928639368L;
+
     /**
      * Request ID.
      */

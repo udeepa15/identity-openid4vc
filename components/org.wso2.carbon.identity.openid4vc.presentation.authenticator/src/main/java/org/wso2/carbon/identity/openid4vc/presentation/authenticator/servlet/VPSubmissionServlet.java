@@ -187,17 +187,14 @@ public class VPSubmissionServlet extends HttpServlet {
     private VPSubmissionDTO parseSubmission(final HttpServletRequest request)
             throws IOException {
 
-        // Parse form parameters first.
-        VPSubmissionDTO dto = new VPSubmissionDTO();
-        parseFormEncodedSubmission(request, dto);
+        String body = new String(request.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
 
-        // If no relevant form params are present, try JSON body.
-        if (StringUtils.isBlank(dto.getVpToken())
-                && StringUtils.isBlank(dto.getState())
-                && StringUtils.isBlank(dto.getError())
-                && dto.getPresentationSubmission() == null) {
-            dto = parseJsonSubmission(request);
+        if (StringUtils.isNotBlank(body) && body.trim().startsWith("{")) {
+            return parseJsonSubmission(body);
         }
+
+        VPSubmissionDTO dto = new VPSubmissionDTO();
+        parseFormEncodedSubmission(body, dto);
 
         return dto;
     }
@@ -208,13 +205,13 @@ public class VPSubmissionServlet extends HttpServlet {
      * @param request HTTP request
      * @param dto     DTO to populate
      */
-    private void parseFormEncodedSubmission(final HttpServletRequest request,
+        private void parseFormEncodedSubmission(final String formBody,
             final VPSubmissionDTO dto) {
 
-        dto.setVpToken(getDecodedParameter(request,
+        dto.setVpToken(getDecodedFormParameter(formBody,
                 OpenID4VPConstants.ResponseParams.VP_TOKEN));
 
-        String presSubStr = getDecodedParameter(request,
+        String presSubStr = getDecodedFormParameter(formBody,
                 OpenID4VPConstants.ResponseParams.PRESENTATION_SUBMISSION);
         if (StringUtils.isNotBlank(presSubStr)) {
             try {
@@ -224,11 +221,11 @@ public class VPSubmissionServlet extends HttpServlet {
             }
         }
 
-        dto.setState(getDecodedParameter(request,
+        dto.setState(getDecodedFormParameter(formBody,
                 OpenID4VPConstants.ResponseParams.STATE));
-        dto.setError(getDecodedParameter(request,
+        dto.setError(getDecodedFormParameter(formBody,
                 OpenID4VPConstants.ResponseParams.ERROR));
-        dto.setErrorDescription(getDecodedParameter(request,
+        dto.setErrorDescription(getDecodedFormParameter(formBody,
                 OpenID4VPConstants.ResponseParams.ERROR_DESCRIPTION));
     }
 
@@ -239,11 +236,9 @@ public class VPSubmissionServlet extends HttpServlet {
      * @return Parsed DTO
      * @throws IOException If reading fails
      */
-    private VPSubmissionDTO parseJsonSubmission(final HttpServletRequest request)
+        private VPSubmissionDTO parseJsonSubmission(final String body)
             throws IOException {
 
-        String body = new String(request.getInputStream().readAllBytes(),
-                StandardCharsets.UTF_8);
         return GSON.fromJson(body, VPSubmissionDTO.class);
     }
 
@@ -254,17 +249,34 @@ public class VPSubmissionServlet extends HttpServlet {
      * @param paramName Parameter name
      * @return Decoded value or original if decoding fails
      */
-    private String getDecodedParameter(final HttpServletRequest request,
+    private String getDecodedFormParameter(final String formBody,
             final String paramName) {
 
         // Validating parameter name against a whitelist to build trust for SpotBugs
         if (!OpenID4VPConstants.ResponseParams.VP_TOKEN.equals(paramName)
                 && !OpenID4VPConstants.ResponseParams.PRESENTATION_SUBMISSION.equals(paramName)
-                && !OpenID4VPConstants.ResponseParams.STATE.equals(paramName)) {
+                && !OpenID4VPConstants.ResponseParams.STATE.equals(paramName)
+                && !OpenID4VPConstants.ResponseParams.ERROR.equals(paramName)
+                && !OpenID4VPConstants.ResponseParams.ERROR_DESCRIPTION.equals(paramName)) {
             return null;
         }
 
-        String value = request.getParameter(paramName);
+        String value = null;
+        if (StringUtils.isNotBlank(formBody)) {
+            String[] pairs = formBody.split("&");
+            for (String pair : pairs) {
+                String[] keyValue = pair.split("=", 2);
+                if (keyValue.length == 0) {
+                    continue;
+                }
+                String key = decodeFormToken(keyValue[0]);
+                if (paramName.equals(key)) {
+                    value = keyValue.length > 1 ? keyValue[1] : "";
+                    break;
+                }
+            }
+        }
+
         if (StringUtils.isNotBlank(value)) {
             // Enforce maximum length to prevent oversized input.
             if (value.length() > MAX_PARAM_LENGTH) {
@@ -295,6 +307,17 @@ public class VPSubmissionServlet extends HttpServlet {
             }
         }
         return value;
+    }
+
+    private String decodeFormToken(final String value) {
+        if (value == null) {
+            return null;
+        }
+        try {
+            return URLDecoder.decode(value, StandardCharsets.UTF_8.name());
+        } catch (IllegalArgumentException | java.io.UnsupportedEncodingException e) {
+            return sanitize(value);
+        }
     }
 
     /**

@@ -35,6 +35,7 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling.Lon
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling.PollingResult;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.impl.VPRequestServiceImpl;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.ServletUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
 import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException;
 
@@ -215,7 +216,7 @@ public class VPRequestServlet extends HttpServlet {
             String requestId, int tenantId) throws VPException, IOException {
 
         // Get timeout parameter for long polling
-        String timeoutParam = Encode.forJava(request.getParameter("timeout"));
+        String timeoutParam = ServletUtil.getValidatedAlphaNumParameter(request, "timeout");
         long timeout = DEFAULT_POLL_TIMEOUT_MS;
         if (StringUtils.isNotBlank(timeoutParam)) {
             try {

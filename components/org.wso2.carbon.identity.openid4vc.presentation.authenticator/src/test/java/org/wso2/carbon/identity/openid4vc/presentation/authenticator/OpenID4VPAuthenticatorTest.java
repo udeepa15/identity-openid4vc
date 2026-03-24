@@ -58,9 +58,6 @@ public class OpenID4VPAuthenticatorTest {
     private AuthenticationContext context;
 
     @Mock
-    private VPServiceDataHolder vpServiceDataHolder;
-
-    @Mock
     private VPRequestService vpRequestService;
 
     @Mock
@@ -88,10 +85,10 @@ public class OpenID4VPAuthenticatorTest {
         authenticator = new OpenID4VPAuthenticator();
 
         mockedVPServiceDataHolder = Mockito.mockStatic(VPServiceDataHolder.class);
-        mockedVPServiceDataHolder.when(VPServiceDataHolder::getInstance).thenReturn(vpServiceDataHolder);
-        when(vpServiceDataHolder.getVPRequestService()).thenReturn(vpRequestService);
-        when(vpServiceDataHolder.getPresentationDefinitionService()).thenReturn(presentationDefinitionService);
-        when(vpServiceDataHolder.getVCVerificationService()).thenReturn(vcVerificationService);
+        mockedVPServiceDataHolder.when(VPServiceDataHolder::getVPRequestService).thenReturn(vpRequestService);
+        mockedVPServiceDataHolder.when(VPServiceDataHolder::getPresentationDefinitionService)
+                .thenReturn(presentationDefinitionService);
+        mockedVPServiceDataHolder.when(VPServiceDataHolder::getVCVerificationService).thenReturn(vcVerificationService);
 
         mockedVPStatusListenerCache = Mockito.mockStatic(VPStatusListenerCache.class);
         mockedVPStatusListenerCache.when(VPStatusListenerCache::getInstance).thenReturn(vpStatusListenerCache);

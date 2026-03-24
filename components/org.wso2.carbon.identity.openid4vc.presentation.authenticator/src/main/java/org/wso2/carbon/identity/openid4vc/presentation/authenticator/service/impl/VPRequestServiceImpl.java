@@ -42,13 +42,15 @@ import org.wso2.carbon.identity.openid4vc.presentation.management.model.Presenta
 import org.wso2.carbon.identity.openid4vc.presentation.management.service.PresentationDefinitionService;
 import org.wso2.carbon.identity.openid4vc.presentation.management.util.PresentationDefinitionUtil;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 /**
  * Implementation of VPRequestService for managing VP authorization requests.
  */
 public class VPRequestServiceImpl implements VPRequestService {
 
-    private final VPRequestDAO vpRequestDAO;
-    private final PresentationDefinitionService presentationDefinitionService;
+    private final AtomicReference<VPRequestDAO> vpRequestDAORef;
+    private final AtomicReference<PresentationDefinitionService> presentationDefinitionServiceRef;
     private volatile String baseUrl;
 
     /**
@@ -57,8 +59,9 @@ public class VPRequestServiceImpl implements VPRequestService {
      * where IdentityUtil may not have loaded identity.xml yet.
      */
     public VPRequestServiceImpl() {
-        this.vpRequestDAO = new VPRequestDAOImpl();
-        this.presentationDefinitionService = VPServiceDataHolder.getInstance().getPresentationDefinitionService();
+        this.vpRequestDAORef = new AtomicReference<>(new VPRequestDAOImpl());
+        this.presentationDefinitionServiceRef =
+                new AtomicReference<>(VPServiceDataHolder.getPresentationDefinitionService());
     }
 
     /**
@@ -67,9 +70,25 @@ public class VPRequestServiceImpl implements VPRequestService {
 
     public VPRequestServiceImpl(VPRequestDAO vpRequestDAO, PresentationDefinitionService presentationDefinitionService,
             String baseUrl) {
-        this.vpRequestDAO = vpRequestDAO;
-        this.presentationDefinitionService = presentationDefinitionService;
+        this.vpRequestDAORef = new AtomicReference<>(vpRequestDAO);
+        this.presentationDefinitionServiceRef = new AtomicReference<>(presentationDefinitionService);
         this.baseUrl = baseUrl;
+    }
+
+    private VPRequestDAO getVPRequestDAO() throws VPException {
+        VPRequestDAO dao = vpRequestDAORef.get();
+        if (dao == null) {
+            throw new VPException("VP request DAO is not initialized");
+        }
+        return dao;
+    }
+
+    private PresentationDefinitionService getPresentationDefinitionService() throws VPException {
+        PresentationDefinitionService service = presentationDefinitionServiceRef.get();
+        if (service == null) {
+            throw new VPException("Presentation definition service is not initialized");
+        }
+        return service;
     }
 
     /**
@@ -153,7 +172,7 @@ public class VPRequestServiceImpl implements VPRequestService {
         vpRequest.setRequestJwt(requestJwt);
 
         // Persist to database (which is now backed by Cache via DAO)
-        vpRequestDAO.createVPRequest(vpRequest);
+        getVPRequestDAO().createVPRequest(vpRequest);
 
         // Generate request URI if enabled
         String requestUri = null;
@@ -181,7 +200,7 @@ public class VPRequestServiceImpl implements VPRequestService {
             throws VPRequestNotFoundException, VPException {
 
         // Retrieve from DAO (Cache)
-        VPRequest vpRequest = vpRequestDAO.getVPRequestById(requestId, tenantId);
+        VPRequest vpRequest = getVPRequestDAO().getVPRequestById(requestId, tenantId);
 
         if (vpRequest == null) {
             throw new VPRequestNotFoundException(requestId);
@@ -190,7 +209,7 @@ public class VPRequestServiceImpl implements VPRequestService {
         // Populate presentation definition if missing
         if (StringUtils.isBlank(vpRequest.getPresentationDefinition()) &&
                 StringUtils.isNotBlank(vpRequest.getPresentationDefinitionId())) {
-            PresentationDefinition pd = presentationDefinitionService.getPresentationDefinitionById(
+                PresentationDefinition pd = getPresentationDefinitionService().getPresentationDefinitionById(
                     vpRequest.getPresentationDefinitionId(), tenantId);
             if (pd != null) {
                 vpRequest.setPresentationDefinition(
@@ -206,7 +225,7 @@ public class VPRequestServiceImpl implements VPRequestService {
             throws VPRequestNotFoundException, VPException {
 
         // Retrieve from DAO (Cache)
-        VPRequest vpRequest = vpRequestDAO.getVPRequestByTransactionId(transactionId, tenantId);
+        VPRequest vpRequest = getVPRequestDAO().getVPRequestByTransactionId(transactionId, tenantId);
 
         if (vpRequest == null) {
             throw new VPRequestNotFoundException("Transaction not found: " + transactionId);
@@ -215,7 +234,7 @@ public class VPRequestServiceImpl implements VPRequestService {
         // Populate presentation definition if missing
         if (StringUtils.isBlank(vpRequest.getPresentationDefinition()) &&
                StringUtils.isNotBlank(vpRequest.getPresentationDefinitionId())) {
-           PresentationDefinition pd = presentationDefinitionService.getPresentationDefinitionById(
+           PresentationDefinition pd = getPresentationDefinitionService().getPresentationDefinitionById(
                    vpRequest.getPresentationDefinitionId(), tenantId);
            if (pd != null) {
                vpRequest.setPresentationDefinition(
@@ -251,7 +270,7 @@ public class VPRequestServiceImpl implements VPRequestService {
         }
 
         // Update in DAO (Cache)
-        vpRequestDAO.updateVPRequestStatus(requestId, status, tenantId);
+        getVPRequestDAO().updateVPRequestStatus(requestId, status, tenantId);
     }
 
     @Override
@@ -294,7 +313,7 @@ public class VPRequestServiceImpl implements VPRequestService {
         String requestJwt = buildRequestObjectJwt(vpRequest, didMethod, signingAlgorithm);
 
         // Store generated JWT
-        vpRequestDAO.updateVPRequestJwt(requestId, requestJwt, tenantId);
+        getVPRequestDAO().updateVPRequestJwt(requestId, requestJwt, tenantId);
 
         return requestJwt;
     }
@@ -307,13 +326,13 @@ public class VPRequestServiceImpl implements VPRequestService {
         getVPRequestById(requestId, tenantId);
 
         // Delete from DAO (Cache)
-        vpRequestDAO.deleteVPRequest(requestId, tenantId);
+        getVPRequestDAO().deleteVPRequest(requestId, tenantId);
     }
 
     @Override
     public int processExpiredRequests(int tenantId) throws VPException {
         // markExpiredRequests logic - delegated to DAO/Cache expiry
-        return vpRequestDAO.markExpiredRequests(tenantId);
+        return getVPRequestDAO().markExpiredRequests(tenantId);
     }
 
     @Override
@@ -366,7 +385,7 @@ public class VPRequestServiceImpl implements VPRequestService {
         // Otherwise, fetch from stored definitions
         String definitionId = requestCreateDTO.getPresentationDefinitionId();
         if (StringUtils.isNotBlank(definitionId)) {
-            PresentationDefinition definition = presentationDefinitionService.getPresentationDefinitionById(
+                PresentationDefinition definition = getPresentationDefinitionService().getPresentationDefinitionById(
                     definitionId, tenantId);
             return PresentationDefinitionUtil.buildDefinitionJson(definition);
         }

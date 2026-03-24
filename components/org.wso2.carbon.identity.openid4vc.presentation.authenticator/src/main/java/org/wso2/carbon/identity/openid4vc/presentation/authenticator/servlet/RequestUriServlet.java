@@ -31,7 +31,7 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.imp
 import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException;
 
 import java.io.IOException;
-import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 
 import javax.servlet.Servlet;
 import javax.servlet.ServletException;
@@ -144,10 +144,7 @@ public class RequestUriServlet extends HttpServlet {
             response.setStatus(HttpServletResponse.SC_OK);
             response.setHeader("Cache-Control", "no-store");
             response.setHeader("Pragma", "no-cache");
-
-            try (PrintWriter writer = response.getWriter()) {
-                writer.write(Encode.forJava(authzRequest));
-            }
+            writeBody(response, Encode.forJava(authzRequest));
 
         } catch (VPRequestNotFoundException e) {
             sendErrorResponse(response, HttpServletResponse.SC_NOT_FOUND,
@@ -189,10 +186,15 @@ public class RequestUriServlet extends HttpServlet {
         ErrorDTO errorDTO = new ErrorDTO();
         errorDTO.setError(errorCode.getError());
         errorDTO.setErrorDescription(Encode.forJava(errorDescription));
+        writeBody(response, gson.toJson(errorDTO));
 
-        try (PrintWriter writer = response.getWriter()) {
-            writer.write(gson.toJson(errorDTO));
-        }
+    }
+
+    private void writeBody(HttpServletResponse response, String body) throws IOException {
+        byte[] payload = body.getBytes(StandardCharsets.UTF_8);
+        response.setContentLength(payload.length);
+        response.getOutputStream().write(payload);
+        response.getOutputStream().flush();
 
     }
 }

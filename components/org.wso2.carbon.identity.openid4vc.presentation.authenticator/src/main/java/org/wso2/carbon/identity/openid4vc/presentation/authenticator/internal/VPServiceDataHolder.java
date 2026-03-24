@@ -27,39 +27,25 @@ import org.wso2.carbon.identity.openid4vc.presentation.verification.service.VCVe
 import org.wso2.carbon.identity.openid4vc.presentation.verification.service.impl.VCVerificationServiceImpl;
 import org.wso2.carbon.user.core.service.RealmService;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 /**
  * Data holder for OpenID4VP services.
  * Provides access to OSGi services across the component.
  */
 public final class VPServiceDataHolder {
 
-    private static volatile VPServiceDataHolder instance;
-
-    private RealmService realmService;
-    private VPRequestService vpRequestService;
-    private PresentationDefinitionService presentationDefinitionService;
-    private VCVerificationService vcVerificationService;
-    private DIDDocumentService didDocumentService;
-    private ApplicationManagementService applicationManagementService;
+    private static final AtomicReference<RealmService> REALM_SERVICE = new AtomicReference<>();
+    private static final AtomicReference<VPRequestService> VP_REQUEST_SERVICE = new AtomicReference<>();
+    private static final AtomicReference<PresentationDefinitionService> PRESENTATION_DEFINITION_SERVICE =
+            new AtomicReference<>();
+    private static final AtomicReference<VCVerificationService> VC_VERIFICATION_SERVICE = new AtomicReference<>();
+    private static final AtomicReference<DIDDocumentService> DID_DOCUMENT_SERVICE = new AtomicReference<>();
+    private static final AtomicReference<ApplicationManagementService> APPLICATION_MANAGEMENT_SERVICE =
+            new AtomicReference<>();
 
     private VPServiceDataHolder() {
-        // Private constructor for singleton
-    }
-
-    /**
-     * Get the singleton instance.
-     * 
-     * @return VPServiceDataHolder instance
-     */
-    public static VPServiceDataHolder getInstance() {
-        if (instance == null) {
-            synchronized (VPServiceDataHolder.class) {
-                if (instance == null) {
-                    instance = new VPServiceDataHolder();
-                }
-            }
-        }
-        return instance;
+        // Utility class
     }
 
     /**
@@ -67,8 +53,8 @@ public final class VPServiceDataHolder {
      * 
      * @return RealmService instance
      */
-    public RealmService getRealmService() {
-        return realmService;
+    public static RealmService getRealmService() {
+        return REALM_SERVICE.get();
     }
 
     /**
@@ -76,8 +62,8 @@ public final class VPServiceDataHolder {
      * 
      * @param realmService RealmService instance
      */
-    public void setRealmService(RealmService realmService) {
-        this.realmService = realmService;
+    public static void setRealmService(RealmService realmService) {
+        REALM_SERVICE.set(realmService);
     }
 
     /**
@@ -85,8 +71,8 @@ public final class VPServiceDataHolder {
      * 
      * @return VPRequestService instance
      */
-    public VPRequestService getVPRequestService() {
-        return vpRequestService;
+    public static VPRequestService getVPRequestService() {
+        return VP_REQUEST_SERVICE.get();
     }
 
     /**
@@ -94,8 +80,8 @@ public final class VPServiceDataHolder {
      * 
      * @param vpRequestService VPRequestService instance
      */
-    public void setVPRequestService(VPRequestService vpRequestService) {
-        this.vpRequestService = vpRequestService;
+    public static void setVPRequestService(VPRequestService vpRequestService) {
+        VP_REQUEST_SERVICE.set(vpRequestService);
     }
 
     /**
@@ -103,8 +89,8 @@ public final class VPServiceDataHolder {
      * 
      * @return PresentationDefinitionService instance
      */
-    public PresentationDefinitionService getPresentationDefinitionService() {
-        return presentationDefinitionService;
+    public static PresentationDefinitionService getPresentationDefinitionService() {
+        return PRESENTATION_DEFINITION_SERVICE.get();
     }
 
     /**
@@ -112,9 +98,9 @@ public final class VPServiceDataHolder {
      * 
      * @param presentationDefinitionService PresentationDefinitionService instance
      */
-    public void setPresentationDefinitionService(
+    public static void setPresentationDefinitionService(
             PresentationDefinitionService presentationDefinitionService) {
-        this.presentationDefinitionService = presentationDefinitionService;
+        PRESENTATION_DEFINITION_SERVICE.set(presentationDefinitionService);
     }
 
     /**
@@ -122,11 +108,13 @@ public final class VPServiceDataHolder {
      * 
      * @return VCVerificationService instance
      */
-    public VCVerificationService getVCVerificationService() {
-        if (vcVerificationService == null) {
-            vcVerificationService = new VCVerificationServiceImpl();
+    public static VCVerificationService getVCVerificationService() {
+        VCVerificationService service = VC_VERIFICATION_SERVICE.get();
+        if (service == null) {
+            VC_VERIFICATION_SERVICE.compareAndSet(null, new VCVerificationServiceImpl());
+            service = VC_VERIFICATION_SERVICE.get();
         }
-        return vcVerificationService;
+        return service;
     }
 
     /**
@@ -134,8 +122,8 @@ public final class VPServiceDataHolder {
      * 
      * @param vcVerificationService VCVerificationService instance
      */
-    public void setVCVerificationService(VCVerificationService vcVerificationService) {
-        this.vcVerificationService = vcVerificationService;
+    public static void setVCVerificationService(VCVerificationService vcVerificationService) {
+        VC_VERIFICATION_SERVICE.set(vcVerificationService);
     }
 
     /**
@@ -143,11 +131,13 @@ public final class VPServiceDataHolder {
      * 
      * @return DIDDocumentService instance
      */
-    public DIDDocumentService getDIDDocumentService() {
-        if (didDocumentService == null) {
-            didDocumentService = new DIDDocumentServiceImpl();
+    public static DIDDocumentService getDIDDocumentService() {
+        DIDDocumentService service = DID_DOCUMENT_SERVICE.get();
+        if (service == null) {
+            DID_DOCUMENT_SERVICE.compareAndSet(null, new DIDDocumentServiceImpl());
+            service = DID_DOCUMENT_SERVICE.get();
         }
-        return didDocumentService;
+        return service;
     }
 
     /**
@@ -155,15 +145,15 @@ public final class VPServiceDataHolder {
      * 
      * @param didDocumentService DIDDocumentService instance
      */
-    public void setDIDDocumentService(DIDDocumentService didDocumentService) {
-        this.didDocumentService = didDocumentService;
+    public static void setDIDDocumentService(DIDDocumentService didDocumentService) {
+        DID_DOCUMENT_SERVICE.set(didDocumentService);
     }
 
-    public ApplicationManagementService getApplicationManagementService() {
-        return applicationManagementService;
+    public static ApplicationManagementService getApplicationManagementService() {
+        return APPLICATION_MANAGEMENT_SERVICE.get();
     }
 
-    public void setApplicationManagementService(ApplicationManagementService applicationManagementService) {
-        this.applicationManagementService = applicationManagementService;
+    public static void setApplicationManagementService(ApplicationManagementService applicationManagementService) {
+        APPLICATION_MANAGEMENT_SERVICE.set(applicationManagementService);
     }
 }

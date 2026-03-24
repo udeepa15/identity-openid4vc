@@ -251,8 +251,7 @@ public class VPStatusPollingServlet extends HttpServlet {
 
         String pathInfo = request.getPathInfo();
         if (StringUtils.isBlank(pathInfo)) {
-            String requestId = Encode.forJava(request.getParameter("request_id"));
-            return requestId;
+            return ServletUtil.getValidatedAlphaNumParameter(request, "request_id");
         }
 
         // Remove leading slash
@@ -271,7 +270,7 @@ public class VPStatusPollingServlet extends HttpServlet {
         }
 
         // Fallback to query parameter
-        return Encode.forJava(request.getParameter("request_id"));
+        return ServletUtil.getValidatedAlphaNumParameter(request, "request_id");
     }
 
     /**

@@ -72,7 +72,7 @@ public class VPServiceRegistrationComponent {
 
 
             // Set services in data holder
-            VPServiceDataHolder.getInstance().setVPRequestService(vpRequestService);
+            VPServiceDataHolder.setVPRequestService(vpRequestService);
 
 
             // Register OpenID4VP Authenticator
@@ -89,7 +89,7 @@ public class VPServiceRegistrationComponent {
 
     protected void deactivate(ComponentContext context) {
         // Services are automatically unregistered by OSGi
-        VPServiceDataHolder.getInstance().setVPRequestService(null);
+        VPServiceDataHolder.setVPRequestService(null);
 
         authenticatorRegistered = false;
 
@@ -99,22 +99,22 @@ public class VPServiceRegistrationComponent {
             cardinality = ReferenceCardinality.MANDATORY, policy = ReferencePolicy.DYNAMIC,
             unbind = "unsetPresentationDefinitionService")
     protected void setPresentationDefinitionService(PresentationDefinitionService service) {
-        VPServiceDataHolder.getInstance().setPresentationDefinitionService(service);
+        VPServiceDataHolder.setPresentationDefinitionService(service);
     }
 
     protected void unsetPresentationDefinitionService(PresentationDefinitionService service) {
-        VPServiceDataHolder.getInstance().setPresentationDefinitionService(null);
+        VPServiceDataHolder.setPresentationDefinitionService(null);
     }
 
     @Reference(name = "user.realm.service", service = RealmService.class, cardinality = 
     ReferenceCardinality.MANDATORY, policy = ReferencePolicy.DYNAMIC, unbind = "unsetRealmService")
     protected void setRealmService(RealmService realmService) {
-        VPServiceDataHolder.getInstance().setRealmService(realmService);
+        VPServiceDataHolder.setRealmService(realmService);
 
     }
 
     protected void unsetRealmService(RealmService realmService) {
-        VPServiceDataHolder.getInstance().setRealmService(null);
+        VPServiceDataHolder.setRealmService(null);
 
     }
 
@@ -123,11 +123,11 @@ public class VPServiceRegistrationComponent {
     ReferenceCardinality.MANDATORY, policy = 
     ReferencePolicy.DYNAMIC, unbind = "unsetApplicationManagementService")
     protected void setApplicationManagementService(ApplicationManagementService applicationManagementService) {
-        VPServiceDataHolder.getInstance().setApplicationManagementService(applicationManagementService);
+        VPServiceDataHolder.setApplicationManagementService(applicationManagementService);
     }
 
     protected void unsetApplicationManagementService(ApplicationManagementService applicationManagementService) {
-        VPServiceDataHolder.getInstance().setApplicationManagementService(null);
+        VPServiceDataHolder.setApplicationManagementService(null);
 
     }
 }
