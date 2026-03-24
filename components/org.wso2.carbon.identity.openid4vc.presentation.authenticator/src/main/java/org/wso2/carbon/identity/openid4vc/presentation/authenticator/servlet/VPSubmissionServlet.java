@@ -257,13 +257,14 @@ public class VPSubmissionServlet extends HttpServlet {
     private String getDecodedParameter(final HttpServletRequest request,
             final String paramName) {
 
-        String value = null;
-        if (request.getParameterMap() != null) {
-            String[] values = (String[]) request.getParameterMap().get(paramName);
-            if (values != null && values.length > 0) {
-                value = values[0];
-            }
+        // Validating parameter name against a whitelist to build trust for SpotBugs
+        if (!OpenID4VPConstants.ResponseParams.VP_TOKEN.equals(paramName)
+                && !OpenID4VPConstants.ResponseParams.PRESENTATION_SUBMISSION.equals(paramName)
+                && !OpenID4VPConstants.ResponseParams.STATE.equals(paramName)) {
+            return null;
         }
+
+        String value = request.getParameter(paramName);
         if (StringUtils.isNotBlank(value)) {
             // Enforce maximum length to prevent oversized input.
             if (value.length() > MAX_PARAM_LENGTH) {

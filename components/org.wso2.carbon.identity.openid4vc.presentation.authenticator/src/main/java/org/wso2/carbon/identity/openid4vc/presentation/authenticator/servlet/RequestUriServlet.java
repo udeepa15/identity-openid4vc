@@ -20,9 +20,9 @@ package org.wso2.carbon.identity.openid4vc.presentation.authenticator.servlet;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.lang.StringUtils;
 import org.osgi.service.component.annotations.Component;
+import org.owasp.encoder.Encode;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.ErrorDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPRequestExpiredException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPRequestNotFoundException;
@@ -94,7 +94,6 @@ public class RequestUriServlet extends HttpServlet {
      * - Must include presentation_definition or presentation_definition_uri
      */
     @Override
-    @SuppressFBWarnings({ "XSS_SERVLET", "SERVLET_HEADER", "SERVLET_PARAMETER", "SERVLET_CONTENT_TYPE" })
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
@@ -147,7 +146,7 @@ public class RequestUriServlet extends HttpServlet {
             response.setHeader("Pragma", "no-cache");
 
             try (PrintWriter writer = response.getWriter()) {
-                writer.write(authzRequest);
+                writer.write(Encode.forJava(authzRequest));
             }
 
         } catch (VPRequestNotFoundException e) {
@@ -178,7 +177,6 @@ public class RequestUriServlet extends HttpServlet {
     /**
      * Send error response as JSON.
      */
-    @SuppressFBWarnings("XSS_SERVLET")
     private void sendErrorResponse(HttpServletResponse response, int statusCode,
             ErrorDTO.ErrorCode errorCode, String errorDescription)
             throws IOException {
@@ -190,7 +188,7 @@ public class RequestUriServlet extends HttpServlet {
 
         ErrorDTO errorDTO = new ErrorDTO();
         errorDTO.setError(errorCode.getError());
-        errorDTO.setErrorDescription(errorDescription);
+        errorDTO.setErrorDescription(Encode.forJava(errorDescription));
 
         try (PrintWriter writer = response.getWriter()) {
             writer.write(gson.toJson(errorDTO));

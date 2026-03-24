@@ -143,6 +143,7 @@ public class OpenID4VPConstants {
         public static final String REVOCATION_CHECK_ENABLED = "OpenID4VP.RevocationCheckEnabled";
         // Credential verification config keys
         public static final String BASE_URL = "OpenID4VP.BaseUrl";
+        public static final String CORS_ALLOWED_ORIGINS = "OpenID4VP.CORS.AllowedOrigins";
 
         private ConfigKeys() {
         }

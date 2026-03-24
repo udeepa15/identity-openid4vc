@@ -21,9 +21,9 @@ package org.wso2.carbon.identity.openid4vc.presentation.authenticator.servlet;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.lang.StringUtils;
 import org.osgi.service.component.annotations.Component;
+import org.owasp.encoder.Encode;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPStatusResponseDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling.LongPollingManager;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling.PollingResult;
@@ -111,7 +111,6 @@ public class VPStatusPollingServlet extends HttpServlet {
      * @throws IOException      If I/O error occurs
      */
     @Override
-    @SuppressFBWarnings({ "SERVLET_HEADER", "SERVLET_PARAMETER", "XSS_SERVLET" })
     protected void doGet(final HttpServletRequest request,
             final HttpServletResponse response)
             throws ServletException, IOException {
@@ -248,13 +247,11 @@ public class VPStatusPollingServlet extends HttpServlet {
      * Extract request ID from path.
      * Expected path: /vp-request/{requestId}/status
      */
-    @SuppressFBWarnings("SERVLET_PARAMETER")
     private String extractRequestId(final HttpServletRequest request) {
 
         String pathInfo = request.getPathInfo();
         if (StringUtils.isBlank(pathInfo)) {
-            @SuppressFBWarnings("SERVLET_PARAMETER")
-            String requestId = request.getParameter("request_id");
+            String requestId = Encode.forJava(request.getParameter("request_id"));
             return requestId;
         }
 
@@ -274,7 +271,7 @@ public class VPStatusPollingServlet extends HttpServlet {
         }
 
         // Fallback to query parameter
-        return request.getParameter("request_id");
+        return Encode.forJava(request.getParameter("request_id"));
     }
 
     /**
@@ -291,9 +288,8 @@ public class VPStatusPollingServlet extends HttpServlet {
         }
     }
 
-    @SuppressFBWarnings("XSS_SERVLET")
     private void writeResponse(PrintWriter writer, String content) {
-        writer.write(content);
+        writer.write(Encode.forJava(content));
     }
 
     /**

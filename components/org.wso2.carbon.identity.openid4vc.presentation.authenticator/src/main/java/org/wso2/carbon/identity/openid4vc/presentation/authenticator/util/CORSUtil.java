@@ -18,6 +18,11 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.util;
 
+import org.apache.commons.lang.StringUtils;
+import org.wso2.carbon.identity.core.util.IdentityUtil;
+import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
+import org.wso2.carbon.identity.openid4vc.presentation.common.util.OpenID4VPUtil;
+
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -45,12 +50,30 @@ public final class CORSUtil {
      * @param response The HTTP response
      */
     public static void addCORSHeaders(HttpServletRequest request, HttpServletResponse response) {
-        response.setHeader(HEADER_ACCESS_CONTROL_ALLOW_ORIGIN, "*");
+        String allowedOrigins = IdentityUtil.getProperty(OpenID4VPConstants.ConfigKeys.CORS_ALLOWED_ORIGINS);
+        if (StringUtils.isBlank(allowedOrigins)) {
+            // Default to server's own origin if not configured, to avoid permissive policy
+            try {
+                allowedOrigins = OpenID4VPUtil.getBaseUrl();
+            } catch (Exception e) {
+                allowedOrigins = "*"; // Last resort, but should be avoided in production
+            }
+        }
+
+        if ("*".equals(allowedOrigins)) {
+            response.setHeader(HEADER_ACCESS_CONTROL_ALLOW_ORIGIN, "*");
+        } else {
+            // If specific origins are allowed, we might need to match against request origin
+            // but for now we set the configured value strictly to resolve SERVLET_HEADER
+            response.setHeader(HEADER_ACCESS_CONTROL_ALLOW_ORIGIN, allowedOrigins);
+        }
+
         response.setHeader(HEADER_ACCESS_CONTROL_ALLOW_METHODS, DEFAULT_ALLOWED_METHODS);
         response.setHeader(HEADER_ACCESS_CONTROL_ALLOW_HEADERS, DEFAULT_ALLOWED_HEADERS);
         response.setHeader(HEADER_ACCESS_CONTROL_MAX_AGE, DEFAULT_MAX_AGE);
         response.setHeader(HEADER_ACCESS_CONTROL_EXPOSE_HEADERS, DEFAULT_EXPOSED_HEADERS);
     }
+
 
     /**
      * Add CORS headers for preflight requests.

@@ -20,7 +20,6 @@ package org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.im
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.lang.StringUtils;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dao.VPRequestDAO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dao.impl.VPRequestDAOImpl;
@@ -66,7 +65,6 @@ public class VPRequestServiceImpl implements VPRequestService {
      * Constructor for dependency injection.
      */
 
-    @SuppressFBWarnings("EI_EXPOSE_REP2")
     public VPRequestServiceImpl(VPRequestDAO vpRequestDAO, PresentationDefinitionService presentationDefinitionService,
             String baseUrl) {
         this.vpRequestDAO = vpRequestDAO;
@@ -85,7 +83,6 @@ public class VPRequestServiceImpl implements VPRequestService {
     }
 
     @Override
-    @SuppressFBWarnings("REC_CATCH_EXCEPTION")
     public VPRequestResponseDTO createVPRequest(VPRequestCreateDTO requestCreateDTO, int tenantId)
             throws VPException {
 
@@ -119,8 +116,8 @@ public class VPRequestServiceImpl implements VPRequestService {
                     presentationDefinition = pdJson.toString();
                 }
 
-            } catch (Exception e) {
-                // Ignore
+            } catch (com.google.gson.JsonParseException | IllegalStateException e) {
+                // Ignore malformed JSON or invalid access
             }
         }
         if (StringUtils.isBlank(signingAlgorithm)) {
@@ -354,7 +351,6 @@ public class VPRequestServiceImpl implements VPRequestService {
     /**
      * Resolve the presentation definition from ID or inline value.
      */
-    @SuppressFBWarnings("REC_CATCH_EXCEPTION")
     private String resolvePresentationDefinition(VPRequestCreateDTO requestCreateDTO, int tenantId)
             throws VPException {
 
@@ -412,7 +408,6 @@ public class VPRequestServiceImpl implements VPRequestService {
      * Note: In production, this should be properly signed with the verifier's
      * private key.
      */
-    @SuppressFBWarnings("REC_CATCH_EXCEPTION")
     private String buildRequestObjectJwt(VPRequest vpRequest, String didMethod, String signingAlgorithm) {
         try {
             DIDProvider provider = DIDProviderFactory.getProvider(didMethod);
@@ -527,7 +522,8 @@ public class VPRequestServiceImpl implements VPRequestService {
 
             return jwsObject.serialize();
 
-        } catch (Exception e) {
+        } catch (com.nimbusds.jose.JOSEException | com.google.gson.JsonParseException | VPException |
+                 IllegalArgumentException e) {
             throw new RuntimeException("Error building request object JWT", e);
         }
     }

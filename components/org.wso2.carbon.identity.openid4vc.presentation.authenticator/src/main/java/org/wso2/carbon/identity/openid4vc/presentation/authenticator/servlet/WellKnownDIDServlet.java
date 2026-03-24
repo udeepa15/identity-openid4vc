@@ -19,10 +19,10 @@
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.servlet;
 
 import com.google.gson.JsonObject;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.osgi.service.component.annotations.Component;
+import org.owasp.encoder.Encode;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.CORSUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.did.exception.DIDDocumentException;
 import org.wso2.carbon.identity.openid4vc.presentation.did.service.DIDDocumentService;
@@ -77,7 +77,6 @@ public class WellKnownDIDServlet extends HttpServlet {
      */
 
     @Override
-    @SuppressFBWarnings("XSS_SERVLET")
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
@@ -132,19 +131,6 @@ public class WellKnownDIDServlet extends HttpServlet {
         CORSUtil.handlePreflight(request, response);
     }
 
-    /**
-     * Extract domain from the configuration.
-     * Returns the host and port if present.
-     *
-     * @return Domain string (e.g., "example.com" or "localhost:9443")
-     * @deprecated Use context-aware tenant domains.
-     */
-    @Deprecated
-    private String extractDomain() {
-        String baseUrl = org.wso2.carbon.identity.openid4vc.presentation.common.util.OpenID4VPUtil.getBaseUrl();
-        // Remove protocol
-        return baseUrl.replace("https://", "").replace("http://", "");
-    }
 
     /**
      * Send error response.
@@ -162,8 +148,7 @@ public class WellKnownDIDServlet extends HttpServlet {
         out.flush();
     }
 
-    @SuppressFBWarnings("XSS_SERVLET")
     private void writeResponse(PrintWriter writer, String content) {
-        writer.print(content);
+        writer.print(Encode.forJava(content));
     }
 }

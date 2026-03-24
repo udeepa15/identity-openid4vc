@@ -20,10 +20,10 @@ package org.wso2.carbon.identity.openid4vc.presentation.authenticator.servlet;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.osgi.service.component.annotations.Component;
+import org.owasp.encoder.Encode;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.ErrorDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestCreateDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestResponseDTO;
@@ -91,8 +91,6 @@ public class VPRequestServlet extends HttpServlet {
      * Handle POST requests - Create VP authorization request.
      */
     @Override
-
-    @SuppressFBWarnings({ "SERVLET_HEADER", "SERVLET_PARAMETER", "XSS_SERVLET" })
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
@@ -145,8 +143,6 @@ public class VPRequestServlet extends HttpServlet {
      * Handle GET requests - Get request JWT or status.
      */
     @Override
-
-    @SuppressFBWarnings({ "SERVLET_HEADER", "SERVLET_PARAMETER", "XSS_SERVLET" })
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
@@ -208,21 +204,18 @@ public class VPRequestServlet extends HttpServlet {
         }
     }
 
-    @SuppressFBWarnings("XSS_SERVLET")
     private void writeResponse(PrintWriter writer, String content) {
-        writer.write(content);
+        writer.write(Encode.forJava(content));
     }
 
     /**
      * Handle status polling request.
      */
-    @SuppressFBWarnings("SERVLET_PARAMETER")
     private void handleStatusRequest(HttpServletRequest request, HttpServletResponse response,
             String requestId, int tenantId) throws VPException, IOException {
 
         // Get timeout parameter for long polling
-        @SuppressFBWarnings("SERVLET_PARAMETER")
-        String timeoutParam = request.getParameter("timeout");
+        String timeoutParam = Encode.forJava(request.getParameter("timeout"));
         long timeout = DEFAULT_POLL_TIMEOUT_MS;
         if (StringUtils.isNotBlank(timeoutParam)) {
             try {
@@ -312,7 +305,6 @@ public class VPRequestServlet extends HttpServlet {
      * Get tenant ID from request.
      * In production, this should extract from authentication context.
      */
-    @SuppressFBWarnings("SERVLET_HEADER")
     private int getTenantId(HttpServletRequest request) {
         return org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.ServletUtil.getTenantId(request);
     }

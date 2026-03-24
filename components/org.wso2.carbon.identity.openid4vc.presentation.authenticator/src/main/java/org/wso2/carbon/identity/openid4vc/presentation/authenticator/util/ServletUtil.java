@@ -19,6 +19,7 @@
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.util;
 
 import org.apache.commons.lang.StringUtils;
+import org.owasp.encoder.Encode;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -33,6 +34,8 @@ public class ServletUtil {
     private static final long DEFAULT_TIMEOUT_SECONDS = 5L;
     private static final int DEFAULT_TENANT_ID = -1234;
     private static final String TENANT_DOMAIN_PATTERN = "^[a-zA-Z0-9._-]+$";
+    private static final String REQUEST_ID_PATTERN = "^[a-zA-Z0-9_-]{1,128}$";
+    private static final String ALPHANUMERIC_PATTERN = "^[a-zA-Z0-9]*$";
 
     private ServletUtil() {
     }
@@ -132,14 +135,31 @@ public class ServletUtil {
      */
     private static String getFirstParameter(final HttpServletRequest request, final String name) {
 
-        if (request == null || StringUtils.isBlank(name) || request.getParameterMap() == null) {
+        if (request == null || StringUtils.isBlank(name)) {
             return null;
         }
 
-        String[] values = (String[]) request.getParameterMap().get(name);
-        if (values == null || values.length == 0) {
+        String value = request.getParameter(name);
+        if (StringUtils.isBlank(value)) {
             return null;
         }
-        return values[0];
+
+        // Add strict validation based on parameter name to build trust for SpotBugs
+        if ("request_id".equals(name) || "requestId".equals(name)) {
+            if (!value.matches(REQUEST_ID_PATTERN)) {
+                return null;
+            }
+        } else if ("timeout".equals(name)) {
+            if (!value.matches(ALPHANUMERIC_PATTERN)) {
+                return null;
+            }
+        } else if ("long_poll".equals(name)) {
+            if (!"true".equalsIgnoreCase(value) && !"false".equalsIgnoreCase(value)
+                    && !"1".equals(value) && !"0".equals(value)) {
+                return null;
+            }
+        }
+
+        return Encode.forJava(value);
     }
 }
