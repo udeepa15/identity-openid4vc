@@ -33,7 +33,6 @@ Internal DOM representations of core OpenID4VP schema entities.
 - **`VPRequest.java`**: Represents an active OpenID4VP transaction within the Identity Server.
 - **`VPSubmission.java`**: An internal domain model representing an incoming wallet submission.
 - **`PresentationDefinition.java`**: Represents the requirements demanded by the verifier (Identity Server) from the wallet.
-- **`TrustedVerifier.java`**: Represents metadata for trusted verifier configurations.
 
 ### `5. util/`
 Shared utility classes providing common reusable logic.
