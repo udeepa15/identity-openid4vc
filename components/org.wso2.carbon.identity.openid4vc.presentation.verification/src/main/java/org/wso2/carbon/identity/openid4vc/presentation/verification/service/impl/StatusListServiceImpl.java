@@ -404,12 +404,12 @@ public class StatusListServiceImpl implements StatusListService {
         private final long createdAt;
 
         CachedStatusList(byte[] bitstring) {
-            this.bitstring = bitstring;
+            this.bitstring = bitstring != null ? bitstring.clone() : null;
             this.createdAt = System.currentTimeMillis();
         }
 
         byte[] getBitstring() {
-            return bitstring;
+             return bitstring != null ? bitstring.clone() : null;
         }
 
         boolean isExpired() {
