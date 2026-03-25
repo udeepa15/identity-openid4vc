@@ -347,22 +347,27 @@ public final class VerificationUtil {
             return;
         }
         JsonElement vcElem = vp.get("verifiableCredential");
-        JsonObject vc = null;
-        if (vcElem.isJsonArray() && vcElem.getAsJsonArray().size() > 0) {
-            JsonElement first = vcElem.getAsJsonArray().get(0);
-            if (first.isJsonObject()) {
-                vc = first.getAsJsonObject();
+        List<JsonObject> vcs = new ArrayList<>();
+
+        if (vcElem.isJsonArray()) {
+            for (JsonElement vcElement : vcElem.getAsJsonArray()) {
+                if (vcElement != null && vcElement.isJsonObject()) {
+                    vcs.add(vcElement.getAsJsonObject());
+                }
             }
         } else if (vcElem.isJsonObject()) {
-            vc = vcElem.getAsJsonObject();
+            vcs.add(vcElem.getAsJsonObject());
         }
-        if (vc != null && vc.has("credentialSubject")) {
-            JsonObject subject = vc.getAsJsonObject("credentialSubject");
-            for (Map.Entry<String, JsonElement> entry : subject.entrySet()) {
-                if (entry.getValue().isJsonPrimitive()) {
-                    target.put(entry.getKey(), entry.getValue().getAsString());
-                } else {
-                    target.put(entry.getKey(), parseJsonElement(entry.getValue()));
+
+        for (JsonObject vc : vcs) {
+            if (vc.has("credentialSubject") && vc.get("credentialSubject").isJsonObject()) {
+                JsonObject subject = vc.getAsJsonObject("credentialSubject");
+                for (Map.Entry<String, JsonElement> entry : subject.entrySet()) {
+                    if (entry.getValue().isJsonPrimitive()) {
+                        target.put(entry.getKey(), entry.getValue().getAsString());
+                    } else {
+                        target.put(entry.getKey(), parseJsonElement(entry.getValue()));
+                    }
                 }
             }
         }
