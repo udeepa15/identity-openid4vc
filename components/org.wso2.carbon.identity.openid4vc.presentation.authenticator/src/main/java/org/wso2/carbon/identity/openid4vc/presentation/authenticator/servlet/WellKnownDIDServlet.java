@@ -22,14 +22,13 @@ import com.google.gson.JsonObject;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.osgi.service.component.annotations.Component;
-import org.owasp.encoder.Encode;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.CORSUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.did.exception.DIDDocumentException;
 import org.wso2.carbon.identity.openid4vc.presentation.did.service.DIDDocumentService;
 import org.wso2.carbon.identity.openid4vc.presentation.did.service.impl.DIDDocumentServiceImpl;
 
 import java.io.IOException;
-import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 
 import javax.servlet.Servlet;
 import javax.servlet.ServletException;
@@ -106,9 +105,7 @@ public class WellKnownDIDServlet extends HttpServlet {
             // Add CORS headers
             CORSUtil.addCORSHeaders(request, response);
 
-            PrintWriter out = response.getWriter();
-            writeResponse(out, didDocument);
-            out.flush();
+            writeResponse(response, didDocument);
 
         } catch (DIDDocumentException e) {
             LOG.error("Failed to generate DID document.", e);
@@ -143,12 +140,13 @@ public class WellKnownDIDServlet extends HttpServlet {
         JsonObject errorJson = new JsonObject();
         errorJson.addProperty("error", message);
 
-        PrintWriter out = response.getWriter();
-        writeResponse(out, errorJson.toString());
-        out.flush();
+        writeResponse(response, errorJson.toString());
     }
 
-    private void writeResponse(PrintWriter writer, String content) {
-        writer.print(Encode.forJava(content));
+    private void writeResponse(HttpServletResponse response, String content) throws IOException {
+        byte[] payload = content.getBytes(StandardCharsets.UTF_8);
+        response.setContentLength(payload.length);
+        response.getOutputStream().write(payload);
+        response.getOutputStream().flush();
     }
 }
