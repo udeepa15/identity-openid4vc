@@ -100,8 +100,13 @@ public final class ServletUtil {
             return null;
         }
 
-        Map<String, String> paramMap = getParsedParameters(request);
-        String value = paramMap.get(name);
+        // 1) Read from servlet container parameter map (supports query string + form body).
+        // 2) Fallback to manually parsed body map for edge cases.
+        String value = request.getParameter(name);
+        if (StringUtils.isBlank(value)) {
+            Map<String, String> paramMap = getParsedParameters(request);
+            value = paramMap.get(name);
+        }
 
         if (StringUtils.isBlank(value)) {
             return null;

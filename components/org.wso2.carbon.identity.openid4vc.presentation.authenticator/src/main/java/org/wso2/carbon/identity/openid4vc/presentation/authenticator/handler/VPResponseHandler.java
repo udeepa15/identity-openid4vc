@@ -57,8 +57,8 @@ public class VPResponseHandler {
         private VCVerificationStatus status;
         private String errorCode;
         private String errorDescription;
-        private Map<String, String> verifiedClaims;
-        private List<String> validatedCredentialIds;
+        private Map<String, String> verifiedClaims = new HashMap<>();
+        private List<String> validatedCredentialIds = new ArrayList<>();
         private String presentationId;
 
         public VCVerificationStatus getStatus() {
@@ -86,19 +86,28 @@ public class VPResponseHandler {
         }
 
         public Map<String, String> getVerifiedClaims() {
-            return verifiedClaims;
+            return new HashMap<>(verifiedClaims);
         }
 
         public void setVerifiedClaims(Map<String, String> verifiedClaims) {
-            this.verifiedClaims = verifiedClaims;
+            this.verifiedClaims = verifiedClaims == null ? new HashMap<>() : new HashMap<>(verifiedClaims);
         }
 
         public List<String> getValidatedCredentialIds() {
-            return validatedCredentialIds;
+            return new ArrayList<>(validatedCredentialIds);
         }
 
         public void setValidatedCredentialIds(List<String> validatedCredentialIds) {
-            this.validatedCredentialIds = validatedCredentialIds;
+            this.validatedCredentialIds = validatedCredentialIds == null ? new ArrayList<>() :
+                    new ArrayList<>(validatedCredentialIds);
+        }
+
+        private Map<String, String> getVerifiedClaimsInternal() {
+            return verifiedClaims;
+        }
+
+        private List<String> getValidatedCredentialIdsInternal() {
+            return validatedCredentialIds;
         }
 
         public String getPresentationId() {
@@ -475,13 +484,13 @@ public class VPResponseHandler {
             }
 
             if (credId != null) {
-                result.getValidatedCredentialIds().add(credId);
+                result.getValidatedCredentialIdsInternal().add(credId);
             }
 
             // Extract claims from credential subject
             if (vc.has("credentialSubject")) {
                 JsonObject subject = vc.getAsJsonObject("credentialSubject");
-                extractClaims(subject, "", result.getVerifiedClaims());
+                extractClaims(subject, "", result.getVerifiedClaimsInternal());
             }
 
         } catch (com.google.gson.JsonSyntaxException | IllegalArgumentException e) {
@@ -495,14 +504,14 @@ public class VPResponseHandler {
     private void processJsonCredential(JsonObject credential, ValidationResult result) {
         // Get credential ID
         if (credential.has("id")) {
-            result.getValidatedCredentialIds().add(credential.get("id").getAsString());
+            result.getValidatedCredentialIdsInternal().add(credential.get("id").getAsString());
         }
 
         // Extract claims from credential subject
         if (credential.has("credentialSubject")) {
             JsonElement subject = credential.get("credentialSubject");
             if (subject.isJsonObject()) {
-                extractClaims(subject.getAsJsonObject(), "", result.getVerifiedClaims());
+                extractClaims(subject.getAsJsonObject(), "", result.getVerifiedClaimsInternal());
             } else if (subject.isJsonArray()) {
                 // Multiple subjects
                 JsonArray subjects = subject.getAsJsonArray();
@@ -510,7 +519,7 @@ public class VPResponseHandler {
                     if (subjects.get(i).isJsonObject()) {
                         String prefix = "subject" + i + ".";
                         extractClaims(subjects.get(i).getAsJsonObject(), prefix,
-                                result.getVerifiedClaims());
+                                result.getVerifiedClaimsInternal());
                     }
                 }
             }
