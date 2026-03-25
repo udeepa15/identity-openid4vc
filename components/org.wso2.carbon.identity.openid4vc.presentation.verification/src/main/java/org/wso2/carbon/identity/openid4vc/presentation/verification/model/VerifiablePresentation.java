@@ -270,7 +270,7 @@ public class VerifiablePresentation {
     public String getJwtNonce() {
         if (jwtClaims != null && jwtClaims.containsKey("nonce")) {
             Object nonceValue = jwtClaims.get("nonce");
-+           return nonceValue != null ? nonceValue.toString() : nonce;
+            return nonceValue != null ? nonceValue.toString() : nonce;
         }
         return nonce;
     }

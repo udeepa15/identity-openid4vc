@@ -175,7 +175,7 @@ public class SignatureVerifier {
     /**
      * Verify a Linked Data signature (JSON-LD).
      *
-     * @param document   The JSON-LD document (without proof)
+    * @param canonicalizedDocument   The canonicalized JSON-LD document (without proof)
      * @param publicKey  The public key for verification
      * @param proofType  The proof type (Ed25519Signature2020, JsonWebSignature2020,
      *                   etc.)
@@ -183,25 +183,27 @@ public class SignatureVerifier {
      * @return true if signature is valid
      * @throws CredentialVerificationException if verification fails
      */
-    public boolean verifyLinkedDataSignature(String document, PublicKey publicKey,
+    public boolean verifyLinkedDataSignature(String canonicalizedDocument, PublicKey publicKey,
             String proofType, String proofValue)
             throws CredentialVerificationException {
 
-        if (document == null || publicKey == null || proofType == null || proofValue == null) {
+        if (canonicalizedDocument == null || publicKey == null || proofType == null || proofValue == null) {
             throw new CredentialVerificationException(
                     "Document, public key, proof type, and proof value are required");
         }
 
         try {
+            byte[] canonicalizedDocumentBytes = canonicalizedDocument.getBytes(StandardCharsets.UTF_8);
+
             // Handle different proof types
             if (proofType.contains("Ed25519Signature")) {
-                return verifyEd25519Signature(document, publicKey, proofValue);
+                return verifyEd25519Signature(canonicalizedDocumentBytes, publicKey, proofValue);
             } else if (proofType.contains("JsonWebSignature")) {
-                return verifyJsonWebSignature(document, publicKey, proofValue);
+                return verifyJsonWebSignature(canonicalizedDocumentBytes, publicKey, proofValue);
             } else if (proofType.contains("EcdsaSecp256k1")) {
-                return verifyEcdsaSecp256k1Signature(document, publicKey, proofValue);
+                return verifyEcdsaSecp256k1Signature(canonicalizedDocumentBytes, publicKey, proofValue);
             } else {
-                return verifyGenericSignature(document, publicKey, proofValue, proofType);
+                return verifyGenericSignature(canonicalizedDocumentBytes, publicKey, proofValue, proofType);
             }
 
         } catch (CredentialVerificationException e) {
@@ -235,19 +237,16 @@ public class SignatureVerifier {
     /**
      * Verify an Ed25519 signature.
      */
-    private boolean verifyEd25519Signature(String document, PublicKey publicKey, String proofValue)
+    private boolean verifyEd25519Signature(byte[] canonicalizedDocumentBytes, PublicKey publicKey, String proofValue)
             throws Exception {
 
         byte[] signatureBytes = decodeProofValue(proofValue);
-
-        // Ed25519 performs its own internal SHA-512 hashing, so we pass the raw document bytes
-        byte[] documentBytes = document.getBytes(StandardCharsets.UTF_8);
 
         // Verify using EdDSA
         try {
             Signature sig = Signature.getInstance("EdDSA");
             sig.initVerify(publicKey);
-            sig.update(documentBytes);
+            sig.update(canonicalizedDocumentBytes);
             return sig.verify(signatureBytes);
         } catch (Exception e) {
             // Ed25519 verification requires specific support
@@ -259,7 +258,7 @@ public class SignatureVerifier {
     /**
      * Verify a JSON Web Signature (detached JWS).
      */
-    private boolean verifyJsonWebSignature(String document, PublicKey publicKey, String jws)
+    private boolean verifyJsonWebSignature(byte[] canonicalizedDocumentBytes, PublicKey publicKey, String jws)
             throws Exception {
 
         // JWS format: header..signature (detached payload)
@@ -272,41 +271,66 @@ public class SignatureVerifier {
         String headerJson = Base64URL.from(parts[0]).decodeToString();
         String algorithm = extractAlgorithmFromHeader(headerJson);
 
-        // For detached JWS, create the payload from the document
-        byte[] documentHash = VerificationUtil.hashDocument(document, "SHA-256");
         String encodedPayload = Base64.getUrlEncoder().withoutPadding()
-                .encodeToString(documentHash);
+                .encodeToString(canonicalizedDocumentBytes);
+        String signingInput = parts[0] + "." + encodedPayload;
 
-        // Reconstruct the JWS with payload
-        String fullJws;
-        if (parts.length == 3 && parts[1].isEmpty()) {
-            // Detached format: header..signature
-            fullJws = parts[0] + "." + encodedPayload + "." + parts[2];
-        } else if (parts.length == 2) {
-            // Compact detached format: header.signature
-            fullJws = parts[0] + "." + encodedPayload + "." + parts[1];
+        String signaturePart;
+        if (parts.length == 3) {
+            // Compact JWS (header.payload.signature) or detached JWS (header..signature)
+            signaturePart = parts[2];
         } else {
-            fullJws = jws;
+            // Two-part detached format (header.signature)
+            signaturePart = parts[1];
         }
 
-        return verifyJwtSignature(fullJws, publicKey, algorithm);
+        if (signaturePart == null || signaturePart.isEmpty()) {
+            throw new CredentialVerificationException("Invalid JWS format: missing signature");
+        }
+
+        byte[] signatureBytes = Base64URL.from(signaturePart).decode();
+        return verifyJwsSigningInput(signingInput, signatureBytes, publicKey, algorithm);
+    }
+
+    /**
+     * Verify JWS signature over signing input bytes.
+     */
+    private boolean verifyJwsSigningInput(String signingInput, byte[] signatureBytes,
+                                          PublicKey publicKey, String algorithm)
+            throws CredentialVerificationException {
+
+        try {
+            String jcaAlgorithm = getJcaAlgorithm(algorithm);
+            Signature sig = Signature.getInstance(jcaAlgorithm);
+            sig.initVerify(publicKey);
+            sig.update(signingInput.getBytes(StandardCharsets.US_ASCII));
+
+            if (algorithm.startsWith("ES")) {
+                signatureBytes = convertJwtEcdsaToDer(signatureBytes, algorithm);
+            }
+
+            return sig.verify(signatureBytes);
+        } catch (CredentialVerificationException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new CredentialVerificationException(
+                    "JWS signature verification failed: " + e.getMessage(), e);
+        }
     }
 
     /**
      * Verify an ECDSA secp256k1 signature.
      */
-    private boolean verifyEcdsaSecp256k1Signature(String document, PublicKey publicKey, String proofValue)
+        private boolean verifyEcdsaSecp256k1Signature(byte[] canonicalizedDocumentBytes,
+            PublicKey publicKey, String proofValue)
             throws Exception {
 
         byte[] signatureBytes = decodeProofValue(proofValue);
 
-        // Hash the document
-        byte[] documentHash = VerificationUtil.hashDocument(document, "SHA-256");
-
         // Verify using ECDSA
         Signature sig = Signature.getInstance("SHA256withECDSA");
         sig.initVerify(publicKey);
-        sig.update(documentHash);
+        sig.update(canonicalizedDocumentBytes);
 
         // Convert from compact format to DER if needed
         if (signatureBytes.length == 64) {
@@ -319,13 +343,11 @@ public class SignatureVerifier {
     /**
      * Generic signature verification fallback.
      */
-    private boolean verifyGenericSignature(String document, PublicKey publicKey,
+    private boolean verifyGenericSignature(byte[] canonicalizedDocumentBytes, PublicKey publicKey,
             String proofValue, String proofType)
             throws Exception {
 
         byte[] signatureBytes = decodeProofValue(proofValue);
-
-        byte[] documentHash = VerificationUtil.hashDocument(document, "SHA-256");
 
         // Try to determine algorithm from key type
         String algorithm;
@@ -339,7 +361,7 @@ public class SignatureVerifier {
 
         Signature sig = Signature.getInstance(algorithm);
         sig.initVerify(publicKey);
-        sig.update(documentHash);
+        sig.update(canonicalizedDocumentBytes);
 
         return sig.verify(signatureBytes);
     }

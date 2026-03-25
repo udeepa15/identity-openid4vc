@@ -323,9 +323,9 @@ public class StatusListServiceImpl implements StatusListService {
             // Get credentialSubject
             JsonElement subjectElement = credential.get("credentialSubject");
             if (subjectElement == null) {
-+            throw RevocationCheckException.invalidStatusList(null, 
+                throw RevocationCheckException.invalidStatusList(null,
                 "Missing credentialSubject in status list credential");
-+           }
+            }
             JsonObject credentialSubject;
 
             if (subjectElement.isJsonArray()) {
