@@ -40,6 +40,7 @@ import javax.servlet.http.HttpServletResponse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.testng.Assert.assertEquals;
@@ -196,15 +197,14 @@ public class OpenID4VPAuthenticatorTest {
 
         when(vpRequestService.createVPRequest(any(), anyInt())).thenReturn(mockResponseDTO);
         
-        javax.servlet.RequestDispatcher mockDispatcher = Mockito.mock(javax.servlet.RequestDispatcher.class);
-        when(request.getRequestDispatcher(anyString())).thenReturn(mockDispatcher);
-
         authenticator.initiateAuthenticationRequest(request, response, context);
 
         verify(context).setProperty("openid4vp_request_id", "req-123");
         verify(context).setProperty("openid4vp_transaction_id", "dummy-txn-id");
         verify(vpStatusListenerCache).registerListener(anyString(), anyString(), any());
-        verify(mockDispatcher).forward(request, response);
+        verify(response).sendRedirect(contains("/authenticationendpoint/wallet_login.jsp"));
+        verify(response).sendRedirect(contains("sessionDataKey=dummy-txn-id"));
+        verify(response).sendRedirect(contains("requestId=req-123"));
     }
 
     @Test(expectedExceptions = 
@@ -640,9 +640,6 @@ public class OpenID4VPAuthenticatorTest {
         when(context.getAuthenticatorProperties()).thenReturn(props);
         when(context.getContextIdentifier()).thenReturn("ctx1");
 
-                javax.servlet.RequestDispatcher mockDispatcher = Mockito.mock(javax.servlet.RequestDispatcher.class);
-                when(request.getRequestDispatcher(anyString())).thenReturn(mockDispatcher);
-        
         VPRequestResponseDTO responseDTO = new VPRequestResponseDTO();
         responseDTO.setRequestUri("http://example.com");
                 responseDTO.setRequestId("req-123");
@@ -653,6 +650,8 @@ public class OpenID4VPAuthenticatorTest {
         when(vpRequestService.createVPRequest(any(), anyInt())).thenReturn(responseDTO);
         
         authenticator.initiateAuthenticationRequest(request, response, context);
-                verify(mockDispatcher).forward(request, response);
+        verify(response).sendRedirect(contains("/authenticationendpoint/wallet_login.jsp"));
+        verify(response).sendRedirect(contains("sessionDataKey=ctx1"));
+        verify(response).sendRedirect(contains("requestId=req-123"));
     }
 }
