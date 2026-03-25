@@ -23,7 +23,6 @@ import com.google.gson.GsonBuilder;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.osgi.service.component.annotations.Component;
-import org.owasp.encoder.Encode;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.ErrorDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestCreateDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestResponseDTO;
@@ -40,7 +39,6 @@ import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VP
 import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException;
 
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 
 import javax.servlet.Servlet;
@@ -200,13 +198,12 @@ public class VPRequestServlet extends HttpServlet {
         // For now, return as JSON. In production, this should return JWT format
         response.setContentType(OpenID4VPConstants.HTTP.CONTENT_TYPE_JSON + ";charset=UTF-8");
 
-        try (PrintWriter writer = response.getWriter()) {
-            writeResponse(writer, requestJwt);
-        }
+        writeResponse(response, requestJwt);
     }
 
-    private void writeResponse(PrintWriter writer, String content) {
-        writer.write(Encode.forJava(content));
+    private void writeResponse(HttpServletResponse response, String content) throws IOException {
+        response.getOutputStream().write(content.getBytes(StandardCharsets.UTF_8));
+        response.getOutputStream().flush();
     }
 
     /**
@@ -286,9 +283,7 @@ public class VPRequestServlet extends HttpServlet {
         response.setStatus(statusCode);
         response.setContentType(OpenID4VPConstants.HTTP.CONTENT_TYPE_JSON + ";charset=UTF-8");
 
-        try (PrintWriter writer = response.getWriter()) {
-            writeResponse(writer, gson.toJson(data));
-        }
+        writeResponse(response, gson.toJson(data));
     }
 
     /**
