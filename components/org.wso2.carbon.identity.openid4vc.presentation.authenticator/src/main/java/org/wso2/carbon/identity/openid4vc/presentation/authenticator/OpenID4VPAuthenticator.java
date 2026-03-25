@@ -186,33 +186,33 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
                     vpRequestResponse.getRequestUri(),
                     vpRequestResponse.getAuthorizationDetails().getClientId());
 
-            // Redirect to wallet login JSP with required values.
-            String loginPageUrl = DEFAULT_LOGIN_PAGE + "?"
-                    + "sessionDataKey=" + urlEncode(context.getContextIdentifier())
-                    + "&requestId=" + urlEncode(vpRequestResponse.getRequestId())
-                    + "&transactionId=" + urlEncode(vpRequestResponse.getTransactionId())
-                    + "&requestUri=" + urlEncode(vpRequestResponse.getRequestUri())
-                    + "&qrContent=" + urlEncode(qrContent);
+                // Redirect to wallet login JSP with required values.
+                String loginPageUrl = DEFAULT_LOGIN_PAGE + "?"
+                        + "sessionDataKey=" + urlEncode(context.getContextIdentifier())
+                        + "&requestId=" + urlEncode(vpRequestResponse.getRequestId())
+                        + "&transactionId=" + urlEncode(vpRequestResponse.getTransactionId())
+                        + "&requestUri=" + urlEncode(vpRequestResponse.getRequestUri())
+                        + "&qrContent=" + urlEncode(qrContent);
 
-            response.sendRedirect(loginPageUrl);
+                response.sendRedirect(loginPageUrl);
 
         } catch (VPException e) {
             throw new AuthenticationFailedException("Failed to create VP request", e);
-        } catch (IOException e) {
-            throw new AuthenticationFailedException("Failed to redirect to login page", e);
+            } catch (IOException e) {
+                throw new AuthenticationFailedException("Failed to redirect to login page", e);
         }
     }
 
-    private String urlEncode(String value) {
-        if (value == null) {
-            return "";
+        private String urlEncode(String value) {
+            if (value == null) {
+                return "";
+            }
+            try {
+                return java.net.URLEncoder.encode(value, "UTF-8");
+            } catch (java.io.UnsupportedEncodingException e) {
+                return value;
+            }
         }
-        try {
-            return java.net.URLEncoder.encode(value, "UTF-8");
-        } catch (java.io.UnsupportedEncodingException e) {
-            return value;
-        }
-    }
 
     @Override
     protected void processAuthenticationResponse(HttpServletRequest request, HttpServletResponse response,
@@ -274,33 +274,6 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             if (!verificationResult.isValid()) {
                 throw new AuthenticationFailedException(
                         "VP verification failed: " + verificationResult.getErrorMessage());
-            }
-
-            // Validate nonce and audience in the Authenticator (anti-replay protection).
-            // The session-bound expected values originate from the VP request created
-            // when the authentication flow started; the actual values are extracted
-            // from the VP token by the Verification Component.
-            String expectedNonce = (vpRequest != null) ? vpRequest.getNonce() : null;
-            String expectedAudience = (vpRequest != null) ? vpRequest.getClientId() : null;
-
-            String actualNonce = verificationResult.getNonce();
-            String actualAudience = verificationResult.getAudience();
-
-            if (expectedNonce != null) {
-                if (actualNonce == null || !MessageDigest.isEqual(
-                        expectedNonce.getBytes(StandardCharsets.UTF_8),
-                        actualNonce.getBytes(StandardCharsets.UTF_8))) {
-                    throw new AuthenticationFailedException(
-                            "VP verification failed: Nonce mismatch (potential replay attack)");
-                }
-            }
-            if (expectedAudience != null) {
-                if (actualAudience == null || !MessageDigest.isEqual(
-                        expectedAudience.getBytes(StandardCharsets.UTF_8),
-                        actualAudience.getBytes(StandardCharsets.UTF_8))) {
-                    throw new AuthenticationFailedException(
-                            "VP verification failed: Audience mismatch (potential replay attack)");
-                }
             }
 
             Map<String, Object> verifiedClaims = new HashMap<>(verificationResult.getVerifiedClaims());
@@ -958,7 +931,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      */
     @Override
     public String getContextIdentifier(final HttpServletRequest request) {
-        return ServletUtil.getValidatedAlphaNumParameter(request, "sessionDataKey");
+        return StringUtils.trimToNull(ServletUtil.getValidatedAlphaNumParameter(request, "sessionDataKey"));
     }
 
     /**
@@ -969,10 +942,14 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      */
     @Override
     public boolean canHandle(final HttpServletRequest request) {
-        String sessionDataKey = ServletUtil.getValidatedAlphaNumParameter(request, "sessionDataKey");
-        String vpRequestId = ServletUtil.getValidatedAlphaNumParameter(request, PARAM_VP_REQUEST_ID);
-        String poll = ServletUtil.getValidatedAlphaNumParameter(request, PARAM_POLL);
-        String status = ServletUtil.getValidatedAlphaNumParameter(request, PARAM_STATUS);
+        String sessionDataKey = StringUtils.trimToNull(
+            ServletUtil.getValidatedAlphaNumParameter(request, "sessionDataKey"));
+        String vpRequestId = StringUtils.trimToNull(
+            ServletUtil.getValidatedAlphaNumParameter(request, PARAM_VP_REQUEST_ID));
+        String poll = StringUtils.trimToNull(
+            ServletUtil.getValidatedAlphaNumParameter(request, PARAM_POLL));
+        String status = StringUtils.trimToNull(
+            ServletUtil.getValidatedAlphaNumParameter(request, PARAM_STATUS));
 
         // Handle polling requests from login page
         if (StringUtils.isNotBlank(poll)
