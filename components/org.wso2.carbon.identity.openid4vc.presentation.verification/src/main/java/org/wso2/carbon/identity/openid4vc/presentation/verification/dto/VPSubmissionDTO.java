@@ -124,7 +124,7 @@ public class VPSubmissionDTO {
         return "VPSubmissionDTO{" +
                 "hasVpToken=" + hasVpToken() +
                 ", hasPresentationSubmission=" + (presentationSubmission != null) +
-                ", state='" + state + '\'' +
++               ", hasState=" + (state != null && !state.trim().isEmpty()) +
                 ", hasError=" + hasError() +
                 '}';
     }
