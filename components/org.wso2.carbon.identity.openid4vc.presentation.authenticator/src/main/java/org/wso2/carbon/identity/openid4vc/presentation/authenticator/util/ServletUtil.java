@@ -32,7 +32,7 @@ import javax.servlet.http.HttpServletRequest;
 /**
  * Utility class for Servlets to handle common HTTP request parameters.
  */
-public class ServletUtil {
+public final class ServletUtil {
 
     private static final String PARAM_LONG_POLL = "long_poll";
     private static final String PARAM_TIMEOUT = "timeout";
@@ -45,52 +45,6 @@ public class ServletUtil {
     private static final String PARAM_CACHE_ATTR = "openid4vp.parsedParams";
 
     private ServletUtil() {
-    }
-
-    /**
-     * Check if long polling is enabled for this request.
-     *
-     * @param request HTTP request
-     * @return true if long polling is enabled
-     */
-    public static boolean isLongPollingEnabled(final HttpServletRequest request) {
-
-        String longPollParam = getFirstParameter(request, PARAM_LONG_POLL);
-        longPollParam = sanitizeParam(longPollParam);
-        if (longPollParam != null) {
-            return "true".equalsIgnoreCase(longPollParam)
-                    || "1".equals(longPollParam);
-        }
-
-        // If timeout parameter is provided, assume long polling
-        String timeoutParam = getFirstParameter(request, PARAM_TIMEOUT);
-        timeoutParam = sanitizeParam(timeoutParam);
-        return StringUtils.isNotBlank(timeoutParam);
-    }
-
-    /**
-     * Get timeout seconds from request.
-     *
-     * @param request HTTP request
-     * @return timeout seconds
-     */
-    public static long getTimeoutSeconds(final HttpServletRequest request) {
-
-        String timeoutParam = getFirstParameter(request, PARAM_TIMEOUT);
-        timeoutParam = sanitizeParam(timeoutParam);
-        if (StringUtils.isNotBlank(timeoutParam)) {
-            try {
-                long timeout = Long.parseLong(timeoutParam);
-                if (timeout > 0 && timeout <= MAX_TIMEOUT_SECONDS) {
-                    return timeout;
-                }
-                if (timeout > MAX_TIMEOUT_SECONDS) {
-                    return MAX_TIMEOUT_SECONDS;
-                }
-            } catch (NumberFormatException e) {
-            }
-        }
-        return DEFAULT_TIMEOUT_SECONDS;
     }
 
     /**
@@ -186,8 +140,12 @@ public class ServletUtil {
         Map<String, String> params = new HashMap<>();
 
         try {
-            String body = new String(request.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-            parseParamString(body, params);
+            javax.servlet.ServletInputStream inputStream = request.getInputStream();
+            if (inputStream != null) {
+                String body = new String(inputStream.readAllBytes(),
+                        StandardCharsets.UTF_8);
+                parseParamString(body, params);
+            }
         } catch (IOException e) {
             // Ignore body parse failures and use available parameters.
         }

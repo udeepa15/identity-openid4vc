@@ -19,11 +19,14 @@
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.servlet;
 
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestCreateDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestResponseDTO;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling.LongPollingManager;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling.PollingResult;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
 
 import java.io.ByteArrayInputStream;
@@ -40,6 +43,9 @@ import javax.servlet.http.HttpServletResponse;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 import static org.testng.Assert.assertTrue;
 
@@ -55,6 +61,9 @@ public class VPRequestServletTest {
     
     @Mock
     private VPRequestService vpRequestService;
+
+    @Mock
+    private LongPollingManager pollingManager;
 
     private StringWriter responseWriter;
 
@@ -108,6 +117,23 @@ public class VPRequestServletTest {
 
         String output = responseWriter.toString();
         assertTrue(output.contains("test-jwt"));
+    }
+
+    @Test
+    public void testDoGetStatusSuccess() throws Exception {
+        when(request.getPathInfo()).thenReturn("/test-request-id/status");
+        
+        try (MockedStatic<LongPollingManager> mockedManager = mockStatic(LongPollingManager.class)) {
+            mockedManager.when(LongPollingManager::getInstance).thenReturn(pollingManager);
+            
+            PollingResult result = PollingResult.submitted("test-request-id", "VP_SUBMITTED");
+            when(pollingManager.waitForStatusChange(eq("test-request-id"), anyLong(), eq(-1234))).thenReturn(result);
+
+            vpRequestServlet.doGet(request, response);
+
+            String output = responseWriter.toString();
+            assertTrue(output.contains("VP_SUBMITTED"));
+        }
     }
 
     private ServletInputStream createMockInputStream(String content) {
