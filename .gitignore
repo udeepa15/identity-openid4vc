@@ -24,20 +24,5 @@ hs_err_pid*
 replay_pid*
 
 target
-.idea/
-
-# Java version managers (jenv, sdkman)
-.java-version
-
-# macOS metadata
-.DS_Store
-**/.DS_Store
-
-# Build logs
-build.log
-
-# Eclipse
-.classpath
-.project
-.settings/
+.idea/*
 

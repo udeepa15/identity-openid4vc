@@ -49,10 +49,6 @@
         <module>components/org.wso2.carbon.identity.openid4vc.issuance.metadata</module>
         <module>components/org.wso2.carbon.identity.openid4vc.issuance.offer</module>
         <module>components/org.wso2.carbon.identity.openid4vc.issuance.endpoint</module>
-        <module>components/org.wso2.carbon.identity.openid4vc.presentation.common</module>
-        <module>components/org.wso2.carbon.identity.openid4vc.presentation.did</module>
-        <module>components/org.wso2.carbon.identity.openid4vc.presentation.verification</module>
-        <module>components/org.wso2.carbon.identity.openid4vc.presentation.management</module>
         <module>components/org.wso2.carbon.identity.openid4vc.presentation.authenticator</module>
         <module>features/org.wso2.carbon.identity.openid4vc.template.management.server.feature</module>
         <module>features/org.wso2.carbon.identity.openid4vc.issuance.common.server.feature</module>
@@ -113,11 +109,6 @@
             <dependency>
                 <groupId>org.wso2.carbon.identity.openid4vc</groupId>
                 <artifactId>org.wso2.carbon.identity.openid4vc.issuance.credential</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.wso2.carbon.identity.openid4vc</groupId>
-                <artifactId>org.wso2.carbon.identity.openid4vc.presentation.management</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -465,7 +456,7 @@
         <commons-collections.wso2.osgi.version.range>[3.2.0,4.0.0)</commons-collections.wso2.osgi.version.range>
 
         <!-- Carbon kernel version -->
-        <carbon.kernel.version>4.10.115</carbon.kernel.version>
+        <carbon.kernel.version>4.10.33</carbon.kernel.version>
         <carbon.kernel.feature.version>4.10.22</carbon.kernel.feature.version>
         <carbon.kernel.imp.pkg.version.range>[4.10.22, 5.0.0)</carbon.kernel.imp.pkg.version.range>
         <carbon.kernel.registry.imp.pkg.version.range>[1.0.1, 2.0.0)</carbon.kernel.registry.imp.pkg.version.range>
