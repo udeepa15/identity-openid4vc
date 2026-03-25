@@ -51,8 +51,6 @@ import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VPVerifi
 import org.wso2.carbon.idp.mgt.IdentityProviderManager;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
