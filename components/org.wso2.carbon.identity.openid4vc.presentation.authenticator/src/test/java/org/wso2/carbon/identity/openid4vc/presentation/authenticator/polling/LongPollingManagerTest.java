@@ -22,6 +22,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPStatusListenerCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.WalletDataCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dao.VPRequestDAO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
@@ -44,6 +45,9 @@ public class LongPollingManagerTest {
     private VPRequestDAO vpRequestDAO;
 
     @Mock
+    private VPStatusListenerCache statusListenerCache;
+
+    @Mock
     private WalletDataCache walletDataCache;
 
     @BeforeMethod
@@ -54,6 +58,7 @@ public class LongPollingManagerTest {
         // Use reflection to inject mocks into singleton
         setPrivateField(longPollingManager, "vpRequestDAO", vpRequestDAO);
         setPrivateField(longPollingManager, "walletDataCache", walletDataCache);
+        setPrivateField(longPollingManager, "statusListenerCache", statusListenerCache);
     }
 
     @Test
@@ -103,6 +108,30 @@ public class LongPollingManagerTest {
     @Test
     public void testGetDefaultPollingTimeoutMs() {
         assertEquals(longPollingManager.getDefaultPollingTimeoutMs(), 5000L);
+    }
+
+    @Test
+    public void testWaitForStatusChangeTimeout() throws Exception {
+        when(walletDataCache.hasToken(anyString())).thenReturn(false);
+        when(walletDataCache.hasSubmission(anyString())).thenReturn(false);
+        when(vpRequestDAO.getVPRequestById(anyString(), anyInt()))
+                .thenReturn(new VPRequest.Builder().status(VPRequestStatus.ACTIVE).build());
+
+        // We don't trigger the callback, so it should timeout
+        PollingResult result = longPollingManager.waitForStatusChange("test-id", 100, 1);
+        assertEquals(result.getResultStatus(), PollingResult.ResultStatus.TIMEOUT);
+    }
+
+    @Test
+    public void testNormalizeTimeout() throws Exception {
+        java.lang.reflect.Method method = longPollingManager.getClass()
+                .getDeclaredMethod("normalizeTimeout", long.class);
+        method.setAccessible(true);
+        
+        assertEquals(method.invoke(longPollingManager, 0L), 5000L);
+        assertEquals(method.invoke(longPollingManager, 1000L), 5000L);
+        assertEquals(method.invoke(longPollingManager, 130000L), 120000L);
+        assertEquals(method.invoke(longPollingManager, 10000L), 10000L);
     }
 
     private void setPrivateField(Object obj, String fieldName, Object value) throws Exception {

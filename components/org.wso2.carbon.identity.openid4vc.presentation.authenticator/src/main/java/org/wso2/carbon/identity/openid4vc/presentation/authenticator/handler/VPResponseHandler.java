@@ -86,20 +86,19 @@ public class VPResponseHandler {
         }
 
         public Map<String, String> getVerifiedClaims() {
-            return verifiedClaims != null ? new HashMap<>(verifiedClaims) : null;
+            return verifiedClaims;
         }
 
         public void setVerifiedClaims(Map<String, String> verifiedClaims) {
-            this.verifiedClaims = verifiedClaims != null ? new HashMap<>(verifiedClaims) : null;
+            this.verifiedClaims = verifiedClaims;
         }
 
         public List<String> getValidatedCredentialIds() {
-            return validatedCredentialIds != null ? new ArrayList<>(validatedCredentialIds) : null;
+            return validatedCredentialIds;
         }
 
         public void setValidatedCredentialIds(List<String> validatedCredentialIds) {
-            this.validatedCredentialIds = validatedCredentialIds != null ? new ArrayList<>(validatedCredentialIds)
-                    : null;
+            this.validatedCredentialIds = validatedCredentialIds;
         }
 
         public String getPresentationId() {
@@ -236,6 +235,11 @@ public class VPResponseHandler {
             if (vp.has("verifiableCredential")) {
                 JsonArray credentials = vp.getAsJsonArray("verifiableCredential");
                 processCredentials(credentials, result);
+            } else {
+                result.setStatus(VCVerificationStatus.INVALID);
+                result.setErrorCode(OpenID4VPConstants.ErrorCodes.INVALID_REQUEST);
+                result.setErrorDescription("VP token does not contain verifiableCredential");
+                return result;
             }
 
             // Set presentation ID
@@ -256,7 +260,7 @@ public class VPResponseHandler {
             result.setStatus(VCVerificationStatus.EXPIRED);
             result.setErrorCode(OpenID4VPConstants.ErrorCodes.INVALID_REQUEST);
             result.setErrorDescription(e.getMessage());
-        } catch (IllegalArgumentException | com.google.gson.JsonSyntaxException e) {
+        } catch (IllegalArgumentException | com.google.gson.JsonSyntaxException | IllegalStateException e) {
             result.setStatus(VCVerificationStatus.INVALID);
             result.setErrorCode(OpenID4VPConstants.ErrorCodes.INVALID_REQUEST);
             result.setErrorDescription("Invalid JWT encoding or JSON: " + e.getMessage());
@@ -346,6 +350,11 @@ public class VPResponseHandler {
             if (vp.has("verifiableCredential")) {
                 JsonArray credentials = vp.getAsJsonArray("verifiableCredential");
                 processCredentials(credentials, result);
+            } else {
+                result.setStatus(VCVerificationStatus.INVALID);
+                result.setErrorCode(OpenID4VPConstants.ErrorCodes.INVALID_REQUEST);
+                result.setErrorDescription("VP token does not contain verifiableCredential");
+                return result;
             }
 
             // Set presentation ID
@@ -357,7 +366,7 @@ public class VPResponseHandler {
 
         } catch (VPSubmissionValidationException e) {
             throw e;
-        } catch (com.google.gson.JsonSyntaxException | IllegalArgumentException e) {
+        } catch (com.google.gson.JsonSyntaxException | IllegalArgumentException | IllegalStateException e) {
             result.setStatus(VCVerificationStatus.INVALID);
             result.setErrorCode(OpenID4VPConstants.ErrorCodes.INVALID_REQUEST);
             result.setErrorDescription("Failed to parse VP token: " + e.getMessage());

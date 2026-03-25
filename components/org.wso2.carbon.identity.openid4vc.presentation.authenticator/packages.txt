@@ -1,0 +1,13 @@
+org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache
+org.wso2.carbon.identity.openid4vc.presentation.authenticator.handler
+org.wso2.carbon.identity.openid4vc.presentation.authenticator
+org.wso2.carbon.identity.openid4vc.presentation.authenticator.servlet
+org.wso2.carbon.identity.openid4vc.presentation.authenticator.model
+org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling
+org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto
+org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.impl
+org.wso2.carbon.identity.openid4vc.presentation.authenticator.util
+org.wso2.carbon.identity.openid4vc.presentation.authenticator.status
+org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception
+org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal
+org.wso2.carbon.identity.openid4vc.presentation.authenticator.dao.impl

@@ -23,8 +23,10 @@ import org.wso2.carbon.identity.openid4vc.presentation.did.provider.DIDProvider;
 import org.wso2.carbon.identity.openid4vc.presentation.did.provider.DIDProviderFactory;
 import org.wso2.carbon.identity.openid4vc.presentation.management.model.PresentationDefinition;
 import org.wso2.carbon.identity.openid4vc.presentation.management.service.PresentationDefinitionService;
+import org.wso2.carbon.identity.openid4vc.presentation.management.util.PresentationDefinitionUtil;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -58,8 +60,8 @@ public class VPRequestServiceImplTest {
     private static final String TRANSACTION_ID = "txn-123";
     private static final String CLIENT_ID = "client-123";
     private static final String DEFINITION_ID = "def-123";
-    private static final String DEFINITION_JSON = "{\"id\":\"def-123\",\"input_descriptors\":[{\"id\":\"desc-1\"," +
-            "\"constraints\":{\"fields\":[{\"path\":[\"$.credentialSubject.email\"]}]}}]}";
+    private static final String DEFINITION_JSON = "{\"id\":\"def-123\",\"input_descriptors\":[{\"id\":\"desc-1\","
+            + "\"constraints\":{\"fields\":[{\"path\":[\"$.credentialSubject.email\"]}]}}]}";
 
     @BeforeMethod
     public void setUp() {
@@ -122,7 +124,8 @@ public class VPRequestServiceImplTest {
     public void testCreateVPRequestWithInlinePresentationDefinition() throws Exception {
         VPRequestCreateDTO createDTO = new VPRequestCreateDTO();
         createDTO.setClientId(CLIENT_ID);
-        createDTO.setPresentationDefinition(com.google.gson.JsonParser.parseString(DEFINITION_JSON).getAsJsonObject());
+        createDTO.setPresentationDefinition(com.google.gson.JsonParser.parseString(DEFINITION_JSON)
+                .getAsJsonObject());
         createDTO.setResponseMode(OpenID4VPConstants.Protocol.RESPONSE_MODE_DIRECT_POST);
 
         doNothing().when(vpRequestDAO).createVPRequest(any(VPRequest.class));
@@ -214,16 +217,194 @@ public class VPRequestServiceImplTest {
     }
 
     @Test
-    public void testDeleteVPRequest() throws Exception {
+    public void testCreateVPRequestWithRequestedCredentials() throws Exception {
+        VPRequestCreateDTO createDTO = new VPRequestCreateDTO();
+        createDTO.setClientId(CLIENT_ID);
+        // PD with requested_credentials instead of input_descriptors
+        String pdWithReqCreds = "{\"id\":\"test-pd\",\"requested_credentials\":[{\"type\":"
+                + "\"VerifiedEmployee\",\"purpose\":\"Verify employment\",\"requested_claims\":"
+                + "[\"given_name\"]}]}";
+        createDTO.setPresentationDefinition(com.google.gson.JsonParser.parseString(pdWithReqCreds)
+                .getAsJsonObject());
+
+        doNothing().when(vpRequestDAO).createVPRequest(any(VPRequest.class));
+
+        JWSSigner mockSigner = Mockito.mock(JWSSigner.class);
+        when(mockSigner.supportedJWSAlgorithms())
+                .thenReturn(new java.util.HashSet<>(java.util.Collections.singletonList(JWSAlgorithm.RS256)));
+        when(mockSigner.sign(any(), any())).thenReturn(new Base64URL("dummy-signature"));
+
+        try (MockedStatic<DIDProviderFactory> mockedFactory = Mockito.mockStatic(DIDProviderFactory.class)) {
+            mockedFactory.when(() -> DIDProviderFactory.getProvider("web")).thenReturn(didProvider);
+            when(didProvider.getDID(Mockito.anyInt(), Mockito.any())).thenReturn("did:web:localhost");
+            when(didProvider.getSigningKeyId(Mockito.anyInt(), Mockito.any()))
+                    .thenReturn("did:web:localhost#owner");
+            when(didProvider.getSigningAlgorithm()).thenReturn(JWSAlgorithm.RS256);
+            when(didProvider.getSigner(Mockito.anyInt())).thenReturn(mockSigner);
+
+            try (MockedStatic<PresentationDefinitionUtil> mockedPDUtil =
+                         Mockito.mockStatic(PresentationDefinitionUtil.class)) {
+                mockedPDUtil.when(() -> PresentationDefinitionUtil.
+                        isValidPresentationDefinition(anyString())).thenReturn(true);
+                mockedPDUtil.when(() -> PresentationDefinitionUtil.buildPresentationDefinition(anyString(), anyString(),
+                        anyString(), any())).thenReturn("{\"pd\":\"mocked\"}");
+                
+                VPRequestResponseDTO responseDTO = vpRequestService.createVPRequest(createDTO, TENANT_ID);
+                assertNotNull(responseDTO);
+                assertNotNull(responseDTO.getRequestId());
+            }
+        }
+    }
+
+    @Test
+    public void testCreateVPRequestWithInternalConfig() throws Exception {
+        VPRequestCreateDTO createDTO = new VPRequestCreateDTO();
+        createDTO.setClientId(CLIENT_ID);
+        // PD with _internal config
+        String pdWithInternal = "{\"id\":\"def-123\",\"_internal\":{\"signing_algorithm\":\"RS256\"},"
+                + "\"input_descriptors\":[]}";
+        createDTO.setPresentationDefinition(com.google.gson.JsonParser.parseString(pdWithInternal)
+                .getAsJsonObject());
+
+        doNothing().when(vpRequestDAO).createVPRequest(any(VPRequest.class));
+
+        JWSSigner mockSigner = Mockito.mock(JWSSigner.class);
+        when(mockSigner.supportedJWSAlgorithms())
+                .thenReturn(new java.util.HashSet<>(java.util.Collections.singletonList(JWSAlgorithm.RS256)));
+        when(mockSigner.sign(any(), any())).thenReturn(new Base64URL("dummy-signature"));
+
+        try (MockedStatic<DIDProviderFactory> mockedFactory = Mockito.mockStatic(DIDProviderFactory.class)) {
+            mockedFactory.when(() -> DIDProviderFactory.getProvider("web")).thenReturn(didProvider);
+            when(didProvider.getDID(Mockito.anyInt(), Mockito.any())).thenReturn("did:web:localhost");
+            when(didProvider.getSigningKeyId(Mockito.anyInt(), Mockito.any()))
+                    .thenReturn("did:web:localhost#owner");
+            when(didProvider.getSigningAlgorithm()).thenReturn(JWSAlgorithm.RS256);
+            when(didProvider.getSigner(Mockito.anyInt())).thenReturn(mockSigner);
+
+            try (MockedStatic<PresentationDefinitionUtil> mockedPDUtil =
+                         Mockito.mockStatic(PresentationDefinitionUtil.class)) {
+                mockedPDUtil.when(() -> PresentationDefinitionUtil.
+                isValidPresentationDefinition(anyString())).thenReturn(true);
+                VPRequestResponseDTO responseDTO = vpRequestService.createVPRequest(createDTO, TENANT_ID);
+                assertNotNull(responseDTO);
+            }
+        }
+    }
+
+    @Test
+    public void testGetVPRequestByIdPopulateDefinition() throws Exception {
         VPRequest vpRequest = new VPRequest.Builder()
                 .requestId(REQUEST_ID)
                 .clientId(CLIENT_ID)
+                .presentationDefinitionId(DEFINITION_ID)
+                .build();
+        // presentationDefinition is null in model
+
+        when(vpRequestDAO.getVPRequestById(REQUEST_ID, TENANT_ID)).thenReturn(vpRequest);
+        
+        PresentationDefinition definition = new PresentationDefinition.Builder()
+                .definitionId(DEFINITION_ID)
+                .requestedCredentials(java.util.Collections.emptyList())
+                .build();
+        when(presentationDefinitionService.getPresentationDefinitionById(DEFINITION_ID, TENANT_ID))
+                .thenReturn(definition);
+
+        VPRequest result = vpRequestService.getVPRequestById(REQUEST_ID, TENANT_ID);
+        assertNotNull(result.getPresentationDefinition());
+    }
+
+    @Test
+    public void testGetVPRequestByTransactionIdPopulateDefinition() throws Exception {
+        VPRequest vpRequest = new VPRequest.Builder()
+                .transactionId(TRANSACTION_ID)
+                .clientId(CLIENT_ID)
+                .presentationDefinitionId(DEFINITION_ID)
+                .build();
+
+        when(vpRequestDAO.getVPRequestByTransactionId(TRANSACTION_ID, TENANT_ID)).thenReturn(vpRequest);
+        
+        PresentationDefinition definition = new PresentationDefinition.Builder()
+                .definitionId(DEFINITION_ID)
+                .requestedCredentials(java.util.Collections.emptyList())
+                .build();
+        when(presentationDefinitionService.getPresentationDefinitionById(DEFINITION_ID, TENANT_ID))
+                .thenReturn(definition);
+
+        VPRequest result = vpRequestService.getVPRequestByTransactionId(TRANSACTION_ID, TENANT_ID);
+        assertNotNull(result.getPresentationDefinition());
+    }
+
+    @Test
+    public void testGetVPRequestStatus() throws Exception {
+        VPRequest vpRequest = new VPRequest.Builder()
+                .transactionId(TRANSACTION_ID)
+                .requestId(REQUEST_ID)
+                .status(VPRequestStatus.ACTIVE)
+                .build();
+        when(vpRequestDAO.getVPRequestByTransactionId(TRANSACTION_ID, TENANT_ID)).thenReturn(vpRequest);
+
+        org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestStatusDTO status = 
+            vpRequestService.getVPRequestStatus(TRANSACTION_ID, TENANT_ID);
+        assertEquals(status.getStatus(), VPRequestStatus.ACTIVE.getValue());
+    }
+
+    @Test
+    public void testGetRequestUri() throws Exception {
+        VPRequest vpRequest = new VPRequest.Builder().requestId(REQUEST_ID).build();
+        when(vpRequestDAO.getVPRequestById(REQUEST_ID, TENANT_ID)).thenReturn(vpRequest);
+        
+        String uri = vpRequestService.getRequestUri(REQUEST_ID, TENANT_ID);
+        assertNotNull(uri);
+    }
+
+    @Test
+    public void testGetRequestJwt() throws Exception {
+        VPRequest vpRequest = new VPRequest.Builder()
+                .requestId(REQUEST_ID)
+                .status(VPRequestStatus.ACTIVE)
+                .expiresAt(System.currentTimeMillis() + 600000)
+                .requestJwt("dummy-jwt")
                 .build();
         when(vpRequestDAO.getVPRequestById(REQUEST_ID, TENANT_ID)).thenReturn(vpRequest);
-        doNothing().when(vpRequestDAO).deleteVPRequest(REQUEST_ID, TENANT_ID);
 
-        vpRequestService.deleteVPRequest(REQUEST_ID, TENANT_ID);
+        String jwt = vpRequestService.getRequestJwt(REQUEST_ID, TENANT_ID);
+        assertEquals(jwt, "dummy-jwt");
+    }
 
-        verify(vpRequestDAO, times(1)).deleteVPRequest(REQUEST_ID, TENANT_ID);
+    @Test(expectedExceptions = VPException.class)
+    public void testGetRequestJwtInactive() throws Exception {
+        VPRequest vpRequest = new VPRequest.Builder()
+                .requestId(REQUEST_ID)
+                .status(VPRequestStatus.COMPLETED)
+                .expiresAt(System.currentTimeMillis() + 600000)
+                .build();
+        when(vpRequestDAO.getVPRequestById(REQUEST_ID, TENANT_ID)).thenReturn(vpRequest);
+
+        vpRequestService.getRequestJwt(REQUEST_ID, TENANT_ID);
+    }
+
+    @Test
+    public void testProcessExpiredRequests() throws Exception {
+        when(vpRequestDAO.markExpiredRequests(TENANT_ID)).thenReturn(5);
+        int count = vpRequestService.processExpiredRequests(TENANT_ID);
+        assertEquals(count, 5);
+    }
+
+    @Test
+    public void testIsRequestActive() throws Exception {
+        VPRequest vpRequest = new VPRequest.Builder()
+                .status(VPRequestStatus.ACTIVE)
+                .expiresAt(System.currentTimeMillis() + 600000)
+                .build();
+        when(vpRequestDAO.getVPRequestById(REQUEST_ID, TENANT_ID)).thenReturn(vpRequest);
+        
+        assertEquals(vpRequestService.isRequestActive(REQUEST_ID, TENANT_ID), true);
+        
+        VPRequest expiredRequest = new VPRequest.Builder()
+                .status(VPRequestStatus.ACTIVE)
+                .expiresAt(System.currentTimeMillis() - 600000)
+                .build();
+        when(vpRequestDAO.getVPRequestById("expired", TENANT_ID)).thenReturn(expiredRequest);
+        assertEquals(vpRequestService.isRequestActive("expired", TENANT_ID), false);
     }
 }

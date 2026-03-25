@@ -58,6 +58,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
+import javax.servlet.RequestDispatcher;
+import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -104,7 +106,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
     private static final String PROP_CLIENT_ID = "ClientId";
     private static final String PROP_DID_METHOD = "DIDMethod";
     private static final String PROP_SUBJECT_CLAIM = "SubjectClaim";
-    private static final String DEFAULT_LOGIN_PAGE = "/authenticationendpoint/wallet_login.jsp";
+    private static final String DEFAULT_LOGIN_PAGE = "/wallet_login.jsp";
 
     private static final int DISPLAY_ORDER_3 = 3;
     private static final int DISPLAY_ORDER_4 = 4;
@@ -184,33 +186,24 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
                     vpRequestResponse.getRequestUri(),
                     vpRequestResponse.getAuthorizationDetails().getClientId());
 
-                // Redirect to wallet login JSP with required values.
-                String loginPageUrl = DEFAULT_LOGIN_PAGE + "?"
-                        + "sessionDataKey=" + urlEncode(context.getContextIdentifier())
-                        + "&requestId=" + urlEncode(vpRequestResponse.getRequestId())
-                        + "&transactionId=" + urlEncode(vpRequestResponse.getTransactionId())
-                        + "&requestUri=" + urlEncode(vpRequestResponse.getRequestUri())
-                        + "&qrContent=" + urlEncode(qrContent);
+            request.setAttribute(UI_SESSION_DATA_KEY, context.getContextIdentifier());
+            request.setAttribute(UI_REQUEST_ID, vpRequestResponse.getRequestId());
+            request.setAttribute(UI_TRANSACTION_ID, vpRequestResponse.getTransactionId());
+            request.setAttribute(UI_REQUEST_URI, vpRequestResponse.getRequestUri());
+            request.setAttribute(UI_QR_CONTENT, qrContent);
 
-                response.sendRedirect(loginPageUrl);
+            RequestDispatcher requestDispatcher = request.getRequestDispatcher(DEFAULT_LOGIN_PAGE);
+            if (requestDispatcher == null) {
+                throw new AuthenticationFailedException("Unable to resolve wallet login page dispatcher");
+            }
+            requestDispatcher.forward(request, response);
 
         } catch (VPException e) {
             throw new AuthenticationFailedException("Failed to create VP request", e);
-            } catch (IOException e) {
-                throw new AuthenticationFailedException("Failed to redirect to login page", e);
+        } catch (IOException | ServletException e) {
+            throw new AuthenticationFailedException("Failed to forward to login page", e);
         }
     }
-
-        private String urlEncode(String value) {
-            if (value == null) {
-                return "";
-            }
-            try {
-                return java.net.URLEncoder.encode(value, "UTF-8");
-            } catch (java.io.UnsupportedEncodingException e) {
-                return value;
-            }
-        }
 
     @Override
     protected void processAuthenticationResponse(HttpServletRequest request, HttpServletResponse response,

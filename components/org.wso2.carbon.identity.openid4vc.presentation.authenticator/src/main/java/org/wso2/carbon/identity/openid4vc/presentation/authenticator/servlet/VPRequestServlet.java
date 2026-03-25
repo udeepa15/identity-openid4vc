@@ -20,12 +20,9 @@ package org.wso2.carbon.identity.openid4vc.presentation.authenticator.servlet;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.osgi.service.component.annotations.Component;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.ErrorDTO;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestCreateDTO;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestResponseDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestStatusDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPRequestExpiredException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPRequestNotFoundException;
@@ -52,8 +49,6 @@ import javax.servlet.http.HttpServletResponse;
  * operations.
  * 
  * Endpoints:
- * - POST /api/identity/openid4vp/v1/vp-request - Create a new VP authorization
- * request
  * - GET /api/identity/openid4vp/v1/vp-request/{requestId} - Get authorization
  * request JWT
  * - GET /api/identity/openid4vp/v1/vp-request/{requestId}/status - Get request
@@ -86,57 +81,7 @@ public class VPRequestServlet extends HttpServlet {
         this.vpRequestService = new VPRequestServiceImpl();
     }
 
-    /**
-     * Handle POST requests - Create VP authorization request.
-     */
-    @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
 
-        try {
-            // Read request body
-            String requestBody = IOUtils.toString(request.getInputStream(), StandardCharsets.UTF_8);
-
-            if (StringUtils.isBlank(requestBody)) {
-                sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
-                        ErrorDTO.ErrorCode.INVALID_REQUEST, "Request body is required");
-                return;
-            }
-
-            // Parse request DTO
-            VPRequestCreateDTO createDTO;
-            try {
-                createDTO = gson.fromJson(requestBody, VPRequestCreateDTO.class);
-            } catch (com.google.gson.JsonSyntaxException e) {
-                sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
-                        ErrorDTO.ErrorCode.INVALID_REQUEST, "Invalid JSON format: " + e.getMessage());
-                return;
-            }
-
-            // Validate required fields
-            if (StringUtils.isBlank(createDTO.getClientId())) {
-                sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
-                        ErrorDTO.ErrorCode.INVALID_REQUEST, "client_id is required");
-                return;
-            }
-
-            // Get tenant ID from request context (simplified for now)
-            int tenantId = getTenantId(request);
-
-            // Create VP request
-            VPRequestResponseDTO responseDTO = vpRequestService.createVPRequest(createDTO, tenantId);
-
-            // Send success response
-            sendJsonResponse(response, HttpServletResponse.SC_CREATED, responseDTO);
-
-        } catch (VPException e) {
-            sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
-                    ErrorDTO.ErrorCode.INVALID_REQUEST, e.getMessage());
-        } catch (RuntimeException e) {
-            sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                    ErrorDTO.ErrorCode.INTERNAL_ERROR, "Internal server error");
-        }
-    }
 
     /**
      * Handle GET requests - Get request JWT or status.

@@ -23,26 +23,19 @@ import org.mockito.MockedStatic;
 import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestCreateDTO;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestResponseDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling.LongPollingManager;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling.PollingResult;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
+import java.io.ByteArrayOutputStream;
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 
-import javax.servlet.ReadListener;
-import javax.servlet.ServletInputStream;
+import javax.servlet.ServletOutputStream;
+import javax.servlet.WriteListener;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mockStatic;
@@ -65,7 +58,7 @@ public class VPRequestServletTest {
     @Mock
     private LongPollingManager pollingManager;
 
-    private StringWriter responseWriter;
+    private ByteArrayOutputStream responseOutputStream;
 
     @BeforeMethod
     public void setUp() throws Exception {
@@ -77,36 +70,11 @@ public class VPRequestServletTest {
         serviceField.setAccessible(true);
         serviceField.set(vpRequestServlet, vpRequestService);
 
-        responseWriter = new StringWriter();
-        when(response.getWriter()).thenReturn(new PrintWriter(responseWriter));
+        responseOutputStream = new ByteArrayOutputStream();
+        when(response.getOutputStream()).thenReturn(createMockOutputStream(responseOutputStream));
     }
 
-    @Test
-    public void testDoPostSuccess() throws Exception {
-        String json = "{\"clientId\":\"test-client\",\"presentationDefinitionId\":\"test-pd\"}";
-        ServletInputStream inputStream = createMockInputStream(json);
-        when(request.getInputStream()).thenReturn(inputStream);
 
-        VPRequestResponseDTO responseDTO = new VPRequestResponseDTO();
-        responseDTO.setRequestId("test-request-id");
-        when(vpRequestService.createVPRequest(any(VPRequestCreateDTO.class), anyInt())).thenReturn(responseDTO);
-
-        vpRequestServlet.doPost(request, response);
-
-        String output = responseWriter.toString();
-        assertTrue(output.contains("test-request-id"));
-    }
-
-    @Test
-    public void testDoPostEmptyBody() throws Exception {
-        ServletInputStream inputStream = createMockInputStream("");
-        when(request.getInputStream()).thenReturn(inputStream);
-
-        vpRequestServlet.doPost(request, response);
-
-        String output = responseWriter.toString();
-        assertTrue(output.contains("Request body is required"));
-    }
 
     @Test
     public void testDoGetRequestIdJwt() throws Exception {
@@ -115,7 +83,7 @@ public class VPRequestServletTest {
 
         vpRequestServlet.doGet(request, response);
 
-        String output = responseWriter.toString();
+        String output = responseOutputStream.toString(StandardCharsets.UTF_8.name());
         assertTrue(output.contains("test-jwt"));
     }
 
@@ -131,34 +99,23 @@ public class VPRequestServletTest {
 
             vpRequestServlet.doGet(request, response);
 
-            String output = responseWriter.toString();
+            String output = responseOutputStream.toString(StandardCharsets.UTF_8.name());
             assertTrue(output.contains("VP_SUBMITTED"));
         }
     }
 
-    private ServletInputStream createMockInputStream(String content) {
-        final ByteArrayInputStream byteArrayInputStream =
-                new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8));
-        return new ServletInputStream() {
-            @Override
-            public int read() throws IOException {
-                return byteArrayInputStream.read();
-            }
-
-            @Override
-            public int read(byte[] b, int off, int len) throws IOException {
-                return byteArrayInputStream.read(b, off, len);
-            }
-
-            public boolean isFinished() {
-                return byteArrayInputStream.available() == 0;
-            }
-
+    private ServletOutputStream createMockOutputStream(ByteArrayOutputStream outputStream) {
+        return new ServletOutputStream() {
             public boolean isReady() {
                 return true;
             }
 
-            public void setReadListener(ReadListener readListener) {
+            public void setWriteListener(WriteListener writeListener) {
+            }
+
+            @Override
+            public void write(int b) {
+                outputStream.write(b);
             }
         };
     }

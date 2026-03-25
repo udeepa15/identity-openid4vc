@@ -102,13 +102,12 @@ public final class ServletUtil {
 
         Map<String, String> paramMap = getParsedParameters(request);
         String value = paramMap.get(name);
-        if (StringUtils.isBlank(value)) {
-            value = request.getParameter(name);
-        }
 
         if (StringUtils.isBlank(value)) {
             return null;
         }
+
+        value = sanitizeParam(value);
 
         // Add strict validation based on parameter name to build trust for SpotBugs
         if ("request_id".equals(name) || "requestId".equals(name)) {

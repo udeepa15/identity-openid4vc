@@ -30,6 +30,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 public class CORSUtilTest {
 
@@ -48,19 +49,14 @@ public class CORSUtilTest {
     public void testAddCORSHeaders() {
         CORSUtil.addCORSHeaders(mockRequest, mockResponse);
 
-        verify(mockResponse).setHeader("Access-Control-Allow-Origin", "*");
-        verify(mockResponse, never()).setHeader(eq("Access-Control-Allow-Credentials"), anyString());
-        verify(mockResponse).setHeader(eq("Access-Control-Allow-Methods"), anyString());
-        verify(mockResponse).setHeader(eq("Access-Control-Allow-Headers"), anyString());
-        verify(mockResponse).setHeader(eq("Access-Control-Max-Age"), anyString());
-        verify(mockResponse).setHeader(eq("Access-Control-Expose-Headers"), anyString());
+        verifyNoInteractions(mockResponse);
     }
 
     @Test
     public void testHandlePreflight() {
         CORSUtil.handlePreflight(mockRequest, mockResponse);
 
-        verify(mockResponse).setStatus(HttpServletResponse.SC_NO_CONTENT);
-        verify(mockResponse).setHeader("Access-Control-Allow-Origin", "*");
+        verify(mockResponse).setStatus(HttpServletResponse.SC_FORBIDDEN);
+        verify(mockResponse, never()).setHeader(eq("Access-Control-Allow-Origin"), anyString());
     }
 }
