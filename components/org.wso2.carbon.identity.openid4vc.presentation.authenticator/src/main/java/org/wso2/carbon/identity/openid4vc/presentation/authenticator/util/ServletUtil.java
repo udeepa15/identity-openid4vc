@@ -149,6 +149,10 @@ public class ServletUtil {
         Map<String, String> paramMap = getParsedParameters(request);
         String value = paramMap.get(name);
         if (StringUtils.isBlank(value)) {
+            value = request.getParameter(name);
+        }
+
+        if (StringUtils.isBlank(value)) {
             return null;
         }
 
@@ -180,6 +184,7 @@ public class ServletUtil {
         }
 
         Map<String, String> params = new HashMap<>();
+
         try {
             String body = new String(request.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
             parseParamString(body, params);
