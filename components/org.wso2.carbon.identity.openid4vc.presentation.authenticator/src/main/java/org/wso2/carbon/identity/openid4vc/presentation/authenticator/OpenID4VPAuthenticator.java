@@ -60,7 +60,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
-import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -187,19 +186,31 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
                     vpRequestResponse.getRequestUri(),
                     vpRequestResponse.getAuthorizationDetails().getClientId());
 
-            // Pass wallet UI data via request attributes and forward to a fixed internal JSP.
-            request.setAttribute(UI_SESSION_DATA_KEY, context.getContextIdentifier());
-            request.setAttribute(UI_REQUEST_ID, vpRequestResponse.getRequestId());
-            request.setAttribute(UI_TRANSACTION_ID, vpRequestResponse.getTransactionId());
-            request.setAttribute(UI_REQUEST_URI, vpRequestResponse.getRequestUri());
-            request.setAttribute(UI_QR_CONTENT, qrContent);
+            // Redirect to wallet login JSP with required values.
+            String loginPageUrl = DEFAULT_LOGIN_PAGE + "?"
+                    + "sessionDataKey=" + urlEncode(context.getContextIdentifier())
+                    + "&requestId=" + urlEncode(vpRequestResponse.getRequestId())
+                    + "&transactionId=" + urlEncode(vpRequestResponse.getTransactionId())
+                    + "&requestUri=" + urlEncode(vpRequestResponse.getRequestUri())
+                    + "&qrContent=" + urlEncode(qrContent);
 
-            request.getRequestDispatcher(DEFAULT_LOGIN_PAGE).forward(request, response);
+            response.sendRedirect(loginPageUrl);
 
         } catch (VPException e) {
             throw new AuthenticationFailedException("Failed to create VP request", e);
-        } catch (ServletException | IOException e) {
-            throw new AuthenticationFailedException("Failed to route to login page", e);
+        } catch (IOException e) {
+            throw new AuthenticationFailedException("Failed to redirect to login page", e);
+        }
+    }
+
+    private String urlEncode(String value) {
+        if (value == null) {
+            return "";
+        }
+        try {
+            return java.net.URLEncoder.encode(value, "UTF-8");
+        } catch (java.io.UnsupportedEncodingException e) {
+            return value;
         }
     }
 
