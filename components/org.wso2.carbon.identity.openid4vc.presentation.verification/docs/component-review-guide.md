@@ -21,8 +21,12 @@ It validates:
 2. `service/impl/VCVerificationServiceImpl.java` (all runtime orchestration)
 
 ### Validation + parsing helpers
+<<<<<<< Updated upstream
 3. `util/VPSubmissionValidator.java`
 4. `util/VerificationUtil.java`
+=======
+1. `util/VerificationUtil.java`
+>>>>>>> Stashed changes
 5. `util/SignatureVerifier.java`
 6. `jwt/ExtendedJWKSValidator.java`
 
@@ -57,6 +61,7 @@ It validates:
 
 ## 4) End-to-end runtime flow (what to explain in review)
 
+<<<<<<< Updated upstream
 ## Step A — Wallet submission shape validation
 `VPSubmissionValidator.validateSubmission()`
 
@@ -71,6 +76,14 @@ Checks:
   - each descriptor needs `id`, `format`, `path`
 
 Why important: hard-fails malformed submissions early before cryptographic work.
+=======
+## Step A — Submission validation
+Handled within `VCVerificationServiceImpl.verifyPresentation()` via `VerificationUtil.extractFormatFromSubmission()`. 
+
+Checks:
+- `vp_token` and `presentation_submission` are non-blank.
+- `presentation_submission` must include a valid `descriptor_map` with a supported `format`.
+>>>>>>> Stashed changes
 
 ---
 
@@ -199,8 +212,11 @@ This is an intentional separation of concerns.
   - util hashing/format/date/claim extraction
   - status list branching and decode paths
   - exception constructors/factories
+<<<<<<< Updated upstream
 - `util/VPSubmissionValidatorTest.java`
   - strict submission schema validation cases
+=======
+>>>>>>> Stashed changes
 - `util/SignatureVerifierTest.java`
   - algorithm mapping / helper behavior / error handling
 - `util/HttpClientAndJWKSValidatorTest.java`
