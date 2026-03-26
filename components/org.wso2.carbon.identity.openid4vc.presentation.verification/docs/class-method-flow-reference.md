@@ -6,11 +6,7 @@ This document explains each class and method purpose, flow role, inputs, outputs
 
 ## 1) End-to-end flow map (how all classes work together)
 
-<<<<<<< Updated upstream
 1. Wallet submission is validated by `VPSubmissionValidator`.
-=======
-1. Wallet submission is handled by `VCVerificationServiceImpl.verifyPresentation(vpToken, submissionJson, presentationDefinitionId, tenantId)`.
->>>>>>> Stashed changes
 2. Main orchestration starts in `VCVerificationServiceImpl.verifyPresentation(vpToken, submissionJson, presentationDefinitionId, tenantId)`.
 3. Format is detected from `presentation_submission.descriptor_map[0].format`.
 4. Route:
@@ -421,7 +417,6 @@ Private helpers:
 
 ---
 
-<<<<<<< Updated upstream
 ## 4.4 `VPSubmissionValidator`
 Purpose: validates incoming wallet submission DTO and presentation_submission shape.
 
@@ -441,8 +436,6 @@ Private helpers:
 
 ---
 
-=======
->>>>>>> Stashed changes
 ## 4.5 `ExtendedJWKSValidator`
 Purpose: validates JWT signatures using remote JWKS (not RSA-only, supports broader algorithms via Nimbus processing).
 
@@ -605,7 +598,6 @@ Static factories:
 Mutator:
 - `setStatusListUrl(String)`
 
-<<<<<<< Updated upstream
 ## 7.3 `VPSubmissionValidationException`
 Purpose: submission schema/field validation exception.
 
@@ -613,18 +605,11 @@ Constructor:
 - message
 
 ---
-=======
-## 7.3 `CredentialVerificationException` (re-used)
->>>>>>> Stashed changes
 
 ## 8) Error handling strategy (cross-component summary)
 
 - Boundary validation failures:
-<<<<<<< Updated upstream
   - `VPSubmissionValidationException`
-=======
-  - `CredentialVerificationException`
->>>>>>> Stashed changes
 
 - Verification failures (format/signature/claims/time etc.):
   - `CredentialVerificationException`

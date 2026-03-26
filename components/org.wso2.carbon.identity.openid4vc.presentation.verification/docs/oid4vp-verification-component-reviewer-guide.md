@@ -51,10 +51,7 @@ This is the primary entry and routing layer.
 Handles StatusList2021 / BitstringStatusList fetch, decode, and bit checks.
 
 ## 3.3 Validation + utility
-<<<<<<< Updated upstream
 - `VPSubmissionValidator`
-=======
->>>>>>> Stashed changes
 - `VerificationUtil`
 - `SignatureVerifier`
 - `HttpClientUtil`
@@ -71,13 +68,9 @@ These support schema checks, parsing, hashing, signature verification, and safe 
 ## 4) End-to-end verification flow
 
 ## Step A — Submission validation
-<<<<<<< Updated upstream
 `VPSubmissionValidator.validateSubmission(...)`
 
 Checks mandatory fields (`state`, `vp_token`, `presentation_submission`) and descriptor map structure.
-=======
-Handled within `VCVerificationServiceImpl.verifyPresentation()` via minimal non-blank checks and format extraction.
->>>>>>> Stashed changes
 
 ## Step B — Unified VP verification
 `VCVerificationServiceImpl.verifyPresentation(vpToken, submissionJson, presentationDefinitionId, tenantId)`
@@ -145,11 +138,7 @@ Resilience controls:
 
 ## 7) Error handling model
 
-<<<<<<< Updated upstream
 - Submission schema failures → `VPSubmissionValidationException`
-=======
-- Submission validation failures → `CredentialVerificationException`
->>>>>>> Stashed changes
 - Verification failures (format/signature/claims) → `CredentialVerificationException`
 - Revocation fetch/decode failures → `RevocationCheckException`
 
@@ -189,10 +178,7 @@ Key controls implemented:
 Primary tests to inspect:
 - `VCVerificationServiceTest`
 - `VerificationUtilAndStatusListCoverageTest`
-<<<<<<< Updated upstream
 - `VPSubmissionValidatorTest`
-=======
->>>>>>> Stashed changes
 - `SignatureVerifierTest`
 - `HttpClientAndJWKSValidatorTest`
 - `DtoModelCoverageTest`
