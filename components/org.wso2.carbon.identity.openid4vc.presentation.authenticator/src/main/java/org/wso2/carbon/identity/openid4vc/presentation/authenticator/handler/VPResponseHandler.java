@@ -18,55 +18,44 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.handler;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import org.apache.commons.lang.StringUtils;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPTokenExpiredException;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPSubmissionValidationException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
 import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException;
-import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VPSubmissionDTO;
-import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VPSubmissionValidationException;
-import org.wso2.carbon.identity.openid4vc.presentation.verification.model.VCVerificationStatus;
+import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VerificationResult;
 
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Base64;
+import java.io.Serializable;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
- * Handler for processing VP responses from wallets.
- * 
- * This class is responsible for:
- * 1. Parsing VP token (JWT or JSON format)
- * 2. Validating VP structure against presentation definition
- * 3. Extracting verifiable credentials from VP
- * 4. Verifying cryptographic proofs
- * 5. Extracting claims from verified credentials
+ * Handler for OpenID4VP responses.
+ * This class handles basic state and error checks for incoming submissions.
  */
 public class VPResponseHandler {
 
     /**
-     * Result of VP validation.
+     * Inner class to represent validation results.
      */
-    public static class ValidationResult {
-        private VCVerificationStatus status;
+    public static class ValidationResult implements Serializable {
+        private static final long serialVersionUID = 1L;
+        private VerificationResult.VerificationStatus status;
         private String errorCode;
         private String errorDescription;
-        private Map<String, String> verifiedClaims = new HashMap<>();
-        private List<String> validatedCredentialIds = new ArrayList<>();
         private String presentationId;
+        private Map<String, String> verifiedClaims = new HashMap<>();
 
-        public VCVerificationStatus getStatus() {
+        public VerificationResult.VerificationStatus getStatus() {
             return status;
         }
 
-        public void setStatus(VCVerificationStatus status) {
+        public void setStatus(VerificationResult.VerificationStatus status) {
             this.status = status;
+        }
+
+        public boolean isValid() {
+            return VerificationResult.VerificationStatus.VERIFIED.equals(status);
         }
 
         public String getErrorCode() {
@@ -85,31 +74,6 @@ public class VPResponseHandler {
             this.errorDescription = errorDescription;
         }
 
-        public Map<String, String> getVerifiedClaims() {
-            return new HashMap<>(verifiedClaims);
-        }
-
-        public void setVerifiedClaims(Map<String, String> verifiedClaims) {
-            this.verifiedClaims = verifiedClaims == null ? new HashMap<>() : new HashMap<>(verifiedClaims);
-        }
-
-        public List<String> getValidatedCredentialIds() {
-            return new ArrayList<>(validatedCredentialIds);
-        }
-
-        public void setValidatedCredentialIds(List<String> validatedCredentialIds) {
-            this.validatedCredentialIds = validatedCredentialIds == null ? new ArrayList<>() :
-                    new ArrayList<>(validatedCredentialIds);
-        }
-
-        private Map<String, String> getVerifiedClaimsInternal() {
-            return verifiedClaims;
-        }
-
-        private List<String> getValidatedCredentialIdsInternal() {
-            return validatedCredentialIds;
-        }
-
         public String getPresentationId() {
             return presentationId;
         }
@@ -118,20 +82,24 @@ public class VPResponseHandler {
             this.presentationId = presentationId;
         }
 
-        public boolean isValid() {
-            return VCVerificationStatus.SUCCESS.equals(status);
+        public Map<String, String> getVerifiedClaims() {
+            return verifiedClaims;
+        }
+
+        public void setVerifiedClaims(Map<String, String> verifiedClaims) {
+            this.verifiedClaims = verifiedClaims;
         }
     }
 
     /**
      * Process a VP submission from a wallet.
      * 
-     * @param submission The VP submission DTO
+     * @param submission The VP submission parameters
      * @param vpRequest  The original VP request
      * @return Validation result
      * @throws VPException If processing fails
      */
-    public ValidationResult processSubmission(VPSubmissionDTO submission, VPRequest vpRequest)
+    public ValidationResult processSubmission(Map<String, String> submission, VPRequest vpRequest)
             throws VPException {
 
         if (submission == null) {
@@ -139,410 +107,53 @@ public class VPResponseHandler {
         }
 
         // Check for error response from wallet
-        if (StringUtils.isNotBlank(submission.getError())) {
+        String error = submission.get(OpenID4VPConstants.ResponseParams.ERROR);
+        if (StringUtils.isNotBlank(error)) {
             return handleErrorResponse(submission);
         }
 
         // Validate state matches
         if (!validateState(submission, vpRequest)) {
             ValidationResult result = new ValidationResult();
-            result.setStatus(VCVerificationStatus.INVALID);
+            result.setStatus(VerificationResult.VerificationStatus.FAILED);
             result.setErrorCode(OpenID4VPConstants.ErrorCodes.INVALID_REQUEST);
             result.setErrorDescription("State parameter mismatch");
             return result;
         }
 
         // Get VP token
-        String vpToken = submission.getVpToken();
+        String vpToken = submission.get(OpenID4VPConstants.ResponseParams.VP_TOKEN);
         if (StringUtils.isBlank(vpToken)) {
             throw new VPSubmissionValidationException("VP token is missing");
         }
 
-        // Determine token format and process accordingly
-        if (isJwtFormat(vpToken)) {
-            return processJwtVPToken(vpToken, vpRequest);
-        } else {
-            return processJsonVPToken(vpToken, vpRequest);
-        }
+        // Basic validation passed.
+        // Complex verification will be performed by VerificationService later.
+        ValidationResult result = new ValidationResult();
+        result.setStatus(VerificationResult.VerificationStatus.VERIFIED);
+        return result;
     }
 
     /**
      * Handle error response from wallet.
      */
-    private ValidationResult handleErrorResponse(VPSubmissionDTO submission) {
+    private ValidationResult handleErrorResponse(Map<String, String> submission) {
         ValidationResult result = new ValidationResult();
-        result.setStatus(VCVerificationStatus.INVALID);
-        result.setErrorCode(submission.getError());
-        result.setErrorDescription(submission.getErrorDescription());
-
+        result.setStatus(VerificationResult.VerificationStatus.FAILED);
+        result.setErrorCode(submission.get(OpenID4VPConstants.ResponseParams.ERROR));
+        result.setErrorDescription(submission.get(OpenID4VPConstants.ResponseParams.ERROR_DESCRIPTION));
         return result;
     }
 
     /**
      * Validate that the state parameter matches.
      */
-    private boolean validateState(VPSubmissionDTO submission, VPRequest vpRequest) {
-        String submittedState = submission.getState();
+    private boolean validateState(Map<String, String> submission, VPRequest vpRequest) {
+        if (vpRequest == null) {
+            return true;
+        }
+        String submittedState = submission.get(OpenID4VPConstants.ResponseParams.STATE);
         String expectedState = vpRequest.getRequestId();
-
         return StringUtils.equals(submittedState, expectedState);
-    }
-
-    /**
-     * Check if the VP token is in JWT format.
-     */
-    private boolean isJwtFormat(String vpToken) {
-        // JWT format has 3 parts separated by dots
-        if (vpToken == null) {
-            return false;
-        }
-        String[] parts = vpToken.split("\\.");
-        return parts.length == 3;
-    }
-
-    /**
-     * Process VP token in JWT format.
-     */
-    private ValidationResult processJwtVPToken(String vpToken, VPRequest vpRequest)
-            throws VPException {
-
-        ValidationResult result = new ValidationResult();
-        result.setValidatedCredentialIds(new ArrayList<>());
-        result.setVerifiedClaims(new HashMap<>());
-
-        try {
-            // Decode JWT (header.payload.signature)
-            String[] parts = vpToken.split("\\.");
-            if (parts.length != 3) {
-                throw new VPSubmissionValidationException("Invalid JWT format");
-            }
-
-            // Decode header
-            String headerJson = new String(Base64.getUrlDecoder().decode(parts[0]),
-                    StandardCharsets.UTF_8);
-            // Decode header
-            JsonParser.parseString(headerJson).getAsJsonObject();
-
-            // Decode payload
-            String payloadJson = new String(Base64.getUrlDecoder().decode(parts[1]),
-                    StandardCharsets.UTF_8);
-            JsonObject payload = JsonParser.parseString(payloadJson).getAsJsonObject();
-
-            // Validate JWT claims
-            validateJwtClaims(payload, vpRequest);
-
-            // Extract VP from payload
-            JsonObject vp = null;
-            if (payload.has("vp")) {
-                vp = payload.getAsJsonObject("vp");
-            } else {
-                // The payload itself might be the VP
-                vp = payload;
-            }
-
-            // Validate and extract credentials
-            if (vp.has("verifiableCredential")) {
-                JsonArray credentials = vp.getAsJsonArray("verifiableCredential");
-                processCredentials(credentials, result);
-            } else {
-                result.setStatus(VCVerificationStatus.INVALID);
-                result.setErrorCode(OpenID4VPConstants.ErrorCodes.INVALID_REQUEST);
-                result.setErrorDescription("VP token does not contain verifiableCredential");
-                return result;
-            }
-
-            // Set presentation ID
-            if (vp.has("id")) {
-                result.setPresentationId(vp.get("id").getAsString());
-            } else if (payload.has("jti")) {
-                result.setPresentationId(payload.get("jti").getAsString());
-            }
-
-            // TODO: Verify JWT signature
-            // This requires access to the holder's public key or DID resolution
-            // For now, we'll mark as requiring further verification
-
-            // If we got here, the basic structure is valid
-            result.setStatus(VCVerificationStatus.SUCCESS);
-
-        } catch (org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPTokenExpiredException e) {
-            result.setStatus(VCVerificationStatus.EXPIRED);
-            result.setErrorCode(OpenID4VPConstants.ErrorCodes.INVALID_REQUEST);
-            result.setErrorDescription(e.getMessage());
-        } catch (IllegalArgumentException | com.google.gson.JsonSyntaxException | IllegalStateException e) {
-            result.setStatus(VCVerificationStatus.INVALID);
-            result.setErrorCode(OpenID4VPConstants.ErrorCodes.INVALID_REQUEST);
-            result.setErrorDescription("Invalid JWT encoding or JSON: " + e.getMessage());
-        } catch (org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException e) {
-            result.setStatus(VCVerificationStatus.INVALID);
-            result.setErrorCode(OpenID4VPConstants.ErrorCodes.INVALID_REQUEST);
-            result.setErrorDescription("Failed to process VP token: " + e.getMessage());
-        }
-
-        return result;
-    }
-
-    /**
-     * Validate JWT claims.
-     */
-    private void validateJwtClaims(JsonObject payload, VPRequest vpRequest)
-            throws VPException {
-
-        // Validate nonce
-        if (payload.has("nonce")) {
-            String tokenNonce = payload.get("nonce").getAsString();
-            String expectedNonce = vpRequest.getNonce();
-            if (!StringUtils.equals(tokenNonce, expectedNonce)) {
-                throw new VPSubmissionValidationException("Nonce mismatch");
-            }
-        }
-
-        // Validate audience (client_id)
-        if (payload.has("aud")) {
-            JsonElement audElement = payload.get("aud");
-            String expectedAud = vpRequest.getClientId();
-            boolean audMatches = false;
-
-            if (audElement.isJsonArray()) {
-                JsonArray audArray = audElement.getAsJsonArray();
-                for (JsonElement aud : audArray) {
-                    if (StringUtils.equals(aud.getAsString(), expectedAud)) {
-                        audMatches = true;
-                        break;
-                    }
-                }
-            } else {
-                audMatches = StringUtils.equals(audElement.getAsString(), expectedAud);
-            }
-
-            if (!audMatches) {
-                throw new VPSubmissionValidationException("Audience mismatch");
-            }
-        }
-
-        // Validate expiration
-        if (payload.has("exp")) {
-            long exp = payload.get("exp").getAsLong();
-            long now = System.currentTimeMillis() / 1000;
-            if (now > exp) {
-                throw new VPTokenExpiredException("VP token has expired");
-            }
-        }
-    }
-
-    /**
-     * Process VP token in JSON-LD format.
-     */
-    private ValidationResult processJsonVPToken(String vpToken, VPRequest vpRequest)
-            throws VPException {
-
-        ValidationResult result = new ValidationResult();
-        result.setValidatedCredentialIds(new ArrayList<>());
-        result.setVerifiedClaims(new HashMap<>());
-
-        try {
-            JsonObject vp = JsonParser.parseString(vpToken).getAsJsonObject();
-
-            // Validate VP type
-            if (!hasCorrectType(vp, "VerifiablePresentation")) {
-                throw new VPSubmissionValidationException(
-                        "Invalid VP type, expected VerifiablePresentation");
-            }
-
-            // Validate proof
-            if (vp.has("proof")) {
-                JsonObject proof = vp.getAsJsonObject("proof");
-                validateProof(proof, vpRequest);
-            }
-
-            // Extract credentials
-            if (vp.has("verifiableCredential")) {
-                JsonArray credentials = vp.getAsJsonArray("verifiableCredential");
-                processCredentials(credentials, result);
-            } else {
-                result.setStatus(VCVerificationStatus.INVALID);
-                result.setErrorCode(OpenID4VPConstants.ErrorCodes.INVALID_REQUEST);
-                result.setErrorDescription("VP token does not contain verifiableCredential");
-                return result;
-            }
-
-            // Set presentation ID
-            if (vp.has("id")) {
-                result.setPresentationId(vp.get("id").getAsString());
-            }
-
-            result.setStatus(VCVerificationStatus.SUCCESS);
-
-        } catch (VPSubmissionValidationException e) {
-            throw e;
-        } catch (com.google.gson.JsonSyntaxException | IllegalArgumentException | IllegalStateException e) {
-            result.setStatus(VCVerificationStatus.INVALID);
-            result.setErrorCode(OpenID4VPConstants.ErrorCodes.INVALID_REQUEST);
-            result.setErrorDescription("Failed to parse VP token: " + e.getMessage());
-        }
-
-        return result;
-    }
-
-    /**
-     * Check if the JSON object has the expected type.
-     */
-    private boolean hasCorrectType(JsonObject obj, String expectedType) {
-        if (!obj.has("type")) {
-            return false;
-        }
-
-        JsonElement typeElement = obj.get("type");
-        if (typeElement.isJsonArray()) {
-            JsonArray types = typeElement.getAsJsonArray();
-            for (JsonElement type : types) {
-                if (expectedType.equals(type.getAsString())) {
-                    return true;
-                }
-            }
-            return false;
-        } else {
-            return expectedType.equals(typeElement.getAsString());
-        }
-    }
-
-    /**
-     * Validate the VP proof.
-     */
-    private void validateProof(JsonObject proof, VPRequest vpRequest)
-            throws VPSubmissionValidationException {
-
-        // Check challenge (nonce)
-        if (proof.has("challenge")) {
-            String challenge = proof.get("challenge").getAsString();
-            if (!StringUtils.equals(challenge, vpRequest.getNonce())) {
-                throw new VPSubmissionValidationException("Proof challenge mismatch");
-            }
-        }
-
-        // Check domain (client_id)
-        if (proof.has("domain")) {
-            String domain = proof.get("domain").getAsString();
-            if (!StringUtils.equals(domain, vpRequest.getClientId())) {
-                throw new VPSubmissionValidationException("Proof domain mismatch");
-            }
-        }
-
-        // TODO: Verify cryptographic signature
-        // This requires resolving the verification method and checking the signature
-    }
-
-    /**
-     * Process verifiable credentials in the VP.
-     */
-    private void processCredentials(JsonArray credentials, ValidationResult result) {
-        for (JsonElement credElement : credentials) {
-            try {
-                if (credElement.isJsonPrimitive()) {
-                    // JWT-encoded credential
-                    String jwtCredential = credElement.getAsString();
-                    processJwtCredential(jwtCredential, result);
-                } else if (credElement.isJsonObject()) {
-                    // JSON-LD credential
-                    JsonObject credential = credElement.getAsJsonObject();
-                    processJsonCredential(credential, result);
-                }
-            } catch (com.google.gson.JsonSyntaxException | IllegalArgumentException e) {
-                // Ignore parsing errors for individual credentials and continue
-            }
-        }
-    }
-
-    /**
-     * Process a JWT-encoded verifiable credential.
-     */
-    private void processJwtCredential(String jwtCredential, ValidationResult result) {
-        try {
-            String[] parts = jwtCredential.split("\\.");
-            if (parts.length != 3) {
-                return;
-            }
-
-            String payloadJson = new String(Base64.getUrlDecoder().decode(parts[1]),
-                    StandardCharsets.UTF_8);
-            JsonObject payload = JsonParser.parseString(payloadJson).getAsJsonObject();
-
-            // Extract VC from payload
-            JsonObject vc = null;
-            if (payload.has("vc")) {
-                vc = payload.getAsJsonObject("vc");
-            } else {
-                vc = payload;
-            }
-
-            // Get credential ID
-            String credId = null;
-            if (vc.has("id")) {
-                credId = vc.get("id").getAsString();
-            } else if (payload.has("jti")) {
-                credId = payload.get("jti").getAsString();
-            }
-
-            if (credId != null) {
-                result.getValidatedCredentialIdsInternal().add(credId);
-            }
-
-            // Extract claims from credential subject
-            if (vc.has("credentialSubject")) {
-                JsonObject subject = vc.getAsJsonObject("credentialSubject");
-                extractClaims(subject, "", result.getVerifiedClaimsInternal());
-            }
-
-        } catch (com.google.gson.JsonSyntaxException | IllegalArgumentException e) {
-            // Ignore parsing errors for individual credentials
-        }
-    }
-
-    /**
-     * Process a JSON-LD verifiable credential.
-     */
-    private void processJsonCredential(JsonObject credential, ValidationResult result) {
-        // Get credential ID
-        if (credential.has("id")) {
-            result.getValidatedCredentialIdsInternal().add(credential.get("id").getAsString());
-        }
-
-        // Extract claims from credential subject
-        if (credential.has("credentialSubject")) {
-            JsonElement subject = credential.get("credentialSubject");
-            if (subject.isJsonObject()) {
-                extractClaims(subject.getAsJsonObject(), "", result.getVerifiedClaimsInternal());
-            } else if (subject.isJsonArray()) {
-                // Multiple subjects
-                JsonArray subjects = subject.getAsJsonArray();
-                for (int i = 0; i < subjects.size(); i++) {
-                    if (subjects.get(i).isJsonObject()) {
-                        String prefix = "subject" + i + ".";
-                        extractClaims(subjects.get(i).getAsJsonObject(), prefix,
-                                result.getVerifiedClaimsInternal());
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * Extract claims from a JSON object recursively.
-     */
-    private void extractClaims(JsonObject obj, String prefix, Map<String, String> claims) {
-        for (String key : obj.keySet()) {
-            JsonElement value = obj.get(key);
-            String claimKey = prefix + key;
-
-            if (value.isJsonPrimitive()) {
-                claims.put(claimKey, value.getAsString());
-            } else if (value.isJsonObject()) {
-                // Recurse for nested objects
-                extractClaims(value.getAsJsonObject(), claimKey + ".", claims);
-            } else if (value.isJsonArray()) {
-                // Store array as JSON string
-                claims.put(claimKey, value.toString());
-            }
-        }
     }
 }

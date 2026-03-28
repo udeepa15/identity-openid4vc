@@ -47,7 +47,9 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.QRCode
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.ServletUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
 import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException;
-import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VPVerificationResponseDTO;
+import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.PresentationSubmission;
+import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VerificationResult;
+import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VerificationException;
 import org.wso2.carbon.idp.mgt.IdentityProviderManager;
 
 import java.io.IOException;
@@ -251,26 +253,28 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             // Single unified verification call.
             // The Verification Component handles format detection, cryptographic
             // verification, disclosure processing, and PD constraint enforcement.
-            // It returns the extracted nonce and audience for the Authenticator
-            // to validate against the session-bound expected values.
-            VPVerificationResponseDTO verificationResult;
+            VerificationResult verificationResult;
             try {
+                // Parse the presentation_submission string into the DTO
+                PresentationSubmission presentationSubmission = new com.google.gson.Gson()
+                        .fromJson(submission.getPresentationSubmission(), PresentationSubmission.class);
+
                 verificationResult = VPServiceDataHolder
-                        .getVCVerificationService()
-                        .verifyPresentation(
-                                submission.getVpToken(),
-                                submission.getPresentationSubmission(),
-                                presentationDefinitionId,
-                                tenantId);
-            } catch (org.wso2.carbon.identity.openid4vc.presentation.verification.exception
-                    .CredentialVerificationException e) {
+                        .getVerificationService()
+                        .verify(
+                                presentationSubmission,
+                                tenantId,
+                                submission.getVpToken());
+            } catch (VerificationException e) {
                 throw new AuthenticationFailedException(
-                        "VP verification could not be initiated: " + e.getMessage(), e);
+                        "VP verification failed: " + e.getMessage(), e);
+            } catch (com.google.gson.JsonSyntaxException e) {
+                throw new AuthenticationFailedException(
+                        "Invalid presentation_submission format: " + e.getMessage(), e);
             }
 
-            if (!verificationResult.isValid()) {
-                throw new AuthenticationFailedException(
-                        "VP verification failed: " + verificationResult.getErrorMessage());
+            if (!VerificationResult.VerificationStatus.VERIFIED.equals(verificationResult.getStatus())) {
+                throw new AuthenticationFailedException("VP verification status is not VERIFIED");
             }
 
             Map<String, Object> verifiedClaims = new HashMap<>(verificationResult.getVerifiedClaims());

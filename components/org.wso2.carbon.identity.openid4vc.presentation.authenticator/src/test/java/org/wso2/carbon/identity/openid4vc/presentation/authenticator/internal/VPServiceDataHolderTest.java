@@ -8,7 +8,7 @@ import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
 import org.wso2.carbon.identity.openid4vc.presentation.did.service.DIDDocumentService;
 import org.wso2.carbon.identity.openid4vc.presentation.management.service.PresentationDefinitionService;
-import org.wso2.carbon.identity.openid4vc.presentation.verification.service.VCVerificationService;
+import org.wso2.carbon.identity.openid4vc.presentation.verification.service.VerificationService;
 import org.wso2.carbon.user.core.service.RealmService;
 
 import static org.testng.Assert.assertEquals;
@@ -24,7 +24,7 @@ public class VPServiceDataHolderTest {
     @Mock
     private PresentationDefinitionService presentationDefinitionService;
     @Mock
-    private VCVerificationService vcVerificationService;
+    private VerificationService verificationService;
     @Mock
     private DIDDocumentService didDocumentService;
     @Mock
@@ -60,13 +60,13 @@ public class VPServiceDataHolderTest {
     }
 
     @Test
-    public void testGetSetVCVerificationService() {
-        VPServiceDataHolder.setVCVerificationService(vcVerificationService);
-        assertEquals(VPServiceDataHolder.getVCVerificationService(), vcVerificationService);
+    public void testGetSetVerificationService() {
+        VPServiceDataHolder.setVerificationService(verificationService);
+        assertEquals(VPServiceDataHolder.getVerificationService(), verificationService);
         
-        // Test lazy initialization if set to null
-        VPServiceDataHolder.setVCVerificationService(null);
-        assertNotNull(VPServiceDataHolder.getVCVerificationService());
+        // VerificationService is OSGi-injected, no lazy initialization in data holder
+        VPServiceDataHolder.setVerificationService(null);
+        assertNull(VPServiceDataHolder.getVerificationService());
     }
 
     @Test

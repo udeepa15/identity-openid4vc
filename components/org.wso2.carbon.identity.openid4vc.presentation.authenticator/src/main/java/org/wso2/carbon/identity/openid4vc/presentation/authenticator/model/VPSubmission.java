@@ -18,7 +18,7 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.model;
 
-import org.wso2.carbon.identity.openid4vc.presentation.verification.model.VCVerificationStatus;
+import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VerificationResult;
 
 import java.io.Serializable;
 
@@ -37,7 +37,7 @@ public class VPSubmission implements Serializable {
     private String presentationSubmission;
     private String error;
     private String errorDescription;
-    private VCVerificationStatus verificationStatus;
+    private VerificationResult.VerificationStatus verificationStatus;
     private String verificationResult;
     private long submittedAt;
     private int tenantId;
@@ -123,11 +123,11 @@ public class VPSubmission implements Serializable {
         this.errorDescription = errorDescription;
     }
 
-    public VCVerificationStatus getVerificationStatus() {
+    public VerificationResult.VerificationStatus getVerificationStatus() {
         return verificationStatus;
     }
 
-    public void setVerificationStatus(VCVerificationStatus verificationStatus) {
+    public void setVerificationStatus(VerificationResult.VerificationStatus verificationStatus) {
         this.verificationStatus = verificationStatus;
     }
 
@@ -184,7 +184,7 @@ public class VPSubmission implements Serializable {
         private String presentationSubmission;
         private String error;
         private String errorDescription;
-        private VCVerificationStatus verificationStatus;
+        private VerificationResult.VerificationStatus verificationStatus;
         private String verificationResult;
         private long submittedAt;
         private int tenantId;
@@ -224,7 +224,7 @@ public class VPSubmission implements Serializable {
             return this;
         }
 
-        public Builder verificationStatus(VCVerificationStatus verificationStatus) {
+        public Builder verificationStatus(VerificationResult.VerificationStatus verificationStatus) {
             this.verificationStatus = verificationStatus;
             return this;
         }

@@ -12,9 +12,7 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VP
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.StringReader;
 
 import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletRequest;
@@ -52,10 +50,34 @@ public class VPSubmissionServletTest {
         mockedWalletCache = Mockito.mockStatic(WalletDataCache.class);
         mockedWalletCache.when(WalletDataCache::getInstance).thenReturn(walletDataCache);
 
-        // Mock reader and output stream
-        when(request.getReader()).thenReturn(
-            new BufferedReader(new StringReader("{\"vp_token\":\"test\",\"state\":\"req1\"}")));
+        // Mock input stream and output stream
+        byte[] payload = "{\"vp_token\":\"test\",\"state\":\"req1\"}".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        when(request.getInputStream()).thenReturn(new MockServletInputStream(payload));
         when(response.getOutputStream()).thenReturn(new MockServletOutputStream());
+    }
+
+    private static class MockServletInputStream extends javax.servlet.ServletInputStream {
+        private final java.io.ByteArrayInputStream buffer;
+
+        public MockServletInputStream(byte[] payload) {
+            this.buffer = new java.io.ByteArrayInputStream(payload);
+        }
+
+        @Override
+        public int read() throws IOException {
+            return buffer.read();
+        }
+
+        public boolean isFinished() {
+            return buffer.available() == 0;
+        }
+
+        public boolean isReady() {
+            return true;
+        }
+
+        public void setReadListener(javax.servlet.ReadListener readListener) {
+        }
     }
 
     @AfterMethod
@@ -71,9 +93,6 @@ public class VPSubmissionServletTest {
         
         // This will trigger internal logic to process submission
         servlet.doPost(request, response);
-        
-        // We don't verify full logic here as it's complex and involves other components, 
-        // but covering the entry point is good for instruction coverage.
     }
 
     private static class MockServletOutputStream extends ServletOutputStream {

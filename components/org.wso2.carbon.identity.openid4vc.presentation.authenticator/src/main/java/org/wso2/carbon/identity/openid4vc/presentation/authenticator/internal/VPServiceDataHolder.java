@@ -23,8 +23,7 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPR
 import org.wso2.carbon.identity.openid4vc.presentation.did.service.DIDDocumentService;
 import org.wso2.carbon.identity.openid4vc.presentation.did.service.impl.DIDDocumentServiceImpl;
 import org.wso2.carbon.identity.openid4vc.presentation.management.service.PresentationDefinitionService;
-import org.wso2.carbon.identity.openid4vc.presentation.verification.service.VCVerificationService;
-import org.wso2.carbon.identity.openid4vc.presentation.verification.service.impl.VCVerificationServiceImpl;
+import org.wso2.carbon.identity.openid4vc.presentation.verification.service.VerificationService;
 import org.wso2.carbon.user.core.service.RealmService;
 
 import java.util.concurrent.atomic.AtomicReference;
@@ -39,7 +38,7 @@ public final class VPServiceDataHolder {
     private static final AtomicReference<VPRequestService> VP_REQUEST_SERVICE = new AtomicReference<>();
     private static final AtomicReference<PresentationDefinitionService> PRESENTATION_DEFINITION_SERVICE =
             new AtomicReference<>();
-    private static final AtomicReference<VCVerificationService> VC_VERIFICATION_SERVICE = new AtomicReference<>();
+    private static final AtomicReference<VerificationService> VERIFICATION_SERVICE = new AtomicReference<>();
     private static final AtomicReference<DIDDocumentService> DID_DOCUMENT_SERVICE = new AtomicReference<>();
     private static final AtomicReference<ApplicationManagementService> APPLICATION_MANAGEMENT_SERVICE =
             new AtomicReference<>();
@@ -104,26 +103,21 @@ public final class VPServiceDataHolder {
     }
 
     /**
-     * Get the VCVerificationService.
+     * Get the VerificationService.
      * 
-     * @return VCVerificationService instance
+     * @return VerificationService instance
      */
-    public static VCVerificationService getVCVerificationService() {
-        VCVerificationService service = VC_VERIFICATION_SERVICE.get();
-        if (service == null) {
-            VC_VERIFICATION_SERVICE.compareAndSet(null, new VCVerificationServiceImpl());
-            service = VC_VERIFICATION_SERVICE.get();
-        }
-        return service;
+    public static VerificationService getVerificationService() {
+        return VERIFICATION_SERVICE.get();
     }
 
     /**
-     * Set the VCVerificationService.
+     * Set the VerificationService.
      * 
-     * @param vcVerificationService VCVerificationService instance
+     * @param verificationService VerificationService instance
      */
-    public static void setVCVerificationService(VCVerificationService vcVerificationService) {
-        VC_VERIFICATION_SERVICE.set(vcVerificationService);
+    public static void setVerificationService(VerificationService verificationService) {
+        VERIFICATION_SERVICE.set(verificationService);
     }
 
     /**

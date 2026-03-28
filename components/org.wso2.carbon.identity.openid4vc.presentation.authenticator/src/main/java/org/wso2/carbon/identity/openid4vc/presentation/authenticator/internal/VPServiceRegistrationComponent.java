@@ -33,6 +33,7 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.OpenID4VPAu
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.impl.VPRequestServiceImpl;
 import org.wso2.carbon.identity.openid4vc.presentation.management.service.PresentationDefinitionService;
+import org.wso2.carbon.identity.openid4vc.presentation.verification.service.VerificationService;
 import org.wso2.carbon.user.core.service.RealmService;
 
 import java.util.Hashtable;
@@ -104,6 +105,17 @@ public class VPServiceRegistrationComponent {
 
     protected void unsetPresentationDefinitionService(PresentationDefinitionService service) {
         VPServiceDataHolder.setPresentationDefinitionService(null);
+    }
+
+    @Reference(name = "openid4vc.presentation.verification.service", service = VerificationService.class,
+            cardinality = ReferenceCardinality.MANDATORY, policy = ReferencePolicy.DYNAMIC,
+            unbind = "unsetVerificationService")
+    protected void setVerificationService(VerificationService service) {
+        VPServiceDataHolder.setVerificationService(service);
+    }
+
+    protected void unsetVerificationService(VerificationService service) {
+        VPServiceDataHolder.setVerificationService(null);
     }
 
     @Reference(name = "user.realm.service", service = RealmService.class, cardinality = 

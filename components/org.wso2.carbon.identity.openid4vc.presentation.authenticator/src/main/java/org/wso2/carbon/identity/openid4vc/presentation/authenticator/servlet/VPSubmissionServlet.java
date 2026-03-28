@@ -33,14 +33,12 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPSub
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.status.StatusNotificationService;
 import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
 import org.wso2.carbon.identity.openid4vc.presentation.common.util.OpenID4VPUtil;
-import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VPSubmissionDTO;
-import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VPSubmissionValidationException;
-import org.wso2.carbon.identity.openid4vc.presentation.verification.model.VCVerificationStatus;
-import org.wso2.carbon.identity.openid4vc.presentation.verification.util.VPSubmissionValidator;
 
 import java.io.IOException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.servlet.Servlet;
 import javax.servlet.ServletException;
@@ -51,17 +49,6 @@ import javax.servlet.http.HttpServletResponse;
 /**
  * Servlet handling VP (Verifiable Presentation) submissions from wallets.
  * Implements the OpenID4VP direct_post response mode.
- * 
- * Endpoint:
- * - POST /openid4vp/v1/response - Receive VP submission from wallet
- * 
- * The wallet submits via application/x-www-form-urlencoded with:
- * - vp_token: The VP token (JWT or JSON-LD)
- * - presentation_submission: JSON describing which credentials satisfy the
- * request
- * - state: The request ID (used as correlation)
- * - error: (Optional) Error code if wallet declined or failed
- * - error_description: (Optional) Error description
  */
 @Component(
     service = Servlet.class,
@@ -82,42 +69,21 @@ public class VPSubmissionServlet extends HttpServlet {
 
     /**
      * Maximum allowed length for any request parameter value.
-     * Prevents excessively large inputs from reaching downstream logic.
      */
     private static final int MAX_PARAM_LENGTH = 65536;
 
-    /**
-     * Status listener cache for long polling notifications.
-     */
     private transient VPStatusListenerCache statusListenerCache;
-
-    /**
-     * Status notification service for coordinated notifications.
-     */
     private transient StatusNotificationService statusNotificationService;
-
-    /**
-     * Wallet data cache for storing submissions.
-     */
     private transient WalletDataCache walletDataCache;
 
     @Override
     public void init() throws ServletException {
-
         super.init();
         this.statusListenerCache = VPStatusListenerCache.getInstance();
         this.statusNotificationService = StatusNotificationService.getInstance();
         this.walletDataCache = WalletDataCache.getInstance();
     }
 
-    /**
-     * Handle POST requests - VP submission from wallet.
-     *
-     * @param request  HTTP request
-     * @param response HTTP response
-     * @throws ServletException If servlet error occurs
-     * @throws IOException      If I/O error occurs
-     */
     @Override
     protected void doPost(final HttpServletRequest request,
             final HttpServletResponse response)
@@ -125,46 +91,44 @@ public class VPSubmissionServlet extends HttpServlet {
 
         try {
             // Parse submission parameters
-            VPSubmissionDTO submissionDTO = parseSubmission(request);
-            if (submissionDTO == null) {
-                sendErrorResponse(response, HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE,
-                        OpenID4VPConstants.ErrorCodes.INVALID_REQUEST,
-                        "Unsupported Content-Type.");
-                return;
-            }
+            Map<String, String> params = parseSubmission(request);
+            
+            String vpToken = params.get(OpenID4VPConstants.ResponseParams.VP_TOKEN);
+            String presentationSubmission = params.get(OpenID4VPConstants.ResponseParams.PRESENTATION_SUBMISSION);
+            String state = params.get(OpenID4VPConstants.ResponseParams.STATE);
+            String error = params.get(OpenID4VPConstants.ResponseParams.ERROR);
+            String errorDescription = params.get(OpenID4VPConstants.ResponseParams.ERROR_DESCRIPTION);
 
-            // Validate submission using enhanced validator
-            try {
-                VPSubmissionValidator.validateSubmission(submissionDTO);
-            } catch (VPSubmissionValidationException e) {
+            // Basic validation
+            if (StringUtils.isBlank(state)) {
                 sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
-                        OpenID4VPConstants.ErrorCodes.INVALID_REQUEST,
-                        e.getMessage());
+                        OpenID4VPConstants.ErrorCodes.INVALID_REQUEST, "Missing state parameter.");
                 return;
             }
 
+            if (StringUtils.isBlank(vpToken) && StringUtils.isBlank(error)) {
+                sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
+                        OpenID4VPConstants.ErrorCodes.INVALID_REQUEST, "Missing vp_token or error.");
+                return;
+            }
 
             // Get tenant ID
             int tenantId = getTenantId(request);
-            String requestId = submissionDTO.getState();
 
-            // Build VPSubmission object in-memory
-            String presentationSubmissionJson = submissionDTO.getPresentationSubmission() != null
-                    ? submissionDTO.getPresentationSubmission().toString()
-                    : null;
-
+            // Build VPSubmission object
             VPSubmission submission = new VPSubmission.Builder()
                     .submissionId(OpenID4VPUtil.generateSubmissionId())
-                    .requestId(requestId)
-                    .vpToken(submissionDTO.getVpToken())
-                    .presentationSubmission(presentationSubmissionJson)
-                    .verificationStatus(VCVerificationStatus.PENDING)
+                    .requestId(state)
+                    .vpToken(vpToken)
+                    .presentationSubmission(presentationSubmission)
+                    .error(error)
+                    .errorDescription(errorDescription)
                     .submittedAt(System.currentTimeMillis())
                     .tenantId(tenantId)
                     .build();
 
-            // Single authoritative cache write happens inside notifyStatusListeners().
-            notifyStatusListeners(requestId, submission);
+            // Notify listeners
+            notifyStatusListeners(state, submission);
 
             // Send success response
             sendSuccessResponse(response, submission);
@@ -177,69 +141,56 @@ public class VPSubmissionServlet extends HttpServlet {
     }
 
     /**
-     * Parse submission from request parameters.
-     * Handles application/x-www-form-urlencoded and JSON content types.
-     *
-     * @param request HTTP request
-     * @return Parsed VPSubmissionDTO
-     * @throws IOException If parsing fails
+     * Parse submission parameters from request body.
      */
-    private VPSubmissionDTO parseSubmission(final HttpServletRequest request)
+    private Map<String, String> parseSubmission(final HttpServletRequest request)
             throws IOException {
 
         String body = new String(request.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+        Map<String, String> params = new HashMap<>();
 
         if (StringUtils.isNotBlank(body) && body.trim().startsWith("{")) {
-            return parseJsonSubmission(body);
+            // Handle JSON body
+            try {
+                JsonObject json = JsonParser.parseString(body).getAsJsonObject();
+                for (String key : json.keySet()) {
+                    if (json.get(key).isJsonPrimitive()) {
+                        params.put(key, json.get(key).getAsString());
+                    } else if (json.get(key).isJsonObject() || json.get(key).isJsonArray()) {
+                        params.put(key, json.get(key).toString());
+                    }
+                }
+            } catch (JsonSyntaxException e) {
+                LOG.warn("Failed to parse JSON submission body.");
+            }
+        } else {
+            // Handle form-encoded body
+            parseFormEncodedSubmission(body, params);
         }
 
-        VPSubmissionDTO dto = new VPSubmissionDTO();
-        parseFormEncodedSubmission(body, dto);
-
-        return dto;
+        return params;
     }
 
     /**
      * Parse form-encoded submission.
-     *
-     * @param request HTTP request
-     * @param dto     DTO to populate
      */
-        private void parseFormEncodedSubmission(final String formBody,
-            final VPSubmissionDTO dto) {
+    private void parseFormEncodedSubmission(final String formBody,
+                                            final Map<String, String> params) {
 
-        dto.setVpToken(getDecodedFormParameter(formBody,
-                OpenID4VPConstants.ResponseParams.VP_TOKEN));
+        String[] requiredParams = {
+            OpenID4VPConstants.ResponseParams.VP_TOKEN,
+            OpenID4VPConstants.ResponseParams.PRESENTATION_SUBMISSION,
+            OpenID4VPConstants.ResponseParams.STATE,
+            OpenID4VPConstants.ResponseParams.ERROR,
+            OpenID4VPConstants.ResponseParams.ERROR_DESCRIPTION
+        };
 
-        String presSubStr = getDecodedFormParameter(formBody,
-                OpenID4VPConstants.ResponseParams.PRESENTATION_SUBMISSION);
-        if (StringUtils.isNotBlank(presSubStr)) {
-            try {
-                dto.setPresentationSubmission(
-                        JsonParser.parseString(presSubStr).getAsJsonObject());
-            } catch (JsonSyntaxException e) {
+        for (String paramName : requiredParams) {
+            String value = getDecodedFormParameter(formBody, paramName);
+            if (value != null) {
+                params.put(paramName, value);
             }
         }
-
-        dto.setState(getDecodedFormParameter(formBody,
-                OpenID4VPConstants.ResponseParams.STATE));
-        dto.setError(getDecodedFormParameter(formBody,
-                OpenID4VPConstants.ResponseParams.ERROR));
-        dto.setErrorDescription(getDecodedFormParameter(formBody,
-                OpenID4VPConstants.ResponseParams.ERROR_DESCRIPTION));
-    }
-
-    /**
-     * Parse JSON submission body.
-     *
-     * @param request HTTP request
-     * @return Parsed DTO
-     * @throws IOException If reading fails
-     */
-        private VPSubmissionDTO parseJsonSubmission(final String body)
-            throws IOException {
-
-        return GSON.fromJson(body, VPSubmissionDTO.class);
     }
 
     /**

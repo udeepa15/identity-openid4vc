@@ -27,8 +27,8 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.QRCode
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.SecurityUtils;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.ServletUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.management.service.PresentationDefinitionService;
-import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VPVerificationResponseDTO;
-import org.wso2.carbon.identity.openid4vc.presentation.verification.service.VCVerificationService;
+import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VerificationResult;
+import org.wso2.carbon.identity.openid4vc.presentation.verification.service.VerificationService;
 import org.wso2.carbon.idp.mgt.IdentityProviderManager;
 
 import java.util.HashMap;
@@ -74,7 +74,7 @@ public class OpenID4VPAuthenticatorTest {
     private WalletDataCache walletDataCache;
 
     @Mock
-    private VCVerificationService vcVerificationService;
+    private VerificationService verificationService;
 
     private MockedStatic<VPServiceDataHolder> mockedVPServiceDataHolder;
     private MockedStatic<VPStatusListenerCache> mockedVPStatusListenerCache;
@@ -95,7 +95,7 @@ public class OpenID4VPAuthenticatorTest {
         mockedVPServiceDataHolder.when(VPServiceDataHolder::getVPRequestService).thenReturn(vpRequestService);
         mockedVPServiceDataHolder.when(VPServiceDataHolder::getPresentationDefinitionService)
                 .thenReturn(presentationDefinitionService);
-        mockedVPServiceDataHolder.when(VPServiceDataHolder::getVCVerificationService).thenReturn(vcVerificationService);
+        mockedVPServiceDataHolder.when(VPServiceDataHolder::getVerificationService).thenReturn(verificationService);
 
         mockedVPStatusListenerCache = Mockito.mockStatic(VPStatusListenerCache.class);
         mockedVPStatusListenerCache.when(VPStatusListenerCache::getInstance).thenReturn(vpStatusListenerCache);
@@ -268,10 +268,11 @@ public class OpenID4VPAuthenticatorTest {
         Map<String, Object> verifiedClaims = new HashMap<>();
         verifiedClaims.put("email", "testuser@example.com");
         verifiedClaims.put("iss", "did:example:issuer");
-        VPVerificationResponseDTO verificationResult =
-                VPVerificationResponseDTO.success(verifiedClaims, "vc+sd-jwt", "dummy-nonce", "dummy-client");
-        when(vcVerificationService.verifyPresentation(
-                anyString(), anyString(), any(), anyInt()))
+        VerificationResult verificationResult = new VerificationResult();
+        verificationResult.setStatus(VerificationResult.VerificationStatus.VERIFIED);
+        verificationResult.setVerifiedClaims(verifiedClaims);
+        
+        when(verificationService.verify(any(), anyInt(), anyString()))
                 .thenReturn(verificationResult);
 
         authenticator.process(request, response, context);
@@ -301,9 +302,10 @@ public class OpenID4VPAuthenticatorTest {
         mockSubmission.setVpToken("dummy-vp-token");
         when(walletDataCache.getSubmission("req-123")).thenReturn(mockSubmission);
 
-        VPVerificationResponseDTO verificationResult = VPVerificationResponseDTO.failure("Verification failed");
-        when(vcVerificationService.verifyPresentation(anyString(), anyString(), any(), anyInt()))
-                .thenReturn(verificationResult);
+        when(verificationService.verify(any(), anyInt(), anyString()))
+                .thenThrow(new org.wso2.carbon.identity.openid4vc.presentation.verification.exception
+                        .VerificationClientException(org.wso2.carbon.identity.openid4vc.presentation.verification
+                        .exception.VerificationErrorCode.INVALID_VP_FORMAT, "Verification failed"));
 
         authenticator.process(request, response, context);
     }
@@ -324,9 +326,11 @@ public class OpenID4VPAuthenticatorTest {
 
         Map<String, Object> verifiedClaims = new HashMap<>();
         // No "iss" or "issuer" claim
-        VPVerificationResponseDTO verificationResult =
-                VPVerificationResponseDTO.success(verifiedClaims, "vc+sd-jwt", "nonce", "client");
-        when(vcVerificationService.verifyPresentation(anyString(), anyString(), any(), anyInt()))
+        VerificationResult verificationResult = new VerificationResult();
+        verificationResult.setStatus(VerificationResult.VerificationStatus.VERIFIED);
+        verificationResult.setVerifiedClaims(verifiedClaims);
+        
+        when(verificationService.verify(any(), anyInt(), anyString()))
                 .thenReturn(verificationResult);
 
         authenticator.process(request, response, context);
@@ -450,9 +454,11 @@ public class OpenID4VPAuthenticatorTest {
         mockSubmission.setPresentationSubmission("{\"descriptor_map\":[{\"format\":\"vc+sd-jwt\"}]}");
         when(walletDataCache.getSubmission("req-123")).thenReturn(mockSubmission);
         
-        VPVerificationResponseDTO verificationResult =
-                VPVerificationResponseDTO.success(new HashMap<>(), "vc+sd-jwt", "nonce", "client");
-        when(vcVerificationService.verifyPresentation(anyString(), anyString(), any(), anyInt()))
+        VerificationResult verificationResult = new VerificationResult();
+        verificationResult.setStatus(VerificationResult.VerificationStatus.VERIFIED);
+        verificationResult.setVerifiedClaims(new HashMap<>());
+        
+        when(verificationService.verify(any(), anyInt(), anyString()))
                 .thenReturn(verificationResult);
 
         try {
@@ -481,9 +487,11 @@ public class OpenID4VPAuthenticatorTest {
         verifiedClaims.put("credentialSubject", credentialSubject);
         verifiedClaims.put("iss", "issuer");
 
-        VPVerificationResponseDTO verificationResult = 
-            VPVerificationResponseDTO.success(verifiedClaims, "vc+sd-jwt", "nonce", "client");
-        when(vcVerificationService.verifyPresentation(anyString(), anyString(), any(), anyInt()))
+        VerificationResult verificationResult = new VerificationResult();
+        verificationResult.setStatus(VerificationResult.VerificationStatus.VERIFIED);
+        verificationResult.setVerifiedClaims(verifiedClaims);
+        
+        when(verificationService.verify(any(), anyInt(), anyString()))
                 .thenReturn(verificationResult);
 
         // Ensure subject claim is not enforced for this test
@@ -516,9 +524,11 @@ public class OpenID4VPAuthenticatorTest {
         verifiedClaims.put("email", "test@example.com");
         verifiedClaims.put("iss", "issuer");
 
-        VPVerificationResponseDTO verificationResult = 
-            VPVerificationResponseDTO.success(verifiedClaims, "vc+sd-jwt", "nonce", "client");
-        when(vcVerificationService.verifyPresentation(anyString(), anyString(), any(), anyInt()))
+        VerificationResult verificationResult = new VerificationResult();
+        verificationResult.setStatus(VerificationResult.VerificationStatus.VERIFIED);
+        verificationResult.setVerifiedClaims(verifiedClaims);
+        
+        when(verificationService.verify(any(), anyInt(), anyString()))
                 .thenReturn(verificationResult);
 
         authenticator.process(request, response, context);
