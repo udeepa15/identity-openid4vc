@@ -18,6 +18,9 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator;
 
+import com.google.gson.FieldNamingPolicy;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
@@ -256,7 +259,10 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             VerificationResult verificationResult;
             try {
                 // Parse the presentation_submission string into the DTO
-                PresentationSubmission presentationSubmission = new com.google.gson.Gson()
+                Gson gson = new GsonBuilder()
+                        .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
+                        .create();
+                PresentationSubmission presentationSubmission = gson
                         .fromJson(submission.getPresentationSubmission(), PresentationSubmission.class);
 
                 verificationResult = VPServiceDataHolder
