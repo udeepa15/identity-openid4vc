@@ -290,10 +290,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
 
             // Derive subject claim name from IDP's userIdClaim configuration when available.
             String subjectRemoteClaim = resolveSubjectRemoteClaim(context, idpClaimMappings);
-            String issuerSubject = resolveIssuerSubjectIdentifier(verifiedClaims);
-            if (StringUtils.isBlank(issuerSubject)) {
-                throw new AuthenticationFailedException("No VC issuer found in verified credentials");
-            }
+
 
             boolean isSubjectClaimConfigured = isSubjectClaimConfigured(context);
 
@@ -341,8 +338,6 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      */
     private String extractUsername(Map<String, Object> verifiedClaims, String subjectRemoteClaim) {
         if (StringUtils.isBlank(subjectRemoteClaim)) {
-            // No IDP subject claim configured — cannot safely determine the user identifier.
-            // Authentication will fail with an explicit message.
             return null;
         }
         Object val = verifiedClaims.get(subjectRemoteClaim);
@@ -355,28 +350,6 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      * @param verifiedClaims Claims extracted and verified from the VC
      * @return Issuer value if available, or null
      */
-    private String resolveIssuerSubjectIdentifier(Map<String, Object> verifiedClaims) {
-        if (verifiedClaims == null || verifiedClaims.isEmpty()) {
-            return null;
-        }
-
-        Object issuer = verifiedClaims.get("iss");
-        if (issuer == null) {
-            issuer = verifiedClaims.get("issuer");
-        }
-        if (issuer != null && StringUtils.isNotBlank(issuer.toString())) {
-            return issuer.toString();
-        }
-
-        Object vcObject = verifiedClaims.get("vc");
-        if (vcObject instanceof Map) {
-            Object nestedIssuer = ((Map<?, ?>) vcObject).get("issuer");
-            if (nestedIssuer != null && StringUtils.isNotBlank(nestedIssuer.toString())) {
-                return nestedIssuer.toString();
-            }
-        }
-        return null;
-    }
 
     /**
      * Generate a transient random subject identifier when no subject claim is configured.
