@@ -246,17 +246,8 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
                 }
             }
 
-            // Derive the Presentation Definition ID from the VP request.
-            // The Verification Component is responsible for resolving it to the
-            // full definition and enforcing claim constraints.
-            String presentationDefinitionId = (vpRequest != null)
-                    ? vpRequest.getPresentationDefinitionId()
-                    : null;
-
-            // Single unified verification call.
-            // The Verification Component handles format detection, cryptographic
-            // verification, disclosure processing, and PD constraint enforcement.
             VerificationResult verificationResult;
+
             try {
                 // Parse the presentation_submission string into the DTO
                 Gson gson = new GsonBuilder()
@@ -290,7 +281,6 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
 
             // Derive subject claim name from IDP's userIdClaim configuration when available.
             String subjectRemoteClaim = resolveSubjectRemoteClaim(context, idpClaimMappings);
-
 
             boolean isSubjectClaimConfigured = isSubjectClaimConfigured(context);
 
