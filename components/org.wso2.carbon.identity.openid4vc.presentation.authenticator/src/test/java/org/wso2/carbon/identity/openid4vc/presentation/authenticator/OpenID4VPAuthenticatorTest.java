@@ -24,7 +24,6 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPReq
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPSubmission;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.QRCodeUtil;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.SecurityUtils;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.ServletUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.management.service.PresentationDefinitionService;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VerificationResult;
@@ -81,7 +80,6 @@ public class OpenID4VPAuthenticatorTest {
     private MockedStatic<WalletDataCache> mockedWalletDataCache;
     private MockedStatic<IdentityUtil> mockedIdentityUtil;
     private MockedStatic<QRCodeUtil> mockedQRCodeUtil;
-    private MockedStatic<SecurityUtils> mockedSecurityUtils;
     private MockedStatic<ServletUtil> mockedServletUtil;
     private MockedStatic<IdentityProviderManager> mockedIdpManager;
 
@@ -107,12 +105,8 @@ public class OpenID4VPAuthenticatorTest {
         mockedIdentityUtil.when(() -> IdentityUtil.getProperty("OpenID4VP.LoginPage"))
                 .thenReturn("/authenticationendpoint/wallet_login.jsp");
         
-        mockedQRCodeUtil = Mockito.mockStatic(QRCodeUtil.class);
         mockedQRCodeUtil.when(() -> QRCodeUtil.generateRequestUriQRContent(anyString(), anyString()))
                 .thenReturn("dummy-qr-content");
-
-        mockedSecurityUtils = Mockito.mockStatic(SecurityUtils.class);
-        mockedSecurityUtils.when(() -> SecurityUtils.isSafeRedirectUri(anyString())).thenReturn(true);
 
         mockedServletUtil = Mockito.mockStatic(ServletUtil.class);
 
@@ -137,9 +131,6 @@ public class OpenID4VPAuthenticatorTest {
         }
         if (mockedQRCodeUtil != null) {
             mockedQRCodeUtil.close();
-        }
-        if (mockedSecurityUtils != null) {
-            mockedSecurityUtils.close();
         }
         if (mockedServletUtil != null) {
             mockedServletUtil.close();
