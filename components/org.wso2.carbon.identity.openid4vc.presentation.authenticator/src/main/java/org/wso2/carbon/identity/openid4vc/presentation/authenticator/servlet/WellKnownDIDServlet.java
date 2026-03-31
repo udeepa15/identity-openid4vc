@@ -22,7 +22,6 @@ import com.google.gson.JsonObject;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.osgi.service.component.annotations.Component;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.CORSUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.did.exception.DIDDocumentException;
 import org.wso2.carbon.identity.openid4vc.presentation.did.service.DIDDocumentService;
 import org.wso2.carbon.identity.openid4vc.presentation.did.service.impl.DIDDocumentServiceImpl;
@@ -103,7 +102,7 @@ public class WellKnownDIDServlet extends HttpServlet {
             response.setStatus(HttpServletResponse.SC_OK);
 
             // Add CORS headers
-            CORSUtil.addCORSHeaders(request, response);
+            addCORSHeaders(request, response);
 
             writeResponse(response, didDocument);
 
@@ -118,15 +117,6 @@ public class WellKnownDIDServlet extends HttpServlet {
         }
     }
 
-    /**
-     * Handle OPTIONS requests for CORS preflight.
-     */
-    @Override
-    protected void doOptions(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
-
-        CORSUtil.handlePreflight(request, response);
-    }
 
 
     /**
@@ -141,6 +131,12 @@ public class WellKnownDIDServlet extends HttpServlet {
         errorJson.addProperty("error", message);
 
         writeResponse(response, errorJson.toString());
+    }
+
+    private void addCORSHeaders(HttpServletRequest request, HttpServletResponse response) {
+
+        // Deny by default: do not add CORS allow headers unless an explicit, reviewed
+        // endpoint-specific policy is implemented by the caller.
     }
 
     private void writeResponse(HttpServletResponse response, String content) throws IOException {

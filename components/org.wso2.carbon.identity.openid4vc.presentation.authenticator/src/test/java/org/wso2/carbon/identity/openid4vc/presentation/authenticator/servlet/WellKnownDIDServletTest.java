@@ -8,7 +8,6 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.CORSUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.common.util.OpenID4VPUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.did.service.DIDDocumentService;
 
@@ -37,7 +36,6 @@ public class WellKnownDIDServletTest {
 
     private MockedStatic<IdentityTenantUtil> mockedTenantUtil;
     private MockedStatic<OpenID4VPUtil> mockedOpenID4VPUtil;
-    private MockedStatic<CORSUtil> mockedCORSUtil;
 
     @BeforeMethod
     public void setUp() throws Exception {
@@ -46,7 +44,6 @@ public class WellKnownDIDServletTest {
         
         mockedTenantUtil = Mockito.mockStatic(IdentityTenantUtil.class);
         mockedOpenID4VPUtil = Mockito.mockStatic(OpenID4VPUtil.class);
-        mockedCORSUtil = Mockito.mockStatic(CORSUtil.class);
         
         // Mock output stream
         ServletOutputStream outputStream = new MockServletOutputStream();
@@ -60,7 +57,6 @@ public class WellKnownDIDServletTest {
     public void tearDown() {
         mockedTenantUtil.close();
         mockedOpenID4VPUtil.close();
-        mockedCORSUtil.close();
     }
 
     @Test
@@ -76,14 +72,8 @@ public class WellKnownDIDServletTest {
         
         verify(response).setContentType("application/did+json;charset=UTF-8");
         verify(response).setStatus(HttpServletResponse.SC_OK);
-        mockedCORSUtil.verify(() -> CORSUtil.addCORSHeaders(request, response));
     }
 
-    @Test
-    public void testDoOptions() throws Exception {
-        servlet.doOptions(request, response);
-        mockedCORSUtil.verify(() -> CORSUtil.handlePreflight(request, response));
-    }
 
     private void setPrivateField(Object obj, String fieldName, Object value) throws Exception {
         Field field = obj.getClass().getDeclaredField(fieldName);
