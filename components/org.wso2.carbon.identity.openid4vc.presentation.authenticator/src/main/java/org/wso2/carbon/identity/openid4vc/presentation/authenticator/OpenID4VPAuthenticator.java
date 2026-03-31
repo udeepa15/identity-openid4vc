@@ -38,6 +38,7 @@ import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 import org.wso2.carbon.identity.application.common.model.FederatedAuthenticatorConfig;
 import org.wso2.carbon.identity.application.common.model.IdentityProvider;
 import org.wso2.carbon.identity.application.common.model.Property;
+import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPStatusListenerCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.WalletDataCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestDTO;
@@ -527,25 +528,20 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         }
 
         // Set Signing Algorithm (Default to EdDSA)
-        String signingAlgorithm = authenticatorProperties.get(OpenID4VPConstants.ConfigKeys.SIGNING_ALGORITHM);
-        if (StringUtils.isBlank(signingAlgorithm)) {
-            signingAlgorithm = OpenID4VPConstants.Verification.ALG_EDDSA;
-        }
+        String signingAlgorithm = OpenID4VPConstants.Verification.ALG_EDDSA;
         createDTO.setSigningAlgorithm(signingAlgorithm);
 
-        // Set client ID from config or generate from tenant
+        // Set client ID from config or hostname
         String clientId = authenticatorProperties.get(PROP_CLIENT_ID);
         if (StringUtils.isBlank(clientId)) {
-            clientId = buildClientId();
+            clientId = IdentityUtil.getHostName();
+        }
+
+        if (StringUtils.isBlank(clientId)) {
+            throw new VPException("Client ID (hostname) cannot be null or empty.");
         }
         createDTO.setClientId(clientId);
 
-        // NEW: Use per-application presentation definition mapping
-        // Resolution order:
-        // 1. Check application-specific mapping in
-        // IDN_APPLICATION_PRESENTATION_DEFINITION table
-        // 2. Fall back to authenticator configuration property (backward compatible)
-        // 3. Use inline default definition if neither exists
         String presentationDefId = resolvePresentationDefinitionId(context);
 
         if (log.isInfoEnabled()) {
@@ -559,10 +555,8 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         }
 
         // Set response mode
-        String responseMode = authenticatorProperties.get(PROP_RESPONSE_MODE);
-        if (StringUtils.isBlank(responseMode)) {
-            responseMode = OpenID4VPConstants.Protocol.RESPONSE_MODE_DIRECT_POST;
-        }
+        String responseMode = OpenID4VPConstants.Protocol.RESPONSE_MODE_DIRECT_POST;
+
         createDTO.setResponseMode(responseMode);
 
         // Set transaction ID to context identifier for correlation
@@ -570,7 +564,9 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
 
         // Create VP request
         VPRequestService vpRequestService = getVPRequestService();
+
         int tenantId = getTenantId(context);
+
         return vpRequestService.createVPRequest(createDTO, tenantId);
     }
 
