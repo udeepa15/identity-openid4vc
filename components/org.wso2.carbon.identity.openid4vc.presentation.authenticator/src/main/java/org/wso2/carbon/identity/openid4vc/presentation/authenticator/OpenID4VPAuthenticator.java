@@ -35,10 +35,8 @@ import org.wso2.carbon.identity.application.authentication.framework.exception.A
 import org.wso2.carbon.identity.application.authentication.framework.exception.LogoutFailedException;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
-import org.wso2.carbon.identity.application.common.model.FederatedAuthenticatorConfig;
 import org.wso2.carbon.identity.application.common.model.IdentityProvider;
 import org.wso2.carbon.identity.application.common.model.Property;
-import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPStatusListenerCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.WalletDataCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestDTO;
@@ -48,7 +46,6 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPReq
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPSubmission;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.QRCodeUtil;
-import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
 import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.PresentationSubmission;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VerificationResult;
@@ -174,8 +171,8 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             throws AuthenticationFailedException {
 
         try {
-            // Create VP request
-            VPRequestDTO vpRequestResponse = createVPRequest(context);
+            // Create VP request using the service
+            VPRequestDTO vpRequestResponse = getVPRequestService().createVPRequest(context);
 
             // Store request ID in session
             context.setProperty(SESSION_VP_REQUEST_ID, vpRequestResponse.getRequestId());
@@ -513,62 +510,6 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         }
     }
 
-    /**
-     * Create a VP request for the authentication session.
-     */
-    private VPRequestDTO createVPRequest(AuthenticationContext context) throws VPException {
-        Map<String, String> authenticatorProperties = context.getAuthenticatorProperties();
-
-        VPRequestDTO createDTO = new VPRequestDTO();
-
-        // Set DID Method if configured
-        String didMethod = authenticatorProperties.get(PROP_DID_METHOD);
-        if (StringUtils.isNotBlank(didMethod)) {
-            createDTO.setDidMethod(didMethod);
-        }
-
-        // Set Signing Algorithm (Default to EdDSA)
-        String signingAlgorithm = OpenID4VPConstants.Verification.ALG_EDDSA;
-        createDTO.setSigningAlgorithm(signingAlgorithm);
-
-        // Set client ID from config or hostname
-        String clientId = authenticatorProperties.get(PROP_CLIENT_ID);
-        if (StringUtils.isBlank(clientId)) {
-            clientId = IdentityUtil.getHostName();
-        }
-
-        if (StringUtils.isBlank(clientId)) {
-            throw new VPException("Client ID (hostname) cannot be null or empty.");
-        }
-        createDTO.setClientId(clientId);
-
-        String presentationDefId = resolvePresentationDefinitionId(context);
-
-        if (log.isInfoEnabled()) {
-            log.info("Resolved presentation definition ID for the authentication flow.");
-        }
-
-        if (StringUtils.isNotBlank(presentationDefId)) {
-            createDTO.setPresentationDefinitionId(presentationDefId);
-        } else {
-            throw new VPException("No presentation definition found for the application.");
-        }
-
-        // Set response mode
-        String responseMode = OpenID4VPConstants.Protocol.RESPONSE_MODE_DIRECT_POST;
-
-        createDTO.setResponseMode(responseMode);
-
-        // Set transaction ID to context identifier for correlation
-        createDTO.setTransactionId(context.getContextIdentifier());
-
-        // Create VP request
-        VPRequestService vpRequestService = getVPRequestService();
-
-        int tenantId = getTenantId(context);
-
-        return vpRequestService.createVPRequest(createDTO, tenantId);
-    }
 
     /**
      * Resolve the IDP's ClaimMappings reliably from the authentication context.
@@ -726,115 +667,6 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             }
         }
         return null;
-    }
-
-    /**
-     * Resolve the presentation definition ID for the application.
-     * 
-     * The presentation definition ID is stored directly in the authenticator configuration.
-     * The listener handles creating the definition and updating the configuration with the ID.
-     * 
-     * @param context Authentication context
-     * @return Presentation definition ID or null
-     * @throws VPException If error occurs during resolution
-     */
-    private String resolvePresentationDefinitionId(AuthenticationContext context) {
-
-
-        try {
-            Map<String, String> authenticatorProperties = context.getAuthenticatorProperties();
-            String configId = authenticatorProperties.get(PROP_PRESENTATION_DEFINITION_ID);
-
-            if (StringUtils.isBlank(configId)) {
-                String idpName = null;
-                if (context.getExternalIdP() != null) {
-                    idpName = context.getExternalIdP().getIdPName();
-                }
-
-                // If getExternalIdP() is null, try to find the IdP name from SequenceConfig
-                if (StringUtils.isBlank(idpName) && context.getSequenceConfig() != null) {
-                    Map<Integer, StepConfig> stepMap = context.getSequenceConfig().getStepMap();
-                    if (stepMap != null) {
-                        StepConfig stepConfig = stepMap.get(context.getCurrentStep());
-                        if (stepConfig != null) {
-                            for (org.wso2.carbon.identity.application.authentication.framework
-                                    .config.model.AuthenticatorConfig 
-                                    authConfig : stepConfig.getAuthenticatorList()) {
-                                if (getName().equals(authConfig.getName()) && 
-                                        authConfig.getIdpNames() != null && !authConfig.getIdpNames().isEmpty()) {
-                                    idpName = authConfig.getIdpNames().get(0);
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                String tenantDomain = context.getTenantDomain();
-                if (StringUtils.isNotBlank(idpName)) {
-                    IdentityProvider idp = IdentityProviderManager.getInstance()
-                            .getIdPByName(idpName, tenantDomain);
-                    if (idp != null) {
-                    if (log.isInfoEnabled()) {
-                        log.info("Found IDP while resolving presentation definition ID.");
-                    }
-                    for (FederatedAuthenticatorConfig fedAuthConfig : idp.getFederatedAuthenticatorConfigs()) {
-                        if (log.isInfoEnabled()) {
-                            log.info("Checking federated authenticator configuration "
-                                    + "for presentation definition ID.");
-                        }
-                        if (getName().equals(fedAuthConfig.getName())) {
-                            for (Property property : fedAuthConfig.getProperties()) {
-                                if (log.isInfoEnabled()) {
-                                    log.info("Checking federated authenticator property "
-                                            + "for presentation definition ID.");
-                                }
-                                if (PROP_PRESENTATION_DEFINITION_ID.equals(property.getName())) {
-                                    configId = property.getValue();
-                                    break;
-                                }
-                            }
-                            break;
-                        }
-                    }
-                } else {
-                    if (log.isInfoEnabled()) {
-                        log.info("IDP could not be resolved for presentation definition ID lookup.");
-                    }
-                }
-            }
-        }
-
-        if (StringUtils.isNotBlank(configId)) {
-            if (log.isInfoEnabled()) {
-                log.info("Successfully resolved presentation definition ID from authenticator configuration.");
-            }
-            return configId;
-        }
-
-    } catch (org.wso2.carbon.idp.mgt.IdentityProviderManagementException e) {
-        // Ignored: Config might not be available
-        if (log.isInfoEnabled()) {
-            log.info("Exception occurred while resolving presentation definition ID.", e);
-        }
-    }
-
-    // Fallback or default
-    return null;
-    }
-
-
-
-
-    /**
-     * Build client ID for the request.
-     *
-     * @param context Authentication context
-     * @return Client ID
-     */
-    private String buildClientId() {
-        // Use fixed DID for demo purposes as requested
-        return "did:web:masked-unprofitably-ardith.ngrok-free.dev";
     }
 
     /**

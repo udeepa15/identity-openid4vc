@@ -21,6 +21,15 @@ package org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.im
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.wso2.carbon.identity.application.authentication.framework.config.model.StepConfig;
+import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
+import org.wso2.carbon.identity.application.common.model.FederatedAuthenticatorConfig;
+import org.wso2.carbon.identity.application.common.model.IdentityProvider;
+import org.wso2.carbon.identity.application.common.model.Property;
+import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
+import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dao.VPRequestDAO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dao.impl.VPRequestDAOImpl;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.AuthorizationDetailsDTO;
@@ -33,19 +42,32 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPReq
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
 import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
 import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException;
-import org.wso2.carbon.identity.openid4vc.presentation.common.util.OpenID4VPUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.did.provider.DIDProvider;
 import org.wso2.carbon.identity.openid4vc.presentation.did.provider.DIDProviderFactory;
 import org.wso2.carbon.identity.openid4vc.presentation.management.model.PresentationDefinition;
 import org.wso2.carbon.identity.openid4vc.presentation.management.service.PresentationDefinitionService;
 import org.wso2.carbon.identity.openid4vc.presentation.management.util.PresentationDefinitionUtil;
+import org.wso2.carbon.idp.mgt.IdentityProviderManager;
 
+import java.util.Date;
+import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Implementation of VPRequestService for managing VP authorization requests.
  */
 public class VPRequestServiceImpl implements VPRequestService {
+
+    private static final Log log = LogFactory.getLog(VPRequestServiceImpl.class);
+
+    // Configuration property keys
+    private static final String PROP_PRESENTATION_DEFINITION_ID = "presentationDefinitionId";
+    private static final String PROP_RESPONSE_MODE = "ResponseMode";
+    private static final String PROP_CLIENT_ID = "ClientId";
+    private static final String PROP_DID_METHOD = "DIDMethod";
+    private static final String AUTHENTICATOR_NAME = "OpenID4VPAuthenticator";
 
     private final AtomicReference<VPRequestDAO> vpRequestDAORef;
     private final AtomicReference<PresentationDefinitionService> presentationDefinitionServiceRef;
@@ -100,6 +122,56 @@ public class VPRequestServiceImpl implements VPRequestService {
     }
 
     @Override
+    public VPRequestDTO createVPRequest(AuthenticationContext context) throws VPException {
+        Map<String, String> authenticatorProperties = context.getAuthenticatorProperties();
+
+        VPRequestDTO createDTO = new VPRequestDTO();
+
+        // Set DID Method if configured
+        String didMethod = authenticatorProperties.get(PROP_DID_METHOD);
+        if (StringUtils.isNotBlank(didMethod)) {
+            createDTO.setDidMethod(didMethod);
+        }
+
+        // Set Signing Algorithm (Default to EdDSA)
+        String signingAlgorithm = OpenID4VPConstants.Verification.ALG_EDDSA;
+        createDTO.setSigningAlgorithm(signingAlgorithm);
+
+        // Set client ID from config or hostname
+        String clientId = authenticatorProperties.get(PROP_CLIENT_ID);
+        if (StringUtils.isBlank(clientId)) {
+            clientId = IdentityUtil.getHostName();
+        }
+
+        if (StringUtils.isBlank(clientId)) {
+            throw new VPException("Client ID (hostname) cannot be null or empty.");
+        }
+        createDTO.setClientId(clientId);
+
+        String presentationDefId = resolvePresentationDefinitionId(context);
+
+        if (log.isInfoEnabled()) {
+            log.info("Resolved presentation definition ID for the authentication flow.");
+        }
+
+        if (StringUtils.isNotBlank(presentationDefId)) {
+            createDTO.setPresentationDefinitionId(presentationDefId);
+        } else {
+            throw new VPException("No presentation definition found for the application.");
+        }
+
+        // Set response mode
+        String responseMode = OpenID4VPConstants.Protocol.RESPONSE_MODE_DIRECT_POST;
+        createDTO.setResponseMode(responseMode);
+
+        // Set transaction ID to context identifier for correlation
+        createDTO.setTransactionId(context.getContextIdentifier());
+
+        int tenantId = IdentityTenantUtil.getTenantId(context.getTenantDomain());
+        return createVPRequest(createDTO, tenantId);
+    }
+
+    @Override
     public VPRequestDTO createVPRequest(VPRequestDTO requestDTO, int tenantId)
             throws VPException {
 
@@ -107,12 +179,12 @@ public class VPRequestServiceImpl implements VPRequestService {
         validateCreateRequest(requestDTO);
 
         // Generate identifiers
-        String requestId = OpenID4VPUtil.generateRequestId();
+        String requestId = generateRequestId();
         String transactionId = StringUtils.isNotBlank(requestDTO.getTransactionId())
                 ? requestDTO.getTransactionId()
-                : OpenID4VPUtil.generateTransactionId();
+                : generateTransactionId();
         String nonce = StringUtils.isNotBlank(requestDTO.getNonce()) ? requestDTO.getNonce()
-                : OpenID4VPUtil.generateNonce();
+                : generateNonce();
 
         // Resolve presentation definition
         String presentationDefinition = resolvePresentationDefinition(requestDTO, tenantId);
@@ -143,10 +215,10 @@ public class VPRequestServiceImpl implements VPRequestService {
 
         // Calculate timestamps
         long createdAt = System.currentTimeMillis();
-        long expiresAt = OpenID4VPUtil.calculateExpiryTime(createdAt);
+        long expiresAt = calculateExpiryTime(createdAt);
 
         // Build response URI
-        String responseUri = OpenID4VPUtil.buildResponseUri(getBaseUrl());
+        String responseUri = buildResponseUri(getBaseUrl());
 
         // Create VP request model
         VPRequest vpRequest = new VPRequest.Builder()
@@ -174,8 +246,8 @@ public class VPRequestServiceImpl implements VPRequestService {
 
         // Generate request URI if enabled
         String requestUri = null;
-        if (OpenID4VPUtil.isRequestUriEnabled()) {
-            requestUri = OpenID4VPUtil.buildRequestUri(getBaseUrl(), requestId);
+        if (isRequestUriEnabled()) {
+            requestUri = buildRequestUri(getBaseUrl(), requestId);
         }
 
         // Build authorization details for by-value mode
@@ -265,7 +337,7 @@ public class VPRequestServiceImpl implements VPRequestService {
         VPRequest vpRequest = getVPRequestById(requestId, tenantId);
 
         // Check if expired
-        if (OpenID4VPUtil.isExpired(vpRequest.getExpiresAt())) {
+        if (isExpired(vpRequest.getExpiresAt())) {
             throw new VPRequestExpiredException(requestId);
         }
 
@@ -280,7 +352,7 @@ public class VPRequestServiceImpl implements VPRequestService {
         // Validate request exists
         getVPRequestById(requestId, tenantId);
 
-        return OpenID4VPUtil.buildRequestUri(getBaseUrl(), requestId);
+        return buildRequestUri(getBaseUrl(), requestId);
     }
 
     @Override
@@ -290,7 +362,7 @@ public class VPRequestServiceImpl implements VPRequestService {
         VPRequest vpRequest = getVPRequestById(requestId, tenantId);
 
         // Check if expired
-        if (OpenID4VPUtil.isExpired(vpRequest.getExpiresAt())) {
+        if (isExpired(vpRequest.getExpiresAt())) {
             throw new VPRequestExpiredException(requestId);
         }
 
@@ -341,7 +413,7 @@ public class VPRequestServiceImpl implements VPRequestService {
 
         VPRequest vpRequest = getVPRequestById(requestId, tenantId);
 
-        if (OpenID4VPUtil.isExpired(vpRequest.getExpiresAt())) {
+        if (isExpired(vpRequest.getExpiresAt())) {
             return false;
         }
 
@@ -415,12 +487,6 @@ public class VPRequestServiceImpl implements VPRequestService {
         return details;
     }
 
-    /**
-     * Get configured base URL for building URIs.
-     */
-    private String getConfiguredBaseUrl() {
-        return OpenID4VPUtil.getBaseUrl();
-    }
 
     /**
      * Build the request object as a JWT.
@@ -446,11 +512,11 @@ public class VPRequestServiceImpl implements VPRequestService {
                     .claim(OpenID4VPConstants.RequestParams.NONCE, vpRequest.getNonce())
                     .claim(OpenID4VPConstants.RequestParams.STATE, vpRequest.getRequestId())
                     .claim(OpenID4VPConstants.RequestParams.CLIENT_ID, vpRequest.getClientId())
-                    .issueTime(new java.util.Date())
-                    .jwtID(java.util.UUID.randomUUID().toString());
+                    .issueTime(new Date())
+                    .jwtID(UUID.randomUUID().toString());
 
             // Set expiration (10 minutes)
-            java.util.Date exp = new java.util.Date(System.currentTimeMillis() + 600000);
+            Date exp = new Date(System.currentTimeMillis() + 600000);
             claimsBuilder.expirationTime(exp);
 
             // Add presentation definition JSON object
@@ -478,7 +544,7 @@ public class VPRequestServiceImpl implements VPRequestService {
                             }
                         }
                         
-                        String descId = type != null ? type.toLowerCase(java.util.Locale.ENGLISH) + "_descriptor" +
+                        String descId = type != null ? type.toLowerCase(Locale.ENGLISH) + "_descriptor" +
                         descIndex : "descriptor_" + descIndex;
                         inputDescriptors.add(
                                 PresentationDefinitionUtil.buildInputDescriptorFromRequestedCredential(
@@ -488,7 +554,7 @@ public class VPRequestServiceImpl implements VPRequestService {
                 }
                 
                 String fullPdString = PresentationDefinitionUtil.buildPresentationDefinition(
-                        java.util.UUID.randomUUID().toString(), 
+                        UUID.randomUUID().toString(), 
                         "Dynamic Presentation Definition", 
                         "Dynamically generated from requested credentials", 
                         inputDescriptors.toArray(new String[0]));
@@ -545,5 +611,146 @@ public class VPRequestServiceImpl implements VPRequestService {
                  IllegalArgumentException e) {
             throw new RuntimeException("Error building request object JWT", e);
         }
+    }
+
+    /**
+     * Resolve the presentation definition ID for the application.
+     */
+    private String resolvePresentationDefinitionId(AuthenticationContext context) {
+        try {
+            Map<String, String> authenticatorProperties = context.getAuthenticatorProperties();
+            String configId = authenticatorProperties.get(PROP_PRESENTATION_DEFINITION_ID);
+
+            if (StringUtils.isBlank(configId)) {
+                String idpName = null;
+                if (context.getExternalIdP() != null) {
+                    idpName = context.getExternalIdP().getIdPName();
+                }
+
+                if (StringUtils.isBlank(idpName)) {
+                    idpName = resolveIdpNameFromSequenceConfig(context);
+                }
+
+                String tenantDomain = context.getTenantDomain();
+                if (StringUtils.isNotBlank(idpName)) {
+                    IdentityProvider idp = IdentityProviderManager.getInstance()
+                            .getIdPByName(idpName, tenantDomain);
+                    if (idp != null) {
+                        for (FederatedAuthenticatorConfig fedAuthConfig : idp.getFederatedAuthenticatorConfigs()) {
+                            if (AUTHENTICATOR_NAME.equals(fedAuthConfig.getName())) {
+                                for (Property property : fedAuthConfig.getProperties()) {
+                                    if (PROP_PRESENTATION_DEFINITION_ID.equals(property.getName())) {
+                                        return property.getValue();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            return configId;
+        } catch (org.wso2.carbon.idp.mgt.IdentityProviderManagementException e) {
+            if (log.isDebugEnabled()) {
+                log.debug("Error occurred while resolving presentation definition ID.", e);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Generate a unique request ID.
+     */
+    private String generateRequestId() {
+        return UUID.randomUUID().toString();
+    }
+
+    /**
+     * Generate a unique transaction ID.
+     */
+    private String generateTransactionId() {
+        return UUID.randomUUID().toString();
+    }
+
+    /**
+     * Generate a unique nonce.
+     */
+    private String generateNonce() {
+        return UUID.randomUUID().toString();
+    }
+
+    /**
+     * Calculate expiry time (default 10 minutes).
+     */
+    private long calculateExpiryTime(long createdAt) {
+        return createdAt + 600000;
+    }
+
+    /**
+     * Check if the request is expired.
+     */
+    private boolean isExpired(long expiresAt) {
+        return System.currentTimeMillis() > expiresAt;
+    }
+
+    /**
+     * Build the response URI.
+     */
+    private String buildResponseUri(String baseUrl) {
+        String endpoint = "/identity/openid4vc/presentation/submission";
+        if (baseUrl.endsWith("/")) {
+            return baseUrl.substring(0, baseUrl.length() - 1) + endpoint;
+        }
+        return baseUrl + endpoint;
+    }
+
+    /**
+     * Build the request URI for a specific request ID.
+     */
+    private String buildRequestUri(String baseUrl, String requestId) {
+        String endpoint = "/identity/openid4vc/presentation/requests/" + requestId;
+        if (baseUrl.endsWith("/")) {
+            return baseUrl.substring(0, baseUrl.length() - 1) + endpoint;
+        }
+        return baseUrl + endpoint;
+    }
+
+    /**
+     * Check if request URI is enabled (always true for this implementation).
+     */
+    private boolean isRequestUriEnabled() {
+        return true;
+    }
+
+    /**
+     * Get configured base URL for building URIs.
+     */
+    private String getConfiguredBaseUrl() {
+        return IdentityUtil.getServerURL("", true, true);
+    }
+
+    /**
+     * Extract the IDP name from the SequenceConfig StepMap.
+     */
+    private String resolveIdpNameFromSequenceConfig(AuthenticationContext context) {
+        if (context.getSequenceConfig() == null) {
+            return null;
+        }
+        Map<Integer, StepConfig> stepMap = context.getSequenceConfig().getStepMap();
+        if (stepMap == null) {
+            return null;
+        }
+        StepConfig stepConfig = stepMap.get(context.getCurrentStep());
+        if (stepConfig == null) {
+            return null;
+        }
+        for (org.wso2.carbon.identity.application.authentication.framework.config.model.AuthenticatorConfig
+                authConfig : stepConfig.getAuthenticatorList()) {
+            if (AUTHENTICATOR_NAME.equals(authConfig.getName())
+                    && authConfig.getIdpNames() != null
+                    && !authConfig.getIdpNames().isEmpty()) {
+                return authConfig.getIdpNames().get(0);
+            }
+        }
+        return null;
     }
 }

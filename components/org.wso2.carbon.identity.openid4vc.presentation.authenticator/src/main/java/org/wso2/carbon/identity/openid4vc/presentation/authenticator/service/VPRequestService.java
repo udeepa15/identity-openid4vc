@@ -18,6 +18,7 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.service;
 
+import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPRequestExpiredException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPRequestNotFoundException;
@@ -31,6 +32,15 @@ import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPExcept
  * for verifiable presentations as per OpenID4VP specification.
  */
 public interface VPRequestService {
+
+    /**
+     * Create a new VP authorization request for the authentication session.
+     *
+     * @param context The authentication context
+     * @return VPRequestDTO containing the created request details
+     * @throws VPException If an error occurs during request creation
+     */
+    VPRequestDTO createVPRequest(AuthenticationContext context) throws VPException;
 
     /**
      * Create a new VP authorization request.
