@@ -394,6 +394,9 @@ public class VPSubmissionServlet extends HttpServlet {
         response.getOutputStream().flush();
     }
 
+    private static final int DEFAULT_TENANT_ID = -1234;
+    private static final String TENANT_DOMAIN_PATTERN = "^[a-zA-Z0-9._-]+$";
+
     /**
      * Get tenant ID from request context.
      *
@@ -401,9 +404,23 @@ public class VPSubmissionServlet extends HttpServlet {
      * @return Tenant ID
      */
     private int getTenantId(final HttpServletRequest request) {
-        // Delegates to ServletUtil which reads from the identity framework context
-        // and request attributes — no direct header access.
-        return org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.ServletUtil.getTenantId(request);
+
+        String tenantDomain = org.wso2.carbon.identity.core.util.IdentityTenantUtil.getTenantDomainFromContext();
+        if (StringUtils.isBlank(tenantDomain)) {
+            Object tenantDomainAttribute = request.getAttribute("tenantDomain");
+            tenantDomain = tenantDomainAttribute instanceof String ? (String) tenantDomainAttribute : null;
+        }
+
+        if (StringUtils.isNotBlank(tenantDomain)
+                && tenantDomain.matches(TENANT_DOMAIN_PATTERN)) {
+            try {
+                return org.wso2.carbon.identity.core.util.IdentityTenantUtil.getTenantId(tenantDomain);
+            } catch (Exception e) {
+                // Ignore.
+            }
+        }
+
+        return DEFAULT_TENANT_ID;
     }
 
 }

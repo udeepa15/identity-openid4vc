@@ -18,9 +18,7 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.service;
 
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestCreateDTO;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestResponseDTO;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestStatusDTO;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPRequestExpiredException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPRequestNotFoundException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
@@ -37,12 +35,12 @@ public interface VPRequestService {
     /**
      * Create a new VP authorization request.
      *
-     * @param requestCreateDTO The DTO containing request creation parameters
-     * @param tenantId         The tenant ID
-     * @return VPRequestResponseDTO containing the created request details
+     * @param requestDTO The DTO containing request creation parameters
+     * @param tenantId   The tenant ID
+     * @return VPRequestDTO containing the created request details
      * @throws VPException If an error occurs during request creation
      */
-    VPRequestResponseDTO createVPRequest(VPRequestCreateDTO requestCreateDTO, int tenantId) 
+    VPRequestDTO createVPRequest(VPRequestDTO requestDTO, int tenantId) 
             throws VPException;
 
     /**
@@ -74,11 +72,11 @@ public interface VPRequestService {
      *
      * @param transactionId The transaction identifier
      * @param tenantId      The tenant ID
-     * @return VPRequestStatusDTO containing the status
+     * @return VPRequestDTO containing the status
      * @throws VPRequestNotFoundException If the request is not found
      * @throws VPException                If an error occurs
      */
-    VPRequestStatusDTO getVPRequestStatus(String transactionId, int tenantId) 
+    VPRequestDTO getVPRequestStatus(String transactionId, int tenantId) 
             throws VPRequestNotFoundException, VPException;
 
     /**

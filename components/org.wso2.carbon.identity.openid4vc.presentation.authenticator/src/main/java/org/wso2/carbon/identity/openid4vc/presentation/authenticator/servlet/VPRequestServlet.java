@@ -22,8 +22,9 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import org.apache.commons.lang.StringUtils;
 import org.osgi.service.component.annotations.Component;
+import org.owasp.encoder.Encode;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.ErrorDTO;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestStatusDTO;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPRequestExpiredException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPRequestNotFoundException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
@@ -31,7 +32,6 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling.Lon
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling.PollingResult;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.impl.VPRequestServiceImpl;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.ServletUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
 import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException;
 
@@ -72,6 +72,7 @@ public class VPRequestServlet extends HttpServlet {
 
     private static final long DEFAULT_POLL_TIMEOUT_MS = 60000; // 1 minute
     private static final int DEFAULT_TENANT_ID = -1234; // Super tenant
+    private static final String TENANT_DOMAIN_PATTERN = "^[a-zA-Z0-9._-]+$";
 
     private transient VPRequestService vpRequestService;
 
@@ -158,9 +159,9 @@ public class VPRequestServlet extends HttpServlet {
             String requestId, int tenantId) throws VPException, IOException {
 
         // Get timeout parameter for long polling
-        String timeoutParam = ServletUtil.getValidatedAlphaNumParameter(request, "timeout");
+        String timeoutParam = getParameter(request, "timeout");
         long timeout = DEFAULT_POLL_TIMEOUT_MS;
-        if (StringUtils.isNotBlank(timeoutParam)) {
+        if (StringUtils.isNotBlank(timeoutParam) && timeoutParam.matches("^[0-9]+$")) {
             try {
                 timeout = Math.min(Long.parseLong(timeoutParam), DEFAULT_POLL_TIMEOUT_MS);
             } catch (NumberFormatException e) {
@@ -171,7 +172,7 @@ public class VPRequestServlet extends HttpServlet {
         // Get request by ID to check status
         // Note: For true long-polling, this should use async servlets with
         // DeferredResult
-        VPRequestStatusDTO statusDTO = pollForStatus(requestId, tenantId, timeout);
+        VPRequestDTO statusDTO = pollForStatus(requestId, tenantId, timeout);
 
         sendJsonResponse(response, HttpServletResponse.SC_OK, statusDTO);
     }
@@ -185,16 +186,16 @@ public class VPRequestServlet extends HttpServlet {
      * @param requestId Request ID
      * @param tenantId Tenant ID
      * @param timeout Polling timeout
-     * @return VPRequestStatusDTO with status
+     * @return VPRequestDTO with status
      * @throws VPException If error occurs
      */
-    private VPRequestStatusDTO pollForStatus(final String requestId, final int tenantId, final long timeout)
+    private VPRequestDTO pollForStatus(final String requestId, final int tenantId, final long timeout)
             throws VPException {
 
         LongPollingManager pollingManager = LongPollingManager.getInstance();
         PollingResult result = pollingManager.waitForStatusChange(requestId, timeout, tenantId);
 
-        VPRequestStatusDTO statusDTO = new VPRequestStatusDTO();
+        VPRequestDTO statusDTO = new VPRequestDTO();
         statusDTO.setRequestId(requestId);
 
         org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling.PollingResult.ResultStatus status =
@@ -242,11 +243,58 @@ public class VPRequestServlet extends HttpServlet {
         sendJsonResponse(response, statusCode, errorDTO);
     }
 
-    /**
-     * Get tenant ID from request.
-     * In production, this should extract from authentication context.
-     */
     private int getTenantId(HttpServletRequest request) {
-        return org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.ServletUtil.getTenantId(request);
+
+        String tenantDomain = org.wso2.carbon.identity.core.util.IdentityTenantUtil.getTenantDomainFromContext();
+        if (StringUtils.isBlank(tenantDomain)) {
+            Object tenantDomainAttribute = request.getAttribute("tenantDomain");
+            tenantDomain = tenantDomainAttribute instanceof String ? (String) tenantDomainAttribute : null;
+        }
+
+        if (StringUtils.isNotBlank(tenantDomain)
+                && tenantDomain.matches(TENANT_DOMAIN_PATTERN)) {
+            try {
+                return org.wso2.carbon.identity.core.util.IdentityTenantUtil.getTenantId(tenantDomain);
+            } catch (Exception e) {
+                // Ignore.
+            }
+        }
+
+        return DEFAULT_TENANT_ID;
+    }
+
+    /**
+     * Read and sanitize a request parameter.
+     *
+     * @param request HTTP request.
+     * @param name    Parameter name.
+     * @return Sanitized parameter value, or null.
+     */
+    private String getParameter(final HttpServletRequest request, final String name) {
+
+        if (request == null || StringUtils.isBlank(name)) {
+            return null;
+        }
+
+        String value = request.getParameter(name);
+        if (StringUtils.isBlank(value)) {
+            return null;
+        }
+
+        return Encode.forJava(sanitizeParam(value));
+    }
+
+    /**
+     * Strip CRLF/control characters from request parameter input.
+     *
+     * @param value Request parameter value.
+     * @return Sanitized parameter value.
+     */
+    private String sanitizeParam(final String value) {
+
+        if (value == null) {
+            return null;
+        }
+        return value.replace('\r', '_').replace('\n', '_').replaceAll("[\\p{Cntrl}]", "");
     }
 }

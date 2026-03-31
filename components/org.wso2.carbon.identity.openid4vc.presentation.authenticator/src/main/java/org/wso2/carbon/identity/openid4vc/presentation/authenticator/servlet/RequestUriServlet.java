@@ -161,11 +161,29 @@ public class RequestUriServlet extends HttpServlet {
         }
     }
 
+    private static final String TENANT_DOMAIN_PATTERN = "^[a-zA-Z0-9._-]+$";
+
     /**
      * Get tenant ID from request context.
      */
     private int getTenantId(HttpServletRequest request) {
-        return org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.ServletUtil.getTenantId(request);
+
+        String tenantDomain = org.wso2.carbon.identity.core.util.IdentityTenantUtil.getTenantDomainFromContext();
+        if (StringUtils.isBlank(tenantDomain)) {
+            Object tenantDomainAttribute = request.getAttribute("tenantDomain");
+            tenantDomain = tenantDomainAttribute instanceof String ? (String) tenantDomainAttribute : null;
+        }
+
+        if (StringUtils.isNotBlank(tenantDomain)
+                && tenantDomain.matches(TENANT_DOMAIN_PATTERN)) {
+            try {
+                return org.wso2.carbon.identity.core.util.IdentityTenantUtil.getTenantId(tenantDomain);
+            } catch (Exception e) {
+                // Ignore.
+            }
+        }
+
+        return DEFAULT_TENANT_ID;
     }
 
     /**

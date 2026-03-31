@@ -1,3 +1,21 @@
+/*
+ * Copyright (c) 2025-2026, WSO2 LLC. (http://www.wso2.com).
+ *
+ * WSO2 LLC. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.handler;
 
 import org.mockito.Mock;
@@ -10,7 +28,6 @@ import org.testng.annotations.Test;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.AuthorizationDetailsDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.ServletUtil;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -18,6 +35,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
+import static org.testng.Assert.assertTrue;
 
 public class VPRequestBuilderTest {
 
@@ -26,14 +44,12 @@ public class VPRequestBuilderTest {
     @Mock
     private HttpServletRequest request;
 
-    private MockedStatic<ServletUtil> mockedServletUtil;
     private MockedStatic<IdentityUtil> mockedIdentityUtil;
 
     @BeforeMethod
     public void setUp() {
         MockitoAnnotations.openMocks(this);
         builder = new VPRequestBuilder();
-        mockedServletUtil = Mockito.mockStatic(ServletUtil.class);
         mockedIdentityUtil = Mockito.mockStatic(IdentityUtil.class);
         mockedIdentityUtil.when(() -> IdentityUtil.getServerURL(anyString(), anyBoolean(), anyBoolean()))
                 .thenReturn("http://localhost:9443");
@@ -41,8 +57,9 @@ public class VPRequestBuilderTest {
 
     @AfterMethod
     public void tearDown() {
-        mockedServletUtil.close();
-        mockedIdentityUtil.close();
+        if (mockedIdentityUtil != null) {
+            mockedIdentityUtil.close();
+        }
     }
 
     @Test
@@ -77,9 +94,5 @@ public class VPRequestBuilderTest {
         assertEquals(dto.getClientId(), "client123");
         assertEquals(dto.getNonce(), "nonce123");
         assertEquals(dto.getState(), "req123");
-    }
-
-    private void assertTrue(boolean condition) {
-        org.testng.Assert.assertTrue(condition);
     }
 }

@@ -13,18 +13,18 @@ import org.wso2.carbon.identity.application.authentication.framework.context.Aut
 import org.wso2.carbon.identity.application.common.model.ClaimConfig;
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 import org.wso2.carbon.identity.application.common.model.IdentityProvider;
+import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPStatusListenerCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.WalletDataCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.AuthorizationDetailsDTO;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestResponseDTO;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPSubmission;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.QRCodeUtil;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.ServletUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.management.service.PresentationDefinitionService;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VerificationResult;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.service.VerificationService;
@@ -80,7 +80,7 @@ public class OpenID4VPAuthenticatorTest {
     private MockedStatic<WalletDataCache> mockedWalletDataCache;
     private MockedStatic<IdentityUtil> mockedIdentityUtil;
     private MockedStatic<QRCodeUtil> mockedQRCodeUtil;
-    private MockedStatic<ServletUtil> mockedServletUtil;
+    private MockedStatic<IdentityTenantUtil> mockedIdentityTenantUtil;
     private MockedStatic<IdentityProviderManager> mockedIdpManager;
 
     @BeforeMethod
@@ -104,11 +104,11 @@ public class OpenID4VPAuthenticatorTest {
         mockedIdentityUtil = Mockito.mockStatic(IdentityUtil.class);
         mockedIdentityUtil.when(() -> IdentityUtil.getProperty("OpenID4VP.LoginPage"))
                 .thenReturn("/authenticationendpoint/wallet_login.jsp");
-        
+        mockedQRCodeUtil = Mockito.mockStatic(QRCodeUtil.class);
         mockedQRCodeUtil.when(() -> QRCodeUtil.generateRequestUriQRContent(anyString(), anyString()))
                 .thenReturn("dummy-qr-content");
 
-        mockedServletUtil = Mockito.mockStatic(ServletUtil.class);
+        mockedIdentityTenantUtil = Mockito.mockStatic(IdentityTenantUtil.class);
 
         mockedIdpManager = Mockito.mockStatic(IdentityProviderManager.class);
         mockedIdpManager.when(IdentityProviderManager::getInstance)
@@ -132,8 +132,8 @@ public class OpenID4VPAuthenticatorTest {
         if (mockedQRCodeUtil != null) {
             mockedQRCodeUtil.close();
         }
-        if (mockedServletUtil != null) {
-            mockedServletUtil.close();
+        if (mockedIdentityTenantUtil != null) {
+            mockedIdentityTenantUtil.close();
         }
         if (mockedIdpManager != null) {
             mockedIdpManager.close();
@@ -152,17 +152,15 @@ public class OpenID4VPAuthenticatorTest {
 
     @Test
     public void testCanHandle() {
-        mockedServletUtil.when(() -> ServletUtil.getValidatedAlphaNumParameter(request, "status"))
-                .thenReturn("success");
-        mockedServletUtil.when(() -> ServletUtil.getValidatedAlphaNumParameter(request, "sessionDataKey"))
-                .thenReturn("sdk123");
+        when(request.getParameter("status")).thenReturn("success");
+        when(request.getParameter("sessionDataKey")).thenReturn("sdk123");
         assertTrue(authenticator.canHandle(request));
 
-        mockedServletUtil.when(() -> ServletUtil.getValidatedAlphaNumParameter(request, "status")).thenReturn(null);
-        mockedServletUtil.when(() -> ServletUtil.getValidatedAlphaNumParameter(request, "poll")).thenReturn("true");
+        when(request.getParameter("status")).thenReturn(null);
+        when(request.getParameter("poll")).thenReturn("true");
         assertTrue(authenticator.canHandle(request));
 
-        mockedServletUtil.when(() -> ServletUtil.getValidatedAlphaNumParameter(request, "poll")).thenReturn(null);
+        when(request.getParameter("poll")).thenReturn(null);
         assertFalse(authenticator.canHandle(request));
     }
 
@@ -177,7 +175,7 @@ public class OpenID4VPAuthenticatorTest {
         when(context.getContextIdentifier()).thenReturn("dummy-txn-id");
         when(context.getTenantDomain()).thenReturn("carbon.super");
 
-        VPRequestResponseDTO mockResponseDTO = new VPRequestResponseDTO();
+        VPRequestDTO mockResponseDTO = new VPRequestDTO();
         mockResponseDTO.setRequestId("req-123");
         mockResponseDTO.setTransactionId("dummy-txn-id");
         mockResponseDTO.setRequestUri("urn:ietf:params:oauth:request_uri:req-123");
@@ -237,8 +235,7 @@ public class OpenID4VPAuthenticatorTest {
         when(context.getProperty("openid4vp_request_id")).thenReturn("req-123");
         when(context.getTenantDomain()).thenReturn("carbon.super");
 
-        mockedServletUtil.when(() -> ServletUtil.getValidatedAlphaNumParameter(request, "status"))
-                .thenReturn("success");
+        when(request.getParameter("status")).thenReturn("success");
 
         VPSubmission mockSubmission = new VPSubmission();
         String presentationSubmissionJson = "{\"descriptor_map\":[{\"format\":\"vc+sd-jwt\"}]}";
@@ -285,8 +282,7 @@ public class OpenID4VPAuthenticatorTest {
         mockIdpClaimConfig();
         when(context.getProperty("openid4vp_request_id")).thenReturn("req-123");
         when(context.getTenantDomain()).thenReturn("carbon.super");
-        mockedServletUtil.when(() -> ServletUtil.getValidatedAlphaNumParameter(request, "status"))
-                .thenReturn("success");
+        when(request.getParameter("status")).thenReturn("success");
 
         VPSubmission mockSubmission = new VPSubmission();
         mockSubmission.setPresentationSubmission("{\"descriptor_map\":[{\"format\":\"vc+sd-jwt\"}]}");
@@ -307,8 +303,7 @@ public class OpenID4VPAuthenticatorTest {
         mockIdpClaimConfig();
         when(context.getProperty("openid4vp_request_id")).thenReturn("req-123");
         when(context.getTenantDomain()).thenReturn("carbon.super");
-        mockedServletUtil.when(() -> ServletUtil.getValidatedAlphaNumParameter(request, "status"))
-                .thenReturn("success");
+        when(request.getParameter("status")).thenReturn("success");
 
         VPSubmission mockSubmission = new VPSubmission();
         mockSubmission.setPresentationSubmission("{\"descriptor_map\":[{\"format\":\"vc+sd-jwt\"}]}");
@@ -329,7 +324,7 @@ public class OpenID4VPAuthenticatorTest {
 
     @Test
     public void testProcessHandlePollRequestPending() throws Exception {
-        mockedServletUtil.when(() -> ServletUtil.getValidatedAlphaNumParameter(request, "poll")).thenReturn("true");
+        when(request.getParameter("poll")).thenReturn("true");
         
         java.io.PrintWriter mockPrintWriter = org.mockito.Mockito.mock(java.io.PrintWriter.class);
         when(response.getWriter()).thenReturn(mockPrintWriter);
@@ -349,7 +344,7 @@ public class OpenID4VPAuthenticatorTest {
 
     @Test
     public void testProcessHandlePollRequestCompleted() throws Exception {
-        mockedServletUtil.when(() -> ServletUtil.getValidatedAlphaNumParameter(request, "poll")).thenReturn("true");
+        when(request.getParameter("poll")).thenReturn("true");
         
         java.io.PrintWriter mockPrintWriter = org.mockito.Mockito.mock(java.io.PrintWriter.class);
         when(response.getWriter()).thenReturn(mockPrintWriter);
@@ -370,7 +365,7 @@ public class OpenID4VPAuthenticatorTest {
     @Test(expectedExceptions = 
             org.wso2.carbon.identity.application.authentication.framework.exception.AuthenticationFailedException.class)
     public void testProcessHandlePollRequestExpired() throws Exception {
-        mockedServletUtil.when(() -> ServletUtil.getValidatedAlphaNumParameter(request, "poll")).thenReturn("true");
+        when(request.getParameter("poll")).thenReturn("true");
         java.io.PrintWriter mockPrintWriter = org.mockito.Mockito.mock(java.io.PrintWriter.class);
         when(response.getWriter()).thenReturn(mockPrintWriter);
         when(context.getProperty("openid4vp_request_id")).thenReturn("req-123");
@@ -387,7 +382,7 @@ public class OpenID4VPAuthenticatorTest {
     @Test(expectedExceptions = 
             org.wso2.carbon.identity.application.authentication.framework.exception.AuthenticationFailedException.class)
     public void testProcessHandleStatusCallbackFailed() throws Exception {
-        mockedServletUtil.when(() -> ServletUtil.getValidatedAlphaNumParameter(request, "status")).thenReturn("failed");
+        when(request.getParameter("status")).thenReturn("failed");
         authenticator.process(request, response, context);
     }
 
@@ -464,8 +459,7 @@ public class OpenID4VPAuthenticatorTest {
         mockIdpClaimConfig();
         when(context.getProperty("openid4vp_request_id")).thenReturn("req-123");
         when(context.getTenantDomain()).thenReturn("carbon.super");
-        mockedServletUtil.when(() -> ServletUtil.getValidatedAlphaNumParameter(request, "status"))
-                .thenReturn("success");
+        when(request.getParameter("status")).thenReturn("success");
 
         VPSubmission mockSubmission = new VPSubmission();
         mockSubmission.setPresentationSubmission("{\"descriptor_map\":[{\"format\":\"vc+sd-jwt\"}]}");
@@ -503,8 +497,7 @@ public class OpenID4VPAuthenticatorTest {
 
         when(context.getProperty("openid4vp_request_id")).thenReturn("req-123");
         when(context.getTenantDomain()).thenReturn("carbon.super");
-        mockedServletUtil.when(() -> ServletUtil.getValidatedAlphaNumParameter(request, "status"))
-                .thenReturn("success");
+        when(request.getParameter("status")).thenReturn("success");
 
         VPSubmission mockSubmission = new VPSubmission();
         mockSubmission.setPresentationSubmission("{\"descriptor_map\":[{\"format\":\"vc+sd-jwt\"}]}");
@@ -525,36 +518,11 @@ public class OpenID4VPAuthenticatorTest {
         authenticator.process(request, response, context);
     }
 
-    @Test
-    public void testResolveIssuerSubjectIdentifierVariants() throws Exception {
-        // Test "issuer" instead of "iss"
-        Map<String, Object> verifiedClaims = new HashMap<>();
-        verifiedClaims.put("issuer", "did:example:123");
-        
-        // We can't call private method directly easily without reflection, 
-        // but we can trigger it via processResponse with a dummy context.
-        // Actually, let's use a small amount of reflection for these private helpers to reach 80% quickly.
-        java.lang.reflect.Method method = OpenID4VPAuthenticator.class
-                .getDeclaredMethod("resolveIssuerSubjectIdentifier", Map.class);
-        method.setAccessible(true);
-        
-        assertEquals(method.invoke(authenticator, verifiedClaims), "did:example:123");
-        
-        // Test nested vc.issuer
-        verifiedClaims.clear();
-        Map<String, Object> vc = new HashMap<>();
-        vc.put("issuer", "did:example:456");
-        verifiedClaims.put("vc", vc);
-        assertEquals(method.invoke(authenticator, verifiedClaims), "did:example:456");
-        
-        // Test null/empty
-        assertEquals(method.invoke(authenticator, new Object[]{new HashMap<String, Object>()}), null);
-        assertEquals(method.invoke(authenticator, new Object[]{null}), null);
-    }
+
 
     @Test
     public void testHandlePollRequestMissingId() throws Exception {
-        mockedServletUtil.when(() -> ServletUtil.getValidatedAlphaNumParameter(request, "poll")).thenReturn("true");
+        when(request.getParameter("poll")).thenReturn("true");
         when(context.getProperty("openid4vp_request_id")).thenReturn(null);
         
         assertThrows(org.wso2.carbon.identity.application.authentication.
@@ -564,7 +532,7 @@ public class OpenID4VPAuthenticatorTest {
 
     @Test
     public void testHandlePollRequestNotFound() throws Exception {
-        mockedServletUtil.when(() -> ServletUtil.getValidatedAlphaNumParameter(request, "poll")).thenReturn("true");
+        when(request.getParameter("poll")).thenReturn("true");
         when(context.getProperty("openid4vp_request_id")).thenReturn("non-existent");
         when(context.getTenantDomain()).thenReturn("carbon.super");
         when(vpRequestService.getVPRequestById(anyString(), anyInt())).thenReturn(null);
@@ -578,7 +546,7 @@ public class OpenID4VPAuthenticatorTest {
 
     @Test
     public void testProcessHandlePollRequestCancelled() throws Exception {
-        mockedServletUtil.when(() -> ServletUtil.getValidatedAlphaNumParameter(request, "poll")).thenReturn("true");
+        when(request.getParameter("poll")).thenReturn("true");
         java.io.PrintWriter mockPrintWriter = org.mockito.Mockito.mock(java.io.PrintWriter.class);
         when(response.getWriter()).thenReturn(mockPrintWriter);
         when(context.getProperty("openid4vp_request_id")).thenReturn("req-123");
@@ -623,7 +591,7 @@ public class OpenID4VPAuthenticatorTest {
 
     @Test
     public void testHandlePollRequestSuccess() throws Exception {
-        mockedServletUtil.when(() -> ServletUtil.getValidatedAlphaNumParameter(request, "poll")).thenReturn("true");
+        when(request.getParameter("poll")).thenReturn("true");
         when(context.getProperty("openid4vp_request_id")).thenReturn("req1");
         VPRequest vpRequest = new VPRequest.Builder().requestId("req1").status(VPRequestStatus.COMPLETED).build();
         when(vpRequestService.getVPRequestById(anyString(), anyInt())).thenReturn(vpRequest);
@@ -641,7 +609,7 @@ public class OpenID4VPAuthenticatorTest {
         when(context.getAuthenticatorProperties()).thenReturn(props);
         when(context.getContextIdentifier()).thenReturn("ctx1");
 
-        VPRequestResponseDTO responseDTO = new VPRequestResponseDTO();
+        VPRequestDTO responseDTO = new VPRequestDTO();
         responseDTO.setRequestUri("http://example.com");
                 responseDTO.setRequestId("req-123");
                 responseDTO.setTransactionId("txn-123");

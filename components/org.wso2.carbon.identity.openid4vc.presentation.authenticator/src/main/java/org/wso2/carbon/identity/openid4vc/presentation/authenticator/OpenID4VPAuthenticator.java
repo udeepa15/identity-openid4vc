@@ -25,6 +25,7 @@ import com.google.gson.JsonObject;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.owasp.encoder.Encode;
 import org.wso2.carbon.identity.application.authentication.framework.AbstractApplicationAuthenticator;
 import org.wso2.carbon.identity.application.authentication.framework.AuthenticatorFlowStatus;
 import org.wso2.carbon.identity.application.authentication.framework.FederatedApplicationAuthenticator;
@@ -39,15 +40,13 @@ import org.wso2.carbon.identity.application.common.model.IdentityProvider;
 import org.wso2.carbon.identity.application.common.model.Property;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPStatusListenerCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.WalletDataCache;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestCreateDTO;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestResponseDTO;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPSubmission;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.QRCodeUtil;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.ServletUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
 import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.PresentationSubmission;
@@ -112,6 +111,9 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
     private static final String PROP_DID_METHOD = "DIDMethod";
     private static final String PROP_SUBJECT_CLAIM = "SubjectClaim";
     private static final String DEFAULT_LOGIN_PAGE = "/authenticationendpoint/wallet_login.jsp";
+    private static final String ALPHANUM_PATTERN = "^[a-zA-Z0-9_.-]+$";
+    private static final int DEFAULT_TENANT_ID = -1234;
+    private static final String TENANT_DOMAIN_PATTERN = "^[a-zA-Z0-9._-]+$";
 
     private static final int DISPLAY_ORDER_3 = 3;
     private static final int DISPLAY_ORDER_4 = 4;
@@ -172,7 +174,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
 
         try {
             // Create VP request
-            VPRequestResponseDTO vpRequestResponse = createVPRequest(context);
+            VPRequestDTO vpRequestResponse = createVPRequest(context);
 
             // Store request ID in session
             context.setProperty(SESSION_VP_REQUEST_ID, vpRequestResponse.getRequestId());
@@ -334,12 +336,6 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         return (val != null && StringUtils.isNotBlank(val.toString())) ? val.toString() : null;
     }
 
-    /**
-     * Resolve issuer from verified claims for issuer-only authentication mode.
-     *
-     * @param verifiedClaims Claims extracted and verified from the VC
-     * @return Issuer value if available, or null
-     */
 
     /**
      * Generate a transient random subject identifier when no subject claim is configured.
@@ -411,13 +407,13 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             throws AuthenticationFailedException, LogoutFailedException {
 
         // Check if this is a polling request
-        String poll = ServletUtil.getValidatedAlphaNumParameter(request, PARAM_POLL);
+        String poll = getValidatedParameter(request, PARAM_POLL);
         if ("true".equals(poll)) {
             return handlePollRequest(response, context);
         }
 
         // Check if status is being reported
-        String status = ServletUtil.getValidatedAlphaNumParameter(request, PARAM_STATUS);
+        String status = getValidatedParameter(request, PARAM_STATUS);
         if (StringUtils.isNotBlank(status)) {
             return handleStatusCallback(request, response, context, status);
         }
@@ -519,10 +515,10 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
     /**
      * Create a VP request for the authentication session.
      */
-    private VPRequestResponseDTO createVPRequest(AuthenticationContext context) throws VPException {
+    private VPRequestDTO createVPRequest(AuthenticationContext context) throws VPException {
         Map<String, String> authenticatorProperties = context.getAuthenticatorProperties();
 
-        VPRequestCreateDTO createDTO = new VPRequestCreateDTO();
+        VPRequestDTO createDTO = new VPRequestDTO();
 
         // Set DID Method if configured
         String didMethod = authenticatorProperties.get(PROP_DID_METHOD);
@@ -901,7 +897,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      */
     @Override
     public String getContextIdentifier(final HttpServletRequest request) {
-        return StringUtils.trimToNull(ServletUtil.getValidatedAlphaNumParameter(request, "sessionDataKey"));
+        return StringUtils.trimToNull(getValidatedParameter(request, "sessionDataKey"));
     }
 
     /**
@@ -913,13 +909,13 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
     @Override
     public boolean canHandle(final HttpServletRequest request) {
         String sessionDataKey = StringUtils.trimToNull(
-            ServletUtil.getValidatedAlphaNumParameter(request, "sessionDataKey"));
+            getValidatedParameter(request, "sessionDataKey"));
         String vpRequestId = StringUtils.trimToNull(
-            ServletUtil.getValidatedAlphaNumParameter(request, PARAM_VP_REQUEST_ID));
+            getValidatedParameter(request, PARAM_VP_REQUEST_ID));
         String poll = StringUtils.trimToNull(
-            ServletUtil.getValidatedAlphaNumParameter(request, PARAM_POLL));
+            getValidatedParameter(request, PARAM_POLL));
         String status = StringUtils.trimToNull(
-            ServletUtil.getValidatedAlphaNumParameter(request, PARAM_STATUS));
+            getValidatedParameter(request, PARAM_STATUS));
 
         // Handle polling requests from login page
         if (StringUtils.isNotBlank(poll)
@@ -1000,5 +996,82 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         configProperties.add(subjectClaim);
 
         return configProperties;
+    }
+
+    /**
+     * Read and validate a request parameter.
+     *
+     * @param request HTTP request.
+     * @param name    Parameter name.
+     * @return Validated parameter value, or null.
+     */
+    private String getValidatedParameter(final HttpServletRequest request, final String name) {
+
+        String value = getParameter(request, name);
+        if (StringUtils.isNotBlank(value) && value.matches(ALPHANUM_PATTERN)) {
+            return value;
+        }
+        return null;
+    }
+
+    /**
+     * Get tenant ID from request.
+     *
+     * @param request HTTP request
+     * @return tenant ID
+     */
+    private int getTenantId(final HttpServletRequest request) {
+
+        String tenantDomain = org.wso2.carbon.identity.core.util.IdentityTenantUtil.getTenantDomainFromContext();
+        if (StringUtils.isBlank(tenantDomain)) {
+            Object tenantDomainAttribute = request.getAttribute("tenantDomain");
+            tenantDomain = tenantDomainAttribute instanceof String ? (String) tenantDomainAttribute : null;
+        }
+
+        if (StringUtils.isNotBlank(tenantDomain)
+                && tenantDomain.matches(TENANT_DOMAIN_PATTERN)) {
+            try {
+                return org.wso2.carbon.identity.core.util.IdentityTenantUtil.getTenantId(tenantDomain);
+            } catch (Exception e) {
+                // Ignore.
+            }
+        }
+
+        return DEFAULT_TENANT_ID;
+    }
+
+    /**
+     * Read and sanitize a request parameter.
+     *
+     * @param request HTTP request.
+     * @param name    Parameter name.
+     * @return Sanitized parameter value, or null.
+     */
+    private String getParameter(final HttpServletRequest request, final String name) {
+
+        if (request == null || StringUtils.isBlank(name)) {
+            return null;
+        }
+
+        String value = request.getParameter(name);
+        if (StringUtils.isBlank(value)) {
+            return null;
+        }
+
+        return Encode.forJava(sanitizeParam(value));
+    }
+
+    /**
+     * Strip CRLF/control characters from request parameter input.
+     *
+     * @param value Request parameter value.
+     * @return Sanitized parameter value.
+     */
+    private String sanitizeParam(final String value) {
+
+        if (value == null) {
+            return null;
+        }
+        return value.replace('\r', '_').replace('\n', '_').replaceAll("[\\p{Cntrl}]", "");
     }
 }

@@ -24,9 +24,7 @@ import org.apache.commons.lang.StringUtils;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dao.VPRequestDAO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dao.impl.VPRequestDAOImpl;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.AuthorizationDetailsDTO;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestCreateDTO;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestResponseDTO;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestStatusDTO;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPRequestExpiredException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPRequestNotFoundException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
@@ -102,24 +100,24 @@ public class VPRequestServiceImpl implements VPRequestService {
     }
 
     @Override
-    public VPRequestResponseDTO createVPRequest(VPRequestCreateDTO requestCreateDTO, int tenantId)
+    public VPRequestDTO createVPRequest(VPRequestDTO requestDTO, int tenantId)
             throws VPException {
 
         // Validate input
-        validateCreateRequest(requestCreateDTO);
+        validateCreateRequest(requestDTO);
 
         // Generate identifiers
         String requestId = OpenID4VPUtil.generateRequestId();
-        String transactionId = StringUtils.isNotBlank(requestCreateDTO.getTransactionId())
-                ? requestCreateDTO.getTransactionId()
+        String transactionId = StringUtils.isNotBlank(requestDTO.getTransactionId())
+                ? requestDTO.getTransactionId()
                 : OpenID4VPUtil.generateTransactionId();
-        String nonce = StringUtils.isNotBlank(requestCreateDTO.getNonce()) ? requestCreateDTO.getNonce()
+        String nonce = StringUtils.isNotBlank(requestDTO.getNonce()) ? requestDTO.getNonce()
                 : OpenID4VPUtil.generateNonce();
 
         // Resolve presentation definition
-        String presentationDefinition = resolvePresentationDefinition(requestCreateDTO, tenantId);
+        String presentationDefinition = resolvePresentationDefinition(requestDTO, tenantId);
         String didMethod = "web"; // Force did:web
-        String signingAlgorithm = requestCreateDTO.getSigningAlgorithm(); // Use explicit algo from DTO
+        String signingAlgorithm = requestDTO.getSigningAlgorithm(); // Use explicit algo from DTO
 
         // Extract and clean internal configuration
         if (StringUtils.isNotBlank(presentationDefinition)) {
@@ -154,9 +152,9 @@ public class VPRequestServiceImpl implements VPRequestService {
         VPRequest vpRequest = new VPRequest.Builder()
                 .requestId(requestId)
                 .transactionId(transactionId)
-                .clientId(requestCreateDTO.getClientId())
+                .clientId(requestDTO.getClientId())
                 .nonce(nonce)
-                .presentationDefinitionId(requestCreateDTO.getPresentationDefinitionId())
+                .presentationDefinitionId(requestDTO.getPresentationDefinitionId())
                 .presentationDefinition(presentationDefinition) // Still set it in memory
                 .responseUri(responseUri)
                 .responseMode(OpenID4VPConstants.Protocol.RESPONSE_MODE_DIRECT_POST)
@@ -185,12 +183,13 @@ public class VPRequestServiceImpl implements VPRequestService {
                 vpRequest, presentationDefinition);
 
         // Build response
-        VPRequestResponseDTO response = new VPRequestResponseDTO();
+        VPRequestDTO response = new VPRequestDTO();
         response.setTransactionId(transactionId);
         response.setRequestId(requestId);
         response.setRequestUri(requestUri);
         response.setAuthorizationDetails(authorizationDetails);
         response.setExpiresAt(expiresAt);
+        response.setStatus(vpRequest.getStatus());
 
         return response;
     }
@@ -246,14 +245,15 @@ public class VPRequestServiceImpl implements VPRequestService {
     }
 
     @Override
-    public VPRequestStatusDTO getVPRequestStatus(String transactionId, int tenantId)
+    public VPRequestDTO getVPRequestStatus(String transactionId, int tenantId)
             throws VPRequestNotFoundException, VPException {
 
         VPRequest vpRequest = getVPRequestByTransactionId(transactionId, tenantId);
 
-        VPRequestStatusDTO statusDTO = new VPRequestStatusDTO();
+        VPRequestDTO statusDTO = new VPRequestDTO();
         statusDTO.setStatus(vpRequest.getStatus());
         statusDTO.setRequestId(vpRequest.getRequestId());
+        statusDTO.setTransactionId(vpRequest.getTransactionId());
 
         return statusDTO;
     }
@@ -351,18 +351,18 @@ public class VPRequestServiceImpl implements VPRequestService {
     /**
      * Validate the request creation DTO.
      */
-    private void validateCreateRequest(VPRequestCreateDTO requestCreateDTO) throws VPException {
-        if (requestCreateDTO == null) {
+    private void validateCreateRequest(VPRequestDTO requestDTO) throws VPException {
+        if (requestDTO == null) {
             throw new VPException("Request creation DTO cannot be null");
         }
 
-        if (StringUtils.isBlank(requestCreateDTO.getClientId())) {
+        if (StringUtils.isBlank(requestDTO.getClientId())) {
             throw new VPException("Client ID is required");
         }
 
         // Either presentation definition ID or inline definition required
-        if (StringUtils.isBlank(requestCreateDTO.getPresentationDefinitionId()) &&
-                requestCreateDTO.getPresentationDefinition() == null) {
+        if (StringUtils.isBlank(requestDTO.getPresentationDefinitionId()) &&
+                requestDTO.getPresentationDefinition() == null) {
             throw new VPException("Either presentationDefinitionId or presentationDefinition is required");
         }
     }
@@ -370,12 +370,12 @@ public class VPRequestServiceImpl implements VPRequestService {
     /**
      * Resolve the presentation definition from ID or inline value.
      */
-    private String resolvePresentationDefinition(VPRequestCreateDTO requestCreateDTO, int tenantId)
+    private String resolvePresentationDefinition(VPRequestDTO requestDTO, int tenantId)
             throws VPException {
 
         // If inline definition provided, validate and use it
-        if (requestCreateDTO.getPresentationDefinition() != null) {
-            String definitionJson = requestCreateDTO.getPresentationDefinition().toString();
+        if (requestDTO.getPresentationDefinition() != null) {
+            String definitionJson = requestDTO.getPresentationDefinition().toString();
             if (!PresentationDefinitionUtil.isValidPresentationDefinition(definitionJson)) {
                 throw new VPException("Invalid presentation definition JSON");
             }
@@ -383,7 +383,7 @@ public class VPRequestServiceImpl implements VPRequestService {
         }
 
         // Otherwise, fetch from stored definitions
-        String definitionId = requestCreateDTO.getPresentationDefinitionId();
+        String definitionId = requestDTO.getPresentationDefinitionId();
         if (StringUtils.isNotBlank(definitionId)) {
                 PresentationDefinition definition = getPresentationDefinitionService().getPresentationDefinitionById(
                     definitionId, tenantId);

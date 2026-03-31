@@ -7,10 +7,10 @@ import org.mockito.MockitoAnnotations;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPRequestNotFoundException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.ServletUtil;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -35,7 +35,7 @@ public class RequestUriServletTest {
     @Mock
     private VPRequestService vpRequestService;
 
-    private MockedStatic<ServletUtil> mockedServletUtil;
+    private MockedStatic<IdentityTenantUtil> mockedIdentityTenantUtil;
     private MockedStatic<VPServiceDataHolder> mockedVPServiceDataHolder;
 
     @BeforeMethod
@@ -43,7 +43,7 @@ public class RequestUriServletTest {
         MockitoAnnotations.openMocks(this);
         servlet = new RequestUriServlet();
         
-        mockedServletUtil = Mockito.mockStatic(ServletUtil.class);
+        mockedIdentityTenantUtil = Mockito.mockStatic(IdentityTenantUtil.class);
         mockedVPServiceDataHolder = Mockito.mockStatic(VPServiceDataHolder.class);
         mockedVPServiceDataHolder.when(VPServiceDataHolder::getVPRequestService).thenReturn(vpRequestService);
         
@@ -57,13 +57,14 @@ public class RequestUriServletTest {
 
     @AfterMethod
     public void tearDown() {
-        mockedServletUtil.close();
+        mockedIdentityTenantUtil.close();
         mockedVPServiceDataHolder.close();
     }
 
     @Test
     public void testDoGet() throws Exception {
-        mockedServletUtil.when(() -> ServletUtil.getTenantId(request)).thenReturn(-1234);
+        mockedIdentityTenantUtil.when(IdentityTenantUtil::getTenantDomainFromContext).thenReturn("carbon.super");
+        mockedIdentityTenantUtil.when(() -> IdentityTenantUtil.getTenantId("carbon.super")).thenReturn(-1234);
         when(request.getPathInfo()).thenReturn("/req123");
         
         when(vpRequestService.getRequestJwt("req123", -1234)).thenReturn("eyJdummy-jwt");
@@ -85,7 +86,8 @@ public class RequestUriServletTest {
 
     @Test
     public void testDoGetNotFound() throws Exception {
-        mockedServletUtil.when(() -> ServletUtil.getTenantId(request)).thenReturn(-1234);
+        mockedIdentityTenantUtil.when(IdentityTenantUtil::getTenantDomainFromContext).thenReturn("carbon.super");
+        mockedIdentityTenantUtil.when(() -> IdentityTenantUtil.getTenantId("carbon.super")).thenReturn(-1234);
         when(request.getPathInfo()).thenReturn("/non-existent");
         
         when(vpRequestService.getRequestJwt("non-existent", -1234))
