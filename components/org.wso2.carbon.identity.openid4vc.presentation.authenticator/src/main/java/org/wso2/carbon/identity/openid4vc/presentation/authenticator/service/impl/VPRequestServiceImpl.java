@@ -42,8 +42,8 @@ import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dao.VPRequestDAO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dao.impl.VPRequestDAOImpl;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPRequestExpiredException;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPRequestNotFoundException;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorClientException;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorErrorCode;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
@@ -266,13 +266,14 @@ public class VPRequestServiceImpl implements VPRequestService {
 
     @Override
     public VPRequest getVPRequestById(String requestId, int tenantId)
-            throws VPRequestNotFoundException, VPException {
+            throws VPAuthenticatorClientException, VPException {
 
         // Retrieve from DAO (Cache)
         VPRequest vpRequest = getVPRequestDAO().getVPRequestById(requestId, tenantId);
 
         if (vpRequest == null) {
-            throw new VPRequestNotFoundException(requestId);
+            throw new VPAuthenticatorClientException(VPAuthenticatorErrorCode.VP_REQUEST_NOT_FOUND,
+                    "VP request not found: " + requestId);
         }
         
         // Populate presentation definition if missing
@@ -291,13 +292,14 @@ public class VPRequestServiceImpl implements VPRequestService {
 
     @Override
     public VPRequest getVPRequestByTransactionId(String transactionId, int tenantId)
-            throws VPRequestNotFoundException, VPException {
+            throws VPAuthenticatorClientException, VPException {
 
         // Retrieve from DAO (Cache)
         VPRequest vpRequest = getVPRequestDAO().getVPRequestByTransactionId(transactionId, tenantId);
 
         if (vpRequest == null) {
-            throw new VPRequestNotFoundException("Transaction not found: " + transactionId);
+            throw new VPAuthenticatorClientException(VPAuthenticatorErrorCode.VP_REQUEST_NOT_FOUND,
+                    "Transaction not found: " + transactionId);
         }
 
         // Populate presentation definition if missing
@@ -316,7 +318,7 @@ public class VPRequestServiceImpl implements VPRequestService {
 
     @Override
     public VPRequest getVPRequestStatus(String transactionId, int tenantId)
-            throws VPRequestNotFoundException, VPException {
+            throws VPAuthenticatorClientException, VPException {
 
         VPRequest vpRequest = getVPRequestByTransactionId(transactionId, tenantId);
 
@@ -330,13 +332,14 @@ public class VPRequestServiceImpl implements VPRequestService {
 
     @Override
     public void updateVPRequestStatus(String requestId, VPRequestStatus status, int tenantId)
-            throws VPRequestNotFoundException, VPRequestExpiredException, VPException {
+            throws VPAuthenticatorClientException, VPException {
 
         VPRequest vpRequest = getVPRequestById(requestId, tenantId);
 
         // Check if expired
         if (isExpired(vpRequest.getExpiresAt())) {
-            throw new VPRequestExpiredException(requestId);
+            throw new VPAuthenticatorClientException(VPAuthenticatorErrorCode.VP_REQUEST_EXPIRED,
+                    "VP request has expired: " + requestId);
         }
 
         // Update in DAO (Cache)
@@ -345,7 +348,7 @@ public class VPRequestServiceImpl implements VPRequestService {
 
     @Override
     public String getRequestUri(String requestId, int tenantId)
-            throws VPRequestNotFoundException, VPException {
+            throws VPAuthenticatorClientException, VPException {
 
         // Validate request exists
         getVPRequestById(requestId, tenantId);
@@ -355,13 +358,14 @@ public class VPRequestServiceImpl implements VPRequestService {
 
     @Override
     public String getRequestJwt(String requestId, int tenantId)
-            throws VPRequestNotFoundException, VPRequestExpiredException, VPException {
+            throws VPAuthenticatorClientException, VPException {
 
         VPRequest vpRequest = getVPRequestById(requestId, tenantId);
 
         // Check if expired
         if (isExpired(vpRequest.getExpiresAt())) {
-            throw new VPRequestExpiredException(requestId);
+            throw new VPAuthenticatorClientException(VPAuthenticatorErrorCode.VP_REQUEST_EXPIRED,
+                    "VP request has expired: " + requestId);
         }
 
         // Check if request is still active

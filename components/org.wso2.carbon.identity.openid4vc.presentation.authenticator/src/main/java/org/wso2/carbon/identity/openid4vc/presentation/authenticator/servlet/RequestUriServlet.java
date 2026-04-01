@@ -20,12 +20,14 @@ package org.wso2.carbon.identity.openid4vc.presentation.authenticator.servlet;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
 import org.apache.commons.lang.StringUtils;
 import org.osgi.service.component.annotations.Component;
 import org.owasp.encoder.Encode;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.ErrorDTO;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPRequestExpiredException;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPRequestNotFoundException;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorClientException;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorErrorCode;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorServerException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.impl.VPRequestServiceImpl;
 import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException;
@@ -102,7 +104,8 @@ public class RequestUriServlet extends HttpServlet {
         // Validate path
         if (StringUtils.isBlank(pathInfo) || "/".equals(pathInfo)) {
             sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
-                    ErrorDTO.ErrorCode.INVALID_REQUEST, "Request ID is required in path");
+                new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
+                    "Request ID is required in path"));
             return;
         }
 
@@ -111,7 +114,8 @@ public class RequestUriServlet extends HttpServlet {
 
         if (StringUtils.isBlank(requestId)) {
             sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
-                    ErrorDTO.ErrorCode.INVALID_REQUEST, "Request ID cannot be empty");
+                new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
+                    "Request ID cannot be empty"));
             return;
         }
 
@@ -125,7 +129,8 @@ public class RequestUriServlet extends HttpServlet {
 
             if (StringUtils.isBlank(authzRequest)) {
                 sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                        ErrorDTO.ErrorCode.INTERNAL_ERROR, "Failed to generate authorization request");
+                    new VPAuthenticatorServerException(VPAuthenticatorErrorCode.INTERNAL_SERVER_ERROR,
+                        "Failed to generate authorization request"));
                 return;
             }
 
@@ -137,18 +142,22 @@ public class RequestUriServlet extends HttpServlet {
             response.setHeader("Pragma", "no-cache");
             writeBody(response, Encode.forJava(authzRequest));
 
-        } catch (VPRequestNotFoundException e) {
-            sendErrorResponse(response, HttpServletResponse.SC_NOT_FOUND,
-                    ErrorDTO.ErrorCode.VP_REQUEST_NOT_FOUND, "Request not found or has been consumed");
-        } catch (VPRequestExpiredException e) {
-            sendErrorResponse(response, HttpServletResponse.SC_GONE,
-                    ErrorDTO.ErrorCode.VP_REQUEST_EXPIRED, "Request has expired");
+        } catch (VPAuthenticatorClientException e) {
+            if (VPAuthenticatorErrorCode.VP_REQUEST_EXPIRED.getCode().equals(e.getCode())) {
+                sendErrorResponse(response, HttpServletResponse.SC_GONE, e);
+            } else {
+                sendErrorResponse(response, HttpServletResponse.SC_NOT_FOUND,
+                    new VPAuthenticatorClientException(VPAuthenticatorErrorCode.VP_REQUEST_NOT_FOUND,
+                        "Request not found or has been consumed", e));
+            }
         } catch (VPException e) {
             sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
-                    ErrorDTO.ErrorCode.INVALID_REQUEST, e.getMessage());
+                new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
+                    e.getMessage(), e));
         } catch (RuntimeException e) {
             sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                    ErrorDTO.ErrorCode.INTERNAL_ERROR, "Internal server error");
+                new VPAuthenticatorServerException(VPAuthenticatorErrorCode.INTERNAL_SERVER_ERROR,
+                    "Internal server error", e));
         }
     }
 
@@ -180,11 +189,8 @@ public class RequestUriServlet extends HttpServlet {
     /**
      * Send error response as JSON.
      */
-    /**
-     * Send error response as JSON.
-     */
-    private void sendErrorResponse(HttpServletResponse response, int statusCode,
-            ErrorDTO.ErrorCode errorCode, String errorDescription)
+    private void sendErrorResponse(final HttpServletResponse response, final int statusCode,
+            final VPAuthenticatorException e)
             throws IOException {
 
         response.setStatus(statusCode);
@@ -192,10 +198,11 @@ public class RequestUriServlet extends HttpServlet {
         response.setHeader("Cache-Control", "no-store");
         response.setHeader("Pragma", "no-cache");
 
-        ErrorDTO errorDTO = new ErrorDTO();
-        errorDTO.setError(errorCode.getError());
-        errorDTO.setErrorDescription(Encode.forJava(errorDescription));
-        writeBody(response, gson.toJson(errorDTO));
+        JsonObject errorObj = new JsonObject();
+        errorObj.addProperty("error", e.getOAuth2ErrorCode());
+        errorObj.addProperty("error_description", Encode.forJava(e.getMessage()));
+        errorObj.addProperty("error_code", e.getCode());
+        writeBody(response, gson.toJson(errorObj));
 
     }
 

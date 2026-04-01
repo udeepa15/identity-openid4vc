@@ -20,12 +20,14 @@ package org.wso2.carbon.identity.openid4vc.presentation.authenticator.servlet;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
 import org.apache.commons.lang.StringUtils;
 import org.osgi.service.component.annotations.Component;
 import org.owasp.encoder.Encode;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.ErrorDTO;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPRequestExpiredException;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPRequestNotFoundException;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorClientException;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorErrorCode;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorServerException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling.LongPollingManager;
@@ -95,7 +97,8 @@ public class VPRequestServlet extends HttpServlet {
 
         if (StringUtils.isBlank(pathInfo) || "/".equals(pathInfo)) {
             sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
-                    ErrorDTO.ErrorCode.INVALID_REQUEST, "Request ID is required in path");
+                new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
+                    "Request ID is required in path"));
             return;
         }
 
@@ -104,7 +107,8 @@ public class VPRequestServlet extends HttpServlet {
 
         if (pathParts.length < 2) {
             sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
-                    ErrorDTO.ErrorCode.INVALID_REQUEST, "Invalid path format");
+                new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
+                    "Invalid path format"));
             return;
         }
 
@@ -118,18 +122,22 @@ public class VPRequestServlet extends HttpServlet {
             } else {
                 handleRequestJwtRequest(response, requestId, tenantId);
             }
-        } catch (VPRequestNotFoundException e) {
-            sendErrorResponse(response, HttpServletResponse.SC_NOT_FOUND,
-                    ErrorDTO.ErrorCode.VP_REQUEST_NOT_FOUND, e.getMessage());
-        } catch (VPRequestExpiredException e) {
-            sendErrorResponse(response, HttpServletResponse.SC_GONE,
-                    ErrorDTO.ErrorCode.VP_REQUEST_EXPIRED, e.getMessage());
+        } catch (VPAuthenticatorClientException e) {
+            if (VPAuthenticatorErrorCode.VP_REQUEST_EXPIRED.getCode().equals(e.getCode())) {
+                sendErrorResponse(response, HttpServletResponse.SC_GONE, e);
+            } else {
+                sendErrorResponse(response, HttpServletResponse.SC_NOT_FOUND,
+                    new VPAuthenticatorClientException(VPAuthenticatorErrorCode.VP_REQUEST_NOT_FOUND,
+                        e.getMessage(), e));
+            }
         } catch (VPException e) {
             sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
-                    ErrorDTO.ErrorCode.INVALID_REQUEST, e.getMessage());
+                new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
+                    e.getMessage(), e));
         } catch (RuntimeException e) {
             sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                    ErrorDTO.ErrorCode.INTERNAL_ERROR, "Internal server error");
+                new VPAuthenticatorServerException(VPAuthenticatorErrorCode.INTERNAL_SERVER_ERROR,
+                    "Internal server error", e));
         }
     }
 
@@ -137,7 +145,7 @@ public class VPRequestServlet extends HttpServlet {
      * Handle request JWT retrieval (for request_uri flow).
      */
     private void handleRequestJwtRequest(HttpServletResponse response, String requestId,
-            int tenantId) throws VPException, IOException {
+            int tenantId) throws VPAuthenticatorClientException, VPException, IOException {
 
         String requestJwt = vpRequestService.getRequestJwt(requestId, tenantId);
 
@@ -233,12 +241,15 @@ public class VPRequestServlet extends HttpServlet {
     /**
      * Send error response.
      */
-    private void sendErrorResponse(HttpServletResponse response, int statusCode,
-            ErrorDTO.ErrorCode errorCode, String message)
+    private void sendErrorResponse(final HttpServletResponse response, final int statusCode,
+            final VPAuthenticatorException exception)
             throws IOException {
 
-        ErrorDTO errorDTO = new ErrorDTO(errorCode, message, null);
-        sendJsonResponse(response, statusCode, errorDTO);
+        JsonObject errorObj = new JsonObject();
+        errorObj.addProperty("error", exception.getOAuth2ErrorCode());
+        errorObj.addProperty("error_description", Encode.forJava(exception.getMessage()));
+        errorObj.addProperty("error_code", exception.getCode());
+        sendJsonResponse(response, statusCode, errorObj);
     }
 
     private int getTenantId(HttpServletRequest request) {
