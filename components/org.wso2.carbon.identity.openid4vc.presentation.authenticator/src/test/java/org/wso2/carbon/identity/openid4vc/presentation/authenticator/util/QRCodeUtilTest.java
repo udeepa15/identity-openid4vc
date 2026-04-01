@@ -19,7 +19,7 @@
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.util;
 
 import org.testng.annotations.Test;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.AuthorizationDetailsDTO;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 
 import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertThrows;
@@ -49,7 +49,7 @@ public class QRCodeUtilTest {
 
     @Test
     public void testGenerateByValueQRContent() {
-        AuthorizationDetailsDTO details = new AuthorizationDetailsDTO();
+        VPRequest.AuthorizationDetails details = new VPRequest.AuthorizationDetails();
         details.setClientId("test-client");
         details.setResponseMode("direct_post");
         details.setResponseUri("https://example.com/resp");

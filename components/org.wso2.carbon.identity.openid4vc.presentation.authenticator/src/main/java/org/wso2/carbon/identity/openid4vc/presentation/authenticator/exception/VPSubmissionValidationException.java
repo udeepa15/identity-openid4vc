@@ -21,28 +21,29 @@ package org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception;
 import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException;
 
 /**
- * Exception thrown when a VP submission fails basic validation in the authenticator.
+ * Exception thrown when a VP submission fails validation in the authenticator.
  */
 public class VPSubmissionValidationException extends VPException {
 
     private static final long serialVersionUID = 1L;
 
     /**
-     * Constructs a new VPSubmissionValidationException with the specified record.
+     * Constructs a new VPSubmissionValidationException with message.
      *
      * @param message The detail message.
      */
-    public VPSubmissionValidationException(String message) {
+    public VPSubmissionValidationException(final String message) {
         super(message);
     }
 
     /**
-     * Constructs a new VPSubmissionValidationException with the specified record and cause.
+     * Constructs a new VPSubmissionValidationException with message and cause.
      *
      * @param message The detail message.
      * @param cause   The cause.
      */
-    public VPSubmissionValidationException(String message, Throwable cause) {
+    public VPSubmissionValidationException(final String message,
+                                           final Throwable cause) {
         super(message, cause);
     }
 }

@@ -46,8 +46,9 @@ public class Constraints {
     public static final String PROP_RESPONSE_MODE = "ResponseMode";
     public static final String PROP_TIMEOUT_SECONDS = "TimeoutSeconds";
     public static final String PROP_CLIENT_ID = "ClientId";
-    public static final String PROP_DID_METHOD = "DIDMethod";
     public static final String PROP_SUBJECT_CLAIM = "SubjectClaim";
+    public static final String PROP_DID_METHOD = "DIDMethod";
+    public static final String DEFAULT_DID_METHOD_WEB = "web";
     
     public static final String DEFAULT_LOGIN_PAGE = "/authenticationendpoint/wallet_login.jsp";
     public static final String ALPHANUM_PATTERN = "^[a-zA-Z0-9_.-]+$";

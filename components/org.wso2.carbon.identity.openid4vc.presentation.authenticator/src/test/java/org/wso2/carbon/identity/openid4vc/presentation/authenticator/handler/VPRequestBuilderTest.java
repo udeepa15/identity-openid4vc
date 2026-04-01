@@ -26,7 +26,6 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.AuthorizationDetailsDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 
 import javax.servlet.http.HttpServletRequest;
@@ -88,11 +87,11 @@ public class VPRequestBuilderTest {
                 .responseMode("direct_post")
                 .build();
         
-        AuthorizationDetailsDTO dto = builder.buildAuthorizationDetails(vpRequest, null);
+        VPRequest.AuthorizationDetails details = builder.buildAuthorizationDetails(vpRequest, null);
         
-        assertNotNull(dto);
-        assertEquals(dto.getClientId(), "client123");
-        assertEquals(dto.getNonce(), "nonce123");
-        assertEquals(dto.getState(), "req123");
+        assertNotNull(details);
+        assertEquals(details.getClientId(), "client123");
+        assertEquals(details.getNonce(), "nonce123");
+        assertEquals(details.getState(), "req123");
     }
 }

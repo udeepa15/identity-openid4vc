@@ -12,7 +12,6 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dao.VPRequestDAO;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
@@ -82,11 +81,12 @@ public class VPRequestServiceImplTest {
 
     @Test
     public void testCreateVPRequest() throws Exception {
-        VPRequestDTO createDTO = new VPRequestDTO();
-        createDTO.setClientId(CLIENT_ID);
-        createDTO.setPresentationDefinitionId(DEFINITION_ID);
-        createDTO.setResponseMode(OpenID4VPConstants.Protocol.RESPONSE_MODE_DIRECT_POST);
-        createDTO.setDidMethod("web");
+        VPRequest createRequest = new VPRequest.Builder()
+                .clientId(CLIENT_ID)
+                .presentationDefinitionId(DEFINITION_ID)
+                .responseMode(OpenID4VPConstants.Protocol.RESPONSE_MODE_DIRECT_POST)
+                .didMethod("web")
+                .build();
 
         PresentationDefinition definition = new PresentationDefinition.Builder()
                 .definitionId(DEFINITION_ID)
@@ -110,22 +110,22 @@ public class VPRequestServiceImplTest {
             when(didProvider.getSigningAlgorithm()).thenReturn(JWSAlgorithm.RS256);
             when(didProvider.getSigner(Mockito.anyInt())).thenReturn(mockSigner);
 
-            VPRequestDTO responseDTO = vpRequestService.createVPRequest(createDTO, TENANT_ID);
+            VPRequest response = vpRequestService.createVPRequest(createRequest, TENANT_ID);
 
-            assertNotNull(responseDTO);
-            assertNotNull(responseDTO.getRequestId());
-            assertNotNull(responseDTO.getTransactionId());
-            assertNotNull(responseDTO.getAuthorizationDetails());
+            assertNotNull(response);
+            assertNotNull(response.getRequestId());
+            assertNotNull(response.getTransactionId());
+            assertNotNull(response.getAuthorizationDetails());
         }
     }
 
     @Test
     public void testCreateVPRequestWithInlinePresentationDefinition() throws Exception {
-        VPRequestDTO createDTO = new VPRequestDTO();
-        createDTO.setClientId(CLIENT_ID);
-        createDTO.setPresentationDefinition(com.google.gson.JsonParser.parseString(DEFINITION_JSON)
-                .getAsJsonObject());
-        createDTO.setResponseMode(OpenID4VPConstants.Protocol.RESPONSE_MODE_DIRECT_POST);
+        VPRequest createRequest = new VPRequest.Builder()
+                .clientId(CLIENT_ID)
+                .presentationDefinition(DEFINITION_JSON)
+                .responseMode(OpenID4VPConstants.Protocol.RESPONSE_MODE_DIRECT_POST)
+                .build();
 
         doNothing().when(vpRequestDAO).createVPRequest(any(VPRequest.class));
 
@@ -142,27 +142,29 @@ public class VPRequestServiceImplTest {
             when(didProvider.getSigningAlgorithm()).thenReturn(JWSAlgorithm.RS256);
             when(didProvider.getSigner(Mockito.anyInt())).thenReturn(mockSigner);
 
-            VPRequestDTO responseDTO = vpRequestService.createVPRequest(createDTO, TENANT_ID);
+            VPRequest response = vpRequestService.createVPRequest(createRequest, TENANT_ID);
 
-            assertNotNull(responseDTO);
-            assertNotNull(responseDTO.getRequestId());
+            assertNotNull(response);
+            assertNotNull(response.getRequestId());
         }
     }
 
     @Test
     public void testCreateVPRequestMissingClientId() throws Exception {
-        VPRequestDTO createDTO = new VPRequestDTO();
-        createDTO.setPresentationDefinitionId(DEFINITION_ID);
+        VPRequest createRequest = new VPRequest.Builder()
+                .presentationDefinitionId(DEFINITION_ID)
+                .build();
 
-        assertThrows(VPException.class, () -> vpRequestService.createVPRequest(createDTO, TENANT_ID));
+        assertThrows(VPException.class, () -> vpRequestService.createVPRequest(createRequest, TENANT_ID));
     }
 
     @Test
     public void testCreateVPRequestMissingPresentationDefinition() throws Exception {
-        VPRequestDTO createDTO = new VPRequestDTO();
-        createDTO.setClientId(CLIENT_ID);
+        VPRequest createRequest = new VPRequest.Builder()
+                .clientId(CLIENT_ID)
+                .build();
 
-        assertThrows(VPException.class, () -> vpRequestService.createVPRequest(createDTO, TENANT_ID));
+        assertThrows(VPException.class, () -> vpRequestService.createVPRequest(createRequest, TENANT_ID));
     }
 
     @Test
@@ -217,14 +219,14 @@ public class VPRequestServiceImplTest {
 
     @Test
     public void testCreateVPRequestWithRequestedCredentials() throws Exception {
-        VPRequestDTO createDTO = new VPRequestDTO();
-        createDTO.setClientId(CLIENT_ID);
         // PD with requested_credentials instead of input_descriptors
         String pdWithReqCreds = "{\"id\":\"test-pd\",\"requested_credentials\":[{\"type\":"
                 + "\"VerifiedEmployee\",\"purpose\":\"Verify employment\",\"requested_claims\":"
                 + "[\"given_name\"]}]}";
-        createDTO.setPresentationDefinition(com.google.gson.JsonParser.parseString(pdWithReqCreds)
-                .getAsJsonObject());
+        VPRequest createRequest = new VPRequest.Builder()
+                .clientId(CLIENT_ID)
+                .presentationDefinition(pdWithReqCreds)
+                .build();
 
         doNothing().when(vpRequestDAO).createVPRequest(any(VPRequest.class));
 
@@ -248,22 +250,22 @@ public class VPRequestServiceImplTest {
                 mockedPDUtil.when(() -> PresentationDefinitionUtil.buildPresentationDefinition(anyString(), anyString(),
                         anyString(), any())).thenReturn("{\"pd\":\"mocked\"}");
                 
-                VPRequestDTO responseDTO = vpRequestService.createVPRequest(createDTO, TENANT_ID);
-                assertNotNull(responseDTO);
-                assertNotNull(responseDTO.getRequestId());
+                VPRequest response = vpRequestService.createVPRequest(createRequest, TENANT_ID);
+                assertNotNull(response);
+                assertNotNull(response.getRequestId());
             }
         }
     }
 
     @Test
     public void testCreateVPRequestWithInternalConfig() throws Exception {
-        VPRequestDTO createDTO = new VPRequestDTO();
-        createDTO.setClientId(CLIENT_ID);
         // PD with _internal config
         String pdWithInternal = "{\"id\":\"def-123\",\"_internal\":{\"signing_algorithm\":\"RS256\"},"
                 + "\"input_descriptors\":[]}";
-        createDTO.setPresentationDefinition(com.google.gson.JsonParser.parseString(pdWithInternal)
-                .getAsJsonObject());
+        VPRequest createRequest = new VPRequest.Builder()
+                .clientId(CLIENT_ID)
+                .presentationDefinition(pdWithInternal)
+                .build();
 
         doNothing().when(vpRequestDAO).createVPRequest(any(VPRequest.class));
 
@@ -284,8 +286,8 @@ public class VPRequestServiceImplTest {
                          Mockito.mockStatic(PresentationDefinitionUtil.class)) {
                 mockedPDUtil.when(() -> PresentationDefinitionUtil.
                 isValidPresentationDefinition(anyString())).thenReturn(true);
-                VPRequestDTO responseDTO = vpRequestService.createVPRequest(createDTO, TENANT_ID);
-                assertNotNull(responseDTO);
+                VPRequest response = vpRequestService.createVPRequest(createRequest, TENANT_ID);
+                assertNotNull(response);
             }
         }
     }
@@ -342,9 +344,9 @@ public class VPRequestServiceImplTest {
                 .build();
         when(vpRequestDAO.getVPRequestByTransactionId(TRANSACTION_ID, TENANT_ID)).thenReturn(vpRequest);
 
-        VPRequestDTO status = 
+        VPRequest result = 
             vpRequestService.getVPRequestStatus(TRANSACTION_ID, TENANT_ID);
-        assertEquals(status.getStatus(), VPRequestStatus.ACTIVE.getValue());
+        assertEquals(result.getStatus(), VPRequestStatus.ACTIVE);
     }
 
     @Test
@@ -382,28 +384,5 @@ public class VPRequestServiceImplTest {
         vpRequestService.getRequestJwt(REQUEST_ID, TENANT_ID);
     }
 
-    @Test
-    public void testProcessExpiredRequests() throws Exception {
-        when(vpRequestDAO.markExpiredRequests(TENANT_ID)).thenReturn(5);
-        int count = vpRequestService.processExpiredRequests(TENANT_ID);
-        assertEquals(count, 5);
-    }
 
-    @Test
-    public void testIsRequestActive() throws Exception {
-        VPRequest vpRequest = new VPRequest.Builder()
-                .status(VPRequestStatus.ACTIVE)
-                .expiresAt(System.currentTimeMillis() + 600000)
-                .build();
-        when(vpRequestDAO.getVPRequestById(REQUEST_ID, TENANT_ID)).thenReturn(vpRequest);
-        
-        assertEquals(vpRequestService.isRequestActive(REQUEST_ID, TENANT_ID), true);
-        
-        VPRequest expiredRequest = new VPRequest.Builder()
-                .status(VPRequestStatus.ACTIVE)
-                .expiresAt(System.currentTimeMillis() - 600000)
-                .build();
-        when(vpRequestDAO.getVPRequestById("expired", TENANT_ID)).thenReturn(expiredRequest);
-        assertEquals(vpRequestService.isRequestActive("expired", TENANT_ID), false);
-    }
 }

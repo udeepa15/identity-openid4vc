@@ -22,7 +22,6 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import org.apache.commons.lang.StringUtils;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.AuthorizationDetailsDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
 import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException;
@@ -170,32 +169,25 @@ public class VPRequestBuilder {
         }
     }
 
-    /**
-     * Build authorization details DTO for frontend.
-     * 
-     * @param vpRequest              The VP request
-     * @param presentationDefinition The presentation definition
-     * @return AuthorizationDetailsDTO
-     */
-    public AuthorizationDetailsDTO buildAuthorizationDetails(VPRequest vpRequest,
+    public VPRequest.AuthorizationDetails buildAuthorizationDetails(VPRequest vpRequest,
             PresentationDefinition presentationDefinition) {
-        AuthorizationDetailsDTO dto = new AuthorizationDetailsDTO();
+        VPRequest.AuthorizationDetails details = new VPRequest.AuthorizationDetails();
 
-        dto.setClientId(vpRequest.getClientId());
-        dto.setNonce(vpRequest.getNonce());
-        dto.setState(vpRequest.getRequestId());
-        dto.setResponseMode(vpRequest.getResponseMode());
-        dto.setResponseUri(buildResponseUri(vpRequest));
+        details.setClientId(vpRequest.getClientId());
+        details.setNonce(vpRequest.getNonce());
+        details.setState(vpRequest.getRequestId());
+        details.setResponseMode(vpRequest.getResponseMode());
+        details.setResponseUri(buildResponseUri(vpRequest));
 
         if (presentationDefinition != null) {
             String pdJsonStr = PresentationDefinitionUtil.buildDefinitionJson(presentationDefinition);
             if (org.apache.commons.lang.StringUtils.isNotBlank(pdJsonStr) && !"{}".equals(pdJsonStr)) {
                 JsonObject pdJson = com.google.gson.JsonParser.parseString(pdJsonStr).getAsJsonObject();
-                dto.setPresentationDefinition(pdJson);
+                details.setPresentationDefinition(pdJson);
             }
         }
 
-        return dto;
+        return details;
     }
 
     /**

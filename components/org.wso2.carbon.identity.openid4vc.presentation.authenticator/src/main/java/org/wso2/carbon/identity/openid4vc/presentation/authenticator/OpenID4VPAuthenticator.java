@@ -39,7 +39,6 @@ import org.wso2.carbon.identity.application.common.model.IdentityProvider;
 import org.wso2.carbon.identity.application.common.model.Property;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPStatusListenerCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.WalletDataCache;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
@@ -163,7 +162,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
 
         try {
             // Create VP request using the service
-            VPRequestDTO vpRequestResponse = getVPRequestService().createVPRequest(context);
+            VPRequest vpRequestResponse = getVPRequestService().createVPRequest(context);
 
             // Store request ID in session
             context.setProperty(SESSION_VP_REQUEST_ID, vpRequestResponse.getRequestId());

@@ -17,8 +17,6 @@ import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPStatusListenerCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.WalletDataCache;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.AuthorizationDetailsDTO;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
@@ -175,16 +173,15 @@ public class OpenID4VPAuthenticatorTest {
         when(context.getContextIdentifier()).thenReturn("dummy-txn-id");
         when(context.getTenantDomain()).thenReturn("carbon.super");
 
-        VPRequestDTO mockResponseDTO = new VPRequestDTO();
-        mockResponseDTO.setRequestId("req-123");
-        mockResponseDTO.setTransactionId("dummy-txn-id");
-        mockResponseDTO.setRequestUri("urn:ietf:params:oauth:request_uri:req-123");
-        
-        AuthorizationDetailsDTO authDetails = new AuthorizationDetailsDTO();
-        authDetails.setClientId("dummy-client");
-        mockResponseDTO.setAuthorizationDetails(authDetails);
+        VPRequest vpRequestResponse = new VPRequest.Builder()
+                .requestId("req-123")
+                .transactionId("dummy-txn-id")
+                .requestUri("urn:ietf:params:oauth:request_uri:req-123")
+                .authorizationDetails(new VPRequest.AuthorizationDetails())
+                .build();
+        vpRequestResponse.getAuthorizationDetails().setClientId("dummy-client");
 
-        when(vpRequestService.createVPRequest(any(), anyInt())).thenReturn(mockResponseDTO);
+        when(vpRequestService.createVPRequest(any(AuthenticationContext.class))).thenReturn(vpRequestResponse);
         
         authenticator.initiateAuthenticationRequest(request, response, context);
 
@@ -202,6 +199,9 @@ public class OpenID4VPAuthenticatorTest {
         Map<String, String> authProperties = new HashMap<>();
         // missing presentationDefinitionId
         when(context.getAuthenticatorProperties()).thenReturn(authProperties);
+        when(vpRequestService.createVPRequest(any(AuthenticationContext.class)))
+                .thenThrow(new org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException(
+                        "Missing config"));
         authenticator.initiateAuthenticationRequest(request, response, context);
     }
 
@@ -271,6 +271,7 @@ public class OpenID4VPAuthenticatorTest {
     @Test(expectedExceptions = 
             org.wso2.carbon.identity.application.authentication.framework.exception.AuthenticationFailedException.class)
     public void testProcessAuthenticationResponseNoSubmission() throws Exception {
+        when(request.getParameter("status")).thenReturn("success");
         when(context.getProperty("openid4vp_request_id")).thenReturn("req-123");
         when(walletDataCache.getSubmission("req-123")).thenReturn(null);
         authenticator.process(request, response, context);
@@ -609,14 +610,14 @@ public class OpenID4VPAuthenticatorTest {
         when(context.getAuthenticatorProperties()).thenReturn(props);
         when(context.getContextIdentifier()).thenReturn("ctx1");
 
-        VPRequestDTO responseDTO = new VPRequestDTO();
-        responseDTO.setRequestUri("http://example.com");
-                responseDTO.setRequestId("req-123");
-                responseDTO.setTransactionId("txn-123");
-        AuthorizationDetailsDTO details = new AuthorizationDetailsDTO();
-        details.setClientId("client1");
-        responseDTO.setAuthorizationDetails(details);
-        when(vpRequestService.createVPRequest(any(), anyInt())).thenReturn(responseDTO);
+        VPRequest responseDTO = new VPRequest.Builder()
+                .requestUri("http://example.com")
+                .requestId("req-123")
+                .transactionId("txn-123")
+                .authorizationDetails(new VPRequest.AuthorizationDetails())
+                .build();
+        responseDTO.getAuthorizationDetails().setClientId("client1");
+        when(vpRequestService.createVPRequest(any(AuthenticationContext.class))).thenReturn(responseDTO);
         
         authenticator.initiateAuthenticationRequest(request, response, context);
         verify(response).sendRedirect(contains("/authenticationendpoint/wallet_login.jsp"));

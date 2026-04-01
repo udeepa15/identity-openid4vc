@@ -19,7 +19,6 @@
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.service;
 
 import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPRequestExpiredException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPRequestNotFoundException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
@@ -27,9 +26,8 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPReq
 import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException;
 
 /**
- * Service interface for managing VP (Verifiable Presentation) requests.
- * Handles the creation, retrieval, and status management of authorization requests
- * for verifiable presentations as per OpenID4VP specification.
+ * Service interface for managing VP requests.
+ * Handles creation, retrieval, and status management of authorization requests.
  */
 public interface VPRequestService {
 
@@ -37,20 +35,20 @@ public interface VPRequestService {
      * Create a new VP authorization request for the authentication session.
      *
      * @param context The authentication context
-     * @return VPRequestDTO containing the created request details
+     * @return VPRequest containing the created request details
      * @throws VPException If an error occurs during request creation
      */
-    VPRequestDTO createVPRequest(AuthenticationContext context) throws VPException;
+    VPRequest createVPRequest(AuthenticationContext context) throws VPException;
 
     /**
      * Create a new VP authorization request.
      *
-     * @param requestDTO The DTO containing request creation parameters
+     * @param request    The request model containing creation parameters
      * @param tenantId   The tenant ID
-     * @return VPRequestDTO containing the created request details
+     * @return VPRequest containing the created request details
      * @throws VPException If an error occurs during request creation
      */
-    VPRequestDTO createVPRequest(VPRequestDTO requestDTO, int tenantId) 
+    VPRequest createVPRequest(VPRequest request, int tenantId)
             throws VPException;
 
     /**
@@ -62,7 +60,7 @@ public interface VPRequestService {
      * @throws VPRequestNotFoundException If the request is not found
      * @throws VPException                If an error occurs
      */
-    VPRequest getVPRequestById(String requestId, int tenantId) 
+    VPRequest getVPRequestById(String requestId, int tenantId)
             throws VPRequestNotFoundException, VPException;
 
     /**
@@ -74,7 +72,7 @@ public interface VPRequestService {
      * @throws VPRequestNotFoundException If the request is not found
      * @throws VPException                If an error occurs
      */
-    VPRequest getVPRequestByTransactionId(String transactionId, int tenantId) 
+    VPRequest getVPRequestByTransactionId(String transactionId, int tenantId)
             throws VPRequestNotFoundException, VPException;
 
     /**
@@ -82,11 +80,11 @@ public interface VPRequestService {
      *
      * @param transactionId The transaction identifier
      * @param tenantId      The tenant ID
-     * @return VPRequestDTO containing the status
+     * @return VPRequest containing the status
      * @throws VPRequestNotFoundException If the request is not found
      * @throws VPException                If an error occurs
      */
-    VPRequestDTO getVPRequestStatus(String transactionId, int tenantId) 
+    VPRequest getVPRequestStatus(String transactionId, int tenantId)
             throws VPRequestNotFoundException, VPException;
 
     /**
@@ -99,8 +97,10 @@ public interface VPRequestService {
      * @throws VPRequestExpiredException  If the request has expired
      * @throws VPException                If an error occurs
      */
-    void updateVPRequestStatus(String requestId, VPRequestStatus status, int tenantId) 
-            throws VPRequestNotFoundException, VPRequestExpiredException, VPException;
+    void updateVPRequestStatus(String requestId, VPRequestStatus status,
+                               int tenantId)
+            throws VPRequestNotFoundException, VPRequestExpiredException,
+            VPException;
 
     /**
      * Get the request URI for a VP request (for request_uri flow).
@@ -111,7 +111,7 @@ public interface VPRequestService {
      * @throws VPRequestNotFoundException If the request is not found
      * @throws VPException                If an error occurs
      */
-    String getRequestUri(String requestId, int tenantId) 
+    String getRequestUri(String requestId, int tenantId)
             throws VPRequestNotFoundException, VPException;
 
     /**
@@ -124,7 +124,8 @@ public interface VPRequestService {
      * @throws VPRequestExpiredException  If the request has expired
      * @throws VPException                If an error occurs
      */
-    String getRequestJwt(String requestId, int tenantId) 
-            throws VPRequestNotFoundException, VPRequestExpiredException, VPException;
+    String getRequestJwt(String requestId, int tenantId)
+            throws VPRequestNotFoundException, VPRequestExpiredException,
+            VPException;
 
 }

@@ -18,6 +18,9 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.model;
 
+import com.google.gson.JsonObject;
+import com.google.gson.annotations.SerializedName;
+
 import java.io.Serializable;
 
 /**
@@ -28,20 +31,50 @@ public class VPRequest implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
+    @SerializedName("requestId")
     private String requestId;
+
+    @SerializedName("transactionId")
     private String transactionId;
+
+    @SerializedName("clientId")
     private String clientId;
+
+    @SerializedName("nonce")
     private String nonce;
+
+    @SerializedName("presentationDefinitionId")
     private String presentationDefinitionId;
+
+    @SerializedName("presentationDefinition")
     private String presentationDefinition;
+
     private String responseUri;
+
+    @SerializedName("responseMode")
     private String responseMode;
+
     private String requestJwt;
+
+    @SerializedName("status")
     private VPRequestStatus status;
+
+    @SerializedName("expiresAt")
     private long expiresAt;
+
     private int tenantId;
+
+    @SerializedName("didMethod")
     private String didMethod;
+
+    @SerializedName("signingAlgorithm")
     private String signingAlgorithm;
+
+    @SerializedName("authorizationDetails")
+    private AuthorizationDetails authorizationDetails;
+
+    @SerializedName("requestUri")
+    private String requestUri;
 
     private VPRequest(Builder builder) {
         this.requestId = builder.requestId;
@@ -58,6 +91,8 @@ public class VPRequest implements Serializable {
         this.tenantId = builder.tenantId;
         this.didMethod = builder.didMethod;
         this.signingAlgorithm = builder.signingAlgorithm;
+        this.authorizationDetails = builder.authorizationDetails;
+        this.requestUri = builder.requestUri;
     }
 
     public String getRequestId() {
@@ -256,6 +291,22 @@ public class VPRequest implements Serializable {
         this.signingAlgorithm = signingAlgorithm;
     }
 
+    public AuthorizationDetails getAuthorizationDetails() {
+        return authorizationDetails;
+    }
+
+    public void setAuthorizationDetails(AuthorizationDetails authorizationDetails) {
+        this.authorizationDetails = authorizationDetails;
+    }
+
+    public String getRequestUri() {
+        return requestUri;
+    }
+
+    public void setRequestUri(String requestUri) {
+        this.requestUri = requestUri;
+    }
+
     @Override
     public String toString() {
         return "VPRequest{" +
@@ -288,6 +339,8 @@ public class VPRequest implements Serializable {
         private int tenantId;
         private String didMethod;
         private String signingAlgorithm;
+        private AuthorizationDetails authorizationDetails;
+        private String requestUri;
 
         public Builder requestId(String requestId) {
             this.requestId = requestId;
@@ -359,8 +412,105 @@ public class VPRequest implements Serializable {
             return this;
         }
 
+        public Builder authorizationDetails(AuthorizationDetails authorizationDetails) {
+            this.authorizationDetails = authorizationDetails;
+            return this;
+        }
+
+        public Builder requestUri(String requestUri) {
+            this.requestUri = requestUri;
+            return this;
+        }
+
         public VPRequest build() {
             return new VPRequest(this);
+        }
+    }
+ 
+    /**
+     * Nested class containing authorization request details.
+     * Used for request-by-value responses.
+     */
+    public static class AuthorizationDetails implements Serializable {
+ 
+        private static final long serialVersionUID = 1L;
+ 
+        @SerializedName("clientId")
+        private String clientId;
+ 
+        @SerializedName("responseType")
+        private String responseType = "vp_token";
+ 
+        @SerializedName("responseMode")
+        private String responseMode = "direct_post";
+ 
+        @SerializedName("responseUri")
+        private String responseUri;
+ 
+        @SerializedName("nonce")
+        private String nonce;
+ 
+        @SerializedName("state")
+        private String state;
+ 
+        @SerializedName("presentationDefinition")
+        private JsonObject presentationDefinition;
+ 
+        public String getClientId() {
+            return clientId;
+        }
+ 
+        public void setClientId(String clientId) {
+            this.clientId = clientId;
+        }
+ 
+        public String getResponseType() {
+            return responseType;
+        }
+ 
+        public void setResponseType(String responseType) {
+            this.responseType = responseType;
+        }
+ 
+        public String getResponseMode() {
+            return responseMode;
+        }
+ 
+        public void setResponseMode(String responseMode) {
+            this.responseMode = responseMode;
+        }
+ 
+        public String getResponseUri() {
+            return responseUri;
+        }
+ 
+        public void setResponseUri(String responseUri) {
+            this.responseUri = responseUri;
+        }
+ 
+        public String getNonce() {
+            return nonce;
+        }
+ 
+        public void setNonce(String nonce) {
+            this.nonce = nonce;
+        }
+ 
+        public String getState() {
+            return state;
+        }
+ 
+        public void setState(String state) {
+            this.state = state;
+        }
+ 
+        public JsonObject getPresentationDefinition() {
+            return presentationDefinition != null ? presentationDefinition.deepCopy() : null;
+        }
+ 
+        public void setPresentationDefinition(JsonObject presentationDefinition) {
+            this.presentationDefinition = presentationDefinition != null
+                    ? presentationDefinition.deepCopy() : null;
         }
     }
 }

@@ -19,7 +19,7 @@
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.util;
 
 import org.apache.commons.lang.StringUtils;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.AuthorizationDetailsDTO;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
 
 import java.io.UnsupportedEncodingException;
@@ -79,7 +79,7 @@ public class QRCodeUtil {
      * @param authorizationDetails The full authorization details
      * @return QR code content string (OpenID4VP deep link with full request)
      */
-    public static String generateByValueQRContent(AuthorizationDetailsDTO authorizationDetails) {
+    public static String generateByValueQRContent(VPRequest.AuthorizationDetails authorizationDetails) {
         if (authorizationDetails == null) {
             throw new IllegalArgumentException("Authorization details cannot be null");
         }

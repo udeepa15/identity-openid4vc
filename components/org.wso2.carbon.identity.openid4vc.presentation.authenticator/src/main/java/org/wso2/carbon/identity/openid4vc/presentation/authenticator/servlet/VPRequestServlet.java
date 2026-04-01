@@ -24,9 +24,9 @@ import org.apache.commons.lang.StringUtils;
 import org.osgi.service.component.annotations.Component;
 import org.owasp.encoder.Encode;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.ErrorDTO;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dto.VPRequestDTO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPRequestExpiredException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPRequestNotFoundException;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling.LongPollingManager;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling.PollingResult;
@@ -172,7 +172,7 @@ public class VPRequestServlet extends HttpServlet {
         // Get request by ID to check status
         // Note: For true long-polling, this should use async servlets with
         // DeferredResult
-        VPRequestDTO statusDTO = pollForStatus(requestId, tenantId, timeout);
+        VPRequest statusDTO = pollForStatus(requestId, tenantId, timeout);
 
         sendJsonResponse(response, HttpServletResponse.SC_OK, statusDTO);
     }
@@ -189,35 +189,33 @@ public class VPRequestServlet extends HttpServlet {
      * @return VPRequestDTO with status
      * @throws VPException If error occurs
      */
-    private VPRequestDTO pollForStatus(final String requestId, final int tenantId, final long timeout)
+    private VPRequest pollForStatus(final String requestId, final int tenantId, final long timeout)
             throws VPException {
 
         LongPollingManager pollingManager = LongPollingManager.getInstance();
         PollingResult result = pollingManager.waitForStatusChange(requestId, timeout, tenantId);
 
-        VPRequestDTO statusDTO = new VPRequestDTO();
-        statusDTO.setRequestId(requestId);
+        VPRequest.Builder builder = new VPRequest.Builder()
+                .requestId(requestId);
 
         org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling.PollingResult.ResultStatus status =
                 result.getResultStatus();
 
         if (status == PollingResult.ResultStatus.SUBMITTED
                 || status == PollingResult.ResultStatus.SUBMITTED_WITH_ERROR) {
-            // Determine likely status from result string or default to VP_SUBMITTED
-            // LongPollingManager returns SUBMITTED for both VP_SUBMITTED and COMPLETED
             String statusStr = result.getStatus();
             if (VPRequestStatus.COMPLETED.name().equals(statusStr)) {
-                statusDTO.setStatus(VPRequestStatus.COMPLETED);
+                builder.status(VPRequestStatus.COMPLETED);
             } else {
-                statusDTO.setStatus(VPRequestStatus.VP_SUBMITTED);
+                builder.status(VPRequestStatus.VP_SUBMITTED);
             }
         } else if (status == PollingResult.ResultStatus.EXPIRED) {
-            statusDTO.setStatus(VPRequestStatus.EXPIRED);
+            builder.status(VPRequestStatus.EXPIRED);
         } else {
-            statusDTO.setStatus(VPRequestStatus.ACTIVE);
+            builder.status(VPRequestStatus.ACTIVE);
         }
 
-        return statusDTO;
+        return builder.build();
     }
 
     /**
