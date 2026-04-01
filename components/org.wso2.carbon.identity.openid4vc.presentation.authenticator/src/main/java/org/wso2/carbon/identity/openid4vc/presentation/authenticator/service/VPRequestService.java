@@ -127,35 +127,4 @@ public interface VPRequestService {
     String getRequestJwt(String requestId, int tenantId) 
             throws VPRequestNotFoundException, VPRequestExpiredException, VPException;
 
-    /**
-     * Delete a VP request.
-     *
-     * @param requestId The request identifier
-     * @param tenantId  The tenant ID
-     * @throws VPRequestNotFoundException If the request is not found
-     * @throws VPException                If an error occurs
-     */
-    void deleteVPRequest(String requestId, int tenantId) 
-            throws VPRequestNotFoundException, VPException;
-
-    /**
-     * Process and mark expired requests.
-     *
-     * @param tenantId The tenant ID
-     * @return The number of requests marked as expired
-     * @throws VPException If an error occurs
-     */
-    int processExpiredRequests(int tenantId) throws VPException;
-
-    /**
-     * Validate if a VP request is still active (not expired).
-     *
-     * @param requestId The request identifier
-     * @param tenantId  The tenant ID
-     * @return true if the request is active
-     * @throws VPRequestNotFoundException If the request is not found
-     * @throws VPException                If an error occurs
-     */
-    boolean isRequestActive(String requestId, int tenantId) 
-            throws VPRequestNotFoundException, VPException;
 }

@@ -390,36 +390,6 @@ public class VPRequestServiceImpl implements VPRequestService {
         return requestJwt;
     }
 
-    @Override
-    public void deleteVPRequest(String requestId, int tenantId)
-            throws VPRequestNotFoundException, VPException {
-
-        // Validate exists (optional, could just delete)
-        getVPRequestById(requestId, tenantId);
-
-        // Delete from DAO (Cache)
-        getVPRequestDAO().deleteVPRequest(requestId, tenantId);
-    }
-
-    @Override
-    public int processExpiredRequests(int tenantId) throws VPException {
-        // markExpiredRequests logic - delegated to DAO/Cache expiry
-        return getVPRequestDAO().markExpiredRequests(tenantId);
-    }
-
-    @Override
-    public boolean isRequestActive(String requestId, int tenantId)
-            throws VPRequestNotFoundException, VPException {
-
-        VPRequest vpRequest = getVPRequestById(requestId, tenantId);
-
-        if (isExpired(vpRequest.getExpiresAt())) {
-            return false;
-        }
-
-        return vpRequest.getStatus() == VPRequestStatus.ACTIVE;
-    }
-
     /**
      * Validate the request creation DTO.
      */

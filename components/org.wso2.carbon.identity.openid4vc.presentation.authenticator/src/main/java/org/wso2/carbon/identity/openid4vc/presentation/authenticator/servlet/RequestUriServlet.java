@@ -129,17 +129,8 @@ public class RequestUriServlet extends HttpServlet {
                 return;
             }
 
-            // According to OpenID4VP spec, return the authorization request
-            // Content-Type should be:
-            // - application/oauth-authz-req+jwt if JWT format
-            // - application/json if JSON format
+            response.setContentType("application/oauth-authz-req+jwt");
 
-            // Check if it's a JWT (starts with "eyJ")
-            if (authzRequest.startsWith("eyJ")) {
-                response.setContentType("application/oauth-authz-req+jwt");
-            } else {
-                response.setContentType("application/json");
-            }
 
             response.setStatus(HttpServletResponse.SC_OK);
             response.setHeader("Cache-Control", "no-store");

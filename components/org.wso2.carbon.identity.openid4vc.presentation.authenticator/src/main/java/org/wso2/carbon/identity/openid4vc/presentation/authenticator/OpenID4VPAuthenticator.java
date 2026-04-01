@@ -65,6 +65,32 @@ import java.util.UUID;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.ALPHANUM_PATTERN;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.AUTHENTICATOR_FRIENDLY_NAME;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.AUTHENTICATOR_NAME;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DEFAULT_LOGIN_PAGE;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DEFAULT_TENANT_ID;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DISPLAY_ORDER_3;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DISPLAY_ORDER_4;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DISPLAY_ORDER_5;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.PARAM_POLL;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.PARAM_STATUS;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.PARAM_VP_REQUEST_ID;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.PROP_CLIENT_ID;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.PROP_PRESENTATION_DEFINITION_ID;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.PROP_RESPONSE_MODE;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.PROP_SUBJECT_CLAIM;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.PROP_TIMEOUT_SECONDS;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.SESSION_TRANSACTION_ID;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.SESSION_VP_REQUEST_ID;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.SUPER_TENANT_ID_PLACEHOLDER;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.TENANT_DOMAIN_PATTERN;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.UI_QR_CONTENT;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.UI_REQUEST_ID;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.UI_REQUEST_URI;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.UI_SESSION_DATA_KEY;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.UI_TRANSACTION_ID;
+
 /**
  * OpenID4VP Wallet Authenticator for WSO2 Identity Server.
  * 
@@ -80,46 +106,11 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
     @java.io.Serial
     private static final long serialVersionUID = 1L;
 
-    // Authenticator configuration properties
-    private static final String AUTHENTICATOR_NAME = "OpenID4VPAuthenticator";
-    private static final String AUTHENTICATOR_FRIENDLY_NAME = "Wallet (OpenID4VP)";
-
     private static final Log log = LogFactory.getLog(OpenID4VPAuthenticator.class);
-
-    // Request parameter names
-    private static final String PARAM_VP_REQUEST_ID = "vp_request_id";
-
-    private static final String PARAM_STATUS = "status";
-    private static final String PARAM_POLL = "poll";
-
-    // Session data keys
-    private static final String SESSION_VP_REQUEST_ID = "openid4vp_request_id";
-    private static final String SESSION_TRANSACTION_ID = "openid4vp_transaction_id";
-    private static final String UI_SESSION_DATA_KEY = "openid4vp_ui_session_data_key";
-    private static final String UI_REQUEST_ID = "openid4vp_ui_request_id";
-    private static final String UI_TRANSACTION_ID = "openid4vp_ui_transaction_id";
-    private static final String UI_REQUEST_URI = "openid4vp_ui_request_uri";
-    private static final String UI_QR_CONTENT = "openid4vp_ui_qr_content";
-
-    // Configuration property keys
-    private static final String PROP_PRESENTATION_DEFINITION_ID = "presentationDefinitionId";
-    private static final String PROP_RESPONSE_MODE = "ResponseMode";
-    private static final String PROP_TIMEOUT_SECONDS = "TimeoutSeconds";
-    private static final String PROP_CLIENT_ID = "ClientId";
-    private static final String PROP_DID_METHOD = "DIDMethod";
-    private static final String PROP_SUBJECT_CLAIM = "SubjectClaim";
-    private static final String DEFAULT_LOGIN_PAGE = "/authenticationendpoint/wallet_login.jsp";
-    private static final String ALPHANUM_PATTERN = "^[a-zA-Z0-9_.-]+$";
-    private static final int DEFAULT_TENANT_ID = -1234;
-    private static final String TENANT_DOMAIN_PATTERN = "^[a-zA-Z0-9._-]+$";
-
-    private static final int DISPLAY_ORDER_3 = 3;
-    private static final int DISPLAY_ORDER_4 = 4;
-    private static final int DISPLAY_ORDER_5 = 5;
-    private static final int SUPER_TENANT_ID_PLACEHOLDER = -1234;
 
     // Instance variable to store received VP submission (direct processing)
     private volatile VPSubmission receivedSubmission;
+
 
     // StatusCallback interface implementation for direct processing
     @Override
