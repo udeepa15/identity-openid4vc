@@ -293,10 +293,10 @@ public class VPSubmissionServlet extends HttpServlet {
     }
 
     /**
-     * Notify status listeners for long polling.
+     * Notify status listeners.
      *
-     * @param requestId  The request ID (state)
-     * @param submission The VP submission
+     * @param requestId  The request ID (state).
+     * @param submission The VP submission.
      */
     private void notifyStatusListeners(final String requestId,
             final VPSubmission submission) {

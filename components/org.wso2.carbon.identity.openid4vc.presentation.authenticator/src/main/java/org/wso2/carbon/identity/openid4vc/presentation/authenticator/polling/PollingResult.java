@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, WSO2 LLC. (http://www.wso2.com).
+ * Copyright (c) 2025-2026, WSO2 LLC. (http://www.wso2.com).
  *
  * WSO2 LLC. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -21,8 +21,7 @@ package org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling;
 import java.io.Serializable;
 
 /**
- * Result of a polling operation.
- * Contains the current status and any relevant data.
+ * Current status of a VP request returned by status checks.
  */
 public class PollingResult implements Serializable {
 
@@ -33,19 +32,14 @@ public class PollingResult implements Serializable {
      */
     public enum ResultStatus {
         /**
-         * Waiting for VP submission.
+         * Request is active and waiting for submission.
          */
         WAITING,
 
         /**
-         * VP has been submitted.
+         * Request is submitted or completed.
          */
         SUBMITTED,
-
-        /**
-         * VP submitted with error from wallet.
-         */
-        SUBMITTED_WITH_ERROR,
 
         /**
          * Request has expired.
@@ -58,11 +52,6 @@ public class PollingResult implements Serializable {
         NOT_FOUND,
 
         /**
-         * Polling timed out.
-         */
-        TIMEOUT,
-
-        /**
          * Error occurred.
          */
         ERROR
@@ -72,7 +61,6 @@ public class PollingResult implements Serializable {
     private final ResultStatus resultStatus;
     private final String status;
     private final String errorMessage;
-    private final boolean complete;
 
     /**
      * Private constructor - use factory methods.
@@ -80,17 +68,13 @@ public class PollingResult implements Serializable {
     private PollingResult(final String requestId,
                           final ResultStatus resultStatus,
                           final String status,
-                          final String errorMessage,
-                          final boolean complete) {
+                          final String errorMessage) {
 
         this.requestId = requestId;
         this.resultStatus = resultStatus;
         this.status = status;
         this.errorMessage = errorMessage;
-        this.complete = complete;
     }
-
-    // Factory methods
 
     /**
      * Create a result indicating VP submission is still pending.
@@ -100,7 +84,7 @@ public class PollingResult implements Serializable {
      */
     public static PollingResult waiting(final String requestId) {
 
-        return new PollingResult(requestId, ResultStatus.WAITING, "ACTIVE", null, false);
+        return new PollingResult(requestId, ResultStatus.WAITING, "ACTIVE", null);
     }
 
     /**
@@ -112,21 +96,7 @@ public class PollingResult implements Serializable {
      */
     public static PollingResult submitted(final String requestId, final String status) {
 
-        return new PollingResult(requestId, ResultStatus.SUBMITTED, status, null, true);
-    }
-
-    /**
-     * Create a result indicating VP submitted with wallet error.
-     *
-     * @param requestId Request ID
-     * @param status    Status string
-     * @return PollingResult for submitted with error state
-     */
-    public static PollingResult submittedWithError(final String requestId,
-                                                    final String status) {
-
-        return new PollingResult(requestId, ResultStatus.SUBMITTED_WITH_ERROR,
-                status, null, true);
+        return new PollingResult(requestId, ResultStatus.SUBMITTED, status, null);
     }
 
     /**
@@ -137,7 +107,7 @@ public class PollingResult implements Serializable {
      */
     public static PollingResult expired(final String requestId) {
 
-        return new PollingResult(requestId, ResultStatus.EXPIRED, "EXPIRED", null, true);
+        return new PollingResult(requestId, ResultStatus.EXPIRED, "EXPIRED", null);
     }
 
     /**
@@ -149,18 +119,7 @@ public class PollingResult implements Serializable {
     public static PollingResult notFound(final String requestId) {
 
         return new PollingResult(requestId, ResultStatus.NOT_FOUND, null,
-                "Request not found", true);
-    }
-
-    /**
-     * Create a result indicating polling timed out.
-     *
-     * @param requestId Request ID
-     * @return PollingResult for timeout state
-     */
-    public static PollingResult timeout(final String requestId) {
-
-        return new PollingResult(requestId, ResultStatus.TIMEOUT, "ACTIVE", null, false);
+                "Request not found");
     }
 
     /**
@@ -172,10 +131,8 @@ public class PollingResult implements Serializable {
      */
     public static PollingResult error(final String requestId, final String errorMessage) {
 
-        return new PollingResult(requestId, ResultStatus.ERROR, null, errorMessage, true);
+        return new PollingResult(requestId, ResultStatus.ERROR, null, errorMessage);
     }
-
-    // Getters
 
     /**
      * Get the request ID.
@@ -217,88 +174,4 @@ public class PollingResult implements Serializable {
         return errorMessage;
     }
 
-    /**
-     * Check if polling is complete.
-     * Complete means no need to continue polling - either success, error, or expired.
-     *
-     * @return true if complete
-     */
-    public boolean isComplete() {
-
-        return complete;
-    }
-
-    /**
-     * Check if VP token was received (submitted successfully or with error).
-     *
-     * @return true if submitted
-     */
-    public boolean isTokenReceived() {
-
-        return resultStatus == ResultStatus.SUBMITTED
-                || resultStatus == ResultStatus.SUBMITTED_WITH_ERROR;
-    }
-
-    /**
-     * Check if result indicates waiting state.
-     *
-     * @return true if waiting
-     */
-    public boolean isWaiting() {
-
-        return resultStatus == ResultStatus.WAITING;
-    }
-
-    /**
-     * Check if result indicates timeout.
-     *
-     * @return true if timeout
-     */
-    public boolean isTimeout() {
-
-        return resultStatus == ResultStatus.TIMEOUT;
-    }
-
-    /**
-     * Check if result indicates expired.
-     *
-     * @return true if expired
-     */
-    public boolean isExpired() {
-
-        return resultStatus == ResultStatus.EXPIRED;
-    }
-
-    /**
-     * Check if result indicates an error.
-     *
-     * @return true if error
-     */
-    public boolean isError() {
-
-        return resultStatus == ResultStatus.ERROR
-                || resultStatus == ResultStatus.NOT_FOUND;
-    }
-
-    /**
-     * Check if result indicates submission with wallet error.
-     *
-     * @return true if submitted with error
-     */
-    public boolean hasWalletError() {
-
-        return resultStatus == ResultStatus.SUBMITTED_WITH_ERROR;
-    }
-
-    @Override
-    public String toString() {
-
-        return "PollingResult{"
-                + "requestId='" + requestId + '\''
-                + ", resultStatus=" + resultStatus
-                + ", status='" + status + '\''
-                + ", errorMessage='" + errorMessage + '\''
-                + ", complete=" + complete
-                + '}';
-    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, WSO2 LLC. (http://www.wso2.com).
+ * Copyright (c) 2025-2026, WSO2 LLC. (http://www.wso2.com).
  *
  * WSO2 LLC. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -18,10 +18,8 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.status;
 
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPStatusListenerCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPSubmission;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling.LongPollingManager;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -34,8 +32,6 @@ public class StatusNotificationService {
 
     private static volatile StatusNotificationService instance;
 
-    private final VPStatusListenerCache statusListenerCache;
-    private final LongPollingManager longPollingManager;
     private final List<StatusChangeListener> statusChangeListeners;
 
     /**
@@ -43,8 +39,6 @@ public class StatusNotificationService {
      */
     private StatusNotificationService() {
 
-        this.statusListenerCache = VPStatusListenerCache.getInstance();
-        this.longPollingManager = LongPollingManager.getInstance();
         this.statusChangeListeners = new CopyOnWriteArrayList<>();
 
     }
@@ -78,14 +72,6 @@ public class StatusNotificationService {
             return;
         }
 
-        String status = buildSubmissionStatus(submission);
-
-        // Notify the status listener cache (for long polling)
-        statusListenerCache.notifyListeners(requestId, status);
-
-        // Notify the long polling manager
-        longPollingManager.notifySubmission(requestId, status);
-
         // Notify registered status change listeners
         notifyStatusChangeListeners(requestId, VPRequestStatus.VP_SUBMITTED, submission);
     }
@@ -104,14 +90,6 @@ public class StatusNotificationService {
         if (requestId == null) {
             return;
         }
-
-        String status = VPRequestStatus.VP_SUBMITTED.name() + "_ERROR";
-
-        // Notify the status listener cache
-        statusListenerCache.notifyListeners(requestId, status);
-
-        // Notify the long polling manager
-        longPollingManager.notifySubmission(requestId, status);
 
         // Create minimal submission for listeners
         VPSubmission errorSubmission = new VPSubmission.Builder()
@@ -135,14 +113,6 @@ public class StatusNotificationService {
             return;
         }
 
-        String status = VPRequestStatus.EXPIRED.name();
-
-        // Notify the status listener cache
-        statusListenerCache.notifyListeners(requestId, status);
-
-        // Remove all listeners for this request
-        statusListenerCache.removeAllListeners(requestId);
-
         // Notify registered status change listeners
         notifyStatusChangeListeners(requestId, VPRequestStatus.EXPIRED, null);
     }
@@ -159,14 +129,6 @@ public class StatusNotificationService {
         if (requestId == null) {
             return;
         }
-
-        String status = VPRequestStatus.COMPLETED.name();
-
-        // Notify the status listener cache
-        statusListenerCache.notifyListeners(requestId, status);
-
-        // Clean up listeners
-        statusListenerCache.removeAllListeners(requestId);
 
         // Notify registered status change listeners
         notifyStatusChangeListeners(requestId, VPRequestStatus.COMPLETED, submission);
@@ -215,20 +177,6 @@ public class StatusNotificationService {
     }
 
     /**
-     * Build status string from submission.
-     */
-    private String buildSubmissionStatus(final VPSubmission submission) {
-
-        String baseStatus = VPRequestStatus.VP_SUBMITTED.name();
-
-        if (submission.hasError()) {
-            return baseStatus + "_ERROR";
-        }
-
-        return baseStatus;
-    }
-
-    /**
      * Get count of registered status change listeners.
      *
      * @return Number of listeners
@@ -236,27 +184,6 @@ public class StatusNotificationService {
     public int getStatusChangeListenerCount() {
 
         return statusChangeListeners.size();
-    }
-
-    /**
-     * Check if there are active long polling listeners for a request.
-     *
-     * @param requestId Request ID
-     * @return true if active listeners exist
-     */
-    public boolean hasActivePollingListeners(final String requestId) {
-
-        return statusListenerCache.hasActiveListeners(requestId);
-    }
-
-    /**
-     * Get total number of active polling listeners.
-     *
-     * @return Total listener count
-     */
-    public int getTotalActivePollingListeners() {
-
-        return statusListenerCache.getTotalListenerCount();
     }
 
     /**

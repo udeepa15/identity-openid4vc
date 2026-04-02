@@ -304,7 +304,7 @@
                 transactionId: '<%=transactionId != null ? Encode.forJavaScript(transactionId) : ""%>',
                 requestUri: '<%=requestUri != null ? Encode.forJavaScript(requestUri) : ""%>',
                 qrContent: '<%=qrContent != null ? Encode.forJavaScript(qrContent) : ""%>',
-                pollInterval: 2000,
+                pollInterval: 5000,
                 timeout: 300,
                 pollEndpoint: '/openid4vp/v1/vp-request/<%=Encode.forUriComponent(requestId != null ? requestId : "")%>/status'
             };

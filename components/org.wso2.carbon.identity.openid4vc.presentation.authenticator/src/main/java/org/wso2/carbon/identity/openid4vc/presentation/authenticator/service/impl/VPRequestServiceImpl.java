@@ -199,7 +199,7 @@ public class VPRequestServiceImpl implements VPRequestService {
         String requestJwt = buildRequestObjectJwt(vpRequest, didMethod, signingAlgorithm);
         vpRequest.setRequestJwt(requestJwt);
 
-        // 6. Persistence and dynamic URI building
+        // Store in cache
         getVPRequestDAO().createVPRequest(vpRequest);
 
         vpRequest.setRequestUri(buildRequestUri(getBaseUrl(), requestId));
@@ -333,25 +333,14 @@ public class VPRequestServiceImpl implements VPRequestService {
                     "Request is no longer active: " + requestId);
         }
 
-        // Return existing JWT if already generated
+        // Return existing JWT
         if (StringUtils.isNotBlank(vpRequest.getRequestJwt())) {
             return vpRequest.getRequestJwt();
         }
 
-        // Regenerate JWT if missing (fallback)
-        // Use stored metadata if available, otherwise default
-        String didMethod = "web"; // Force did:web
-        String explicitAlgo = vpRequest.getSigningAlgorithm();
-        String signingAlgorithm = StringUtils.isNotBlank(explicitAlgo)
-                ? explicitAlgo : "RS256";
-
-        String requestJwt = buildRequestObjectJwt(vpRequest, didMethod,
-                signingAlgorithm);
-
-        // Store generated JWT
-        getVPRequestDAO().updateVPRequestJwt(requestId, requestJwt, tenantId);
-
-        return requestJwt;
+        throw new VPAuthenticatorServerException(
+            VPAuthenticatorErrorCode.INTERNAL_SERVER_ERROR,
+            "Request JWT is missing for request: " + requestId);
     }
 
     /**
@@ -637,7 +626,7 @@ public class VPRequestServiceImpl implements VPRequestService {
      * @return The complete response URI
      */
     private String buildResponseUri(final String currentBaseUrl) {
-        String endpoint = "/identity/openid4vc/presentation/submission";
+        String endpoint = "/openid4vp/v1/response";
         if (currentBaseUrl.endsWith("/")) {
             return currentBaseUrl.substring(0, currentBaseUrl.length() - 1)
                     + endpoint;

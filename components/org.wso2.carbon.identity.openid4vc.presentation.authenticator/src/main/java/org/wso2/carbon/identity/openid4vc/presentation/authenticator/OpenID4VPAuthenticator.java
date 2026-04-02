@@ -37,7 +37,6 @@ import org.wso2.carbon.identity.application.authentication.framework.model.Authe
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 import org.wso2.carbon.identity.application.common.model.IdentityProvider;
 import org.wso2.carbon.identity.application.common.model.Property;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPStatusListenerCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.WalletDataCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
@@ -99,27 +98,13 @@ import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util
  * digital wallet.
  */
 public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
-        implements FederatedApplicationAuthenticator, VPStatusListenerCache.StatusCallback {
+    implements FederatedApplicationAuthenticator {
 
     // Use @Serial annotation for serialVersionUID
     @java.io.Serial
     private static final long serialVersionUID = 1L;
 
     private static final Log log = LogFactory.getLog(OpenID4VPAuthenticator.class);
-
-
-
-    // StatusCallback interface implementation for direct processing
-    @Override
-    public void onStatusChange(final String status) {
-
-    }
-
-    @Override
-    public void onTimeout() {
-        // No-op: timeout handling is managed by the VP request expiry in VPRequestService.
-    }
-
 
     @Override
     public String getName() {

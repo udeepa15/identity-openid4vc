@@ -15,7 +15,6 @@ import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 import org.wso2.carbon.identity.application.common.model.IdentityProvider;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPStatusListenerCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.WalletDataCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
@@ -66,16 +65,12 @@ public class OpenID4VPAuthenticatorTest {
     private PresentationDefinitionService presentationDefinitionService;
 
     @Mock
-    private VPStatusListenerCache vpStatusListenerCache;
-
-    @Mock
     private WalletDataCache walletDataCache;
 
     @Mock
     private VerificationService verificationService;
 
     private MockedStatic<VPServiceDataHolder> mockedVPServiceDataHolder;
-    private MockedStatic<VPStatusListenerCache> mockedVPStatusListenerCache;
     private MockedStatic<WalletDataCache> mockedWalletDataCache;
     private MockedStatic<IdentityUtil> mockedIdentityUtil;
     private MockedStatic<QRCodeUtil> mockedQRCodeUtil;
@@ -93,9 +88,6 @@ public class OpenID4VPAuthenticatorTest {
         mockedVPServiceDataHolder.when(VPServiceDataHolder::getPresentationDefinitionService)
                 .thenReturn(presentationDefinitionService);
         mockedVPServiceDataHolder.when(VPServiceDataHolder::getVerificationService).thenReturn(verificationService);
-
-        mockedVPStatusListenerCache = Mockito.mockStatic(VPStatusListenerCache.class);
-        mockedVPStatusListenerCache.when(VPStatusListenerCache::getInstance).thenReturn(vpStatusListenerCache);
 
         mockedWalletDataCache = Mockito.mockStatic(WalletDataCache.class);
         mockedWalletDataCache.when(WalletDataCache::getInstance).thenReturn(walletDataCache);
@@ -118,9 +110,6 @@ public class OpenID4VPAuthenticatorTest {
     public void tearDown() {
         if (mockedVPServiceDataHolder != null) {
             mockedVPServiceDataHolder.close();
-        }
-        if (mockedVPStatusListenerCache != null) {
-            mockedVPStatusListenerCache.close();
         }
         if (mockedWalletDataCache != null) {
             mockedWalletDataCache.close();

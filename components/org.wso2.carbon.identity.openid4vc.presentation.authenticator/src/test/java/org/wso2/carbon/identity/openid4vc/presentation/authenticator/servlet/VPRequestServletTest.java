@@ -34,11 +34,9 @@ import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 
 import javax.servlet.ServletOutputStream;
-import javax.servlet.WriteListener;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -107,7 +105,7 @@ public class VPRequestServletTest {
             mockedManager.when(LongPollingManager::getInstance).thenReturn(pollingManager);
 
             PollingResult result = PollingResult.submitted("test-request-id", "VP_SUBMITTED");
-            when(pollingManager.waitForStatusChange(eq("test-request-id"), anyLong(), eq(-1234))).thenReturn(result);
+            when(pollingManager.checkCurrentStatus(eq("test-request-id"), eq(-1234))).thenReturn(result);
 
             vpRequestServlet.doGet(request, response);
 
@@ -118,13 +116,6 @@ public class VPRequestServletTest {
 
     private ServletOutputStream createMockOutputStream(ByteArrayOutputStream outputStream) {
         return new ServletOutputStream() {
-            public boolean isReady() {
-                return true;
-            }
-
-            public void setWriteListener(WriteListener writeListener) {
-            }
-
             @Override
             public void write(int b) {
                 outputStream.write(b);

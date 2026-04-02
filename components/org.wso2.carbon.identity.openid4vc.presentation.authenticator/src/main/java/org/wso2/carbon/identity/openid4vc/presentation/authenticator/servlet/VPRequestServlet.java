@@ -28,7 +28,6 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.V
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorErrorCode;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorServerException;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling.LongPollingManager;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling.PollingResult;
@@ -71,7 +70,6 @@ public class VPRequestServlet extends HttpServlet {
             .setPrettyPrinting()
             .create();
 
-    private static final long DEFAULT_POLL_TIMEOUT_MS = 60000; // 1 minute
     private static final int DEFAULT_TENANT_ID = -1234; // Super tenant
     private static final String TENANT_DOMAIN_PATTERN = "^[a-zA-Z0-9._-]+$";
 
@@ -117,7 +115,7 @@ public class VPRequestServlet extends HttpServlet {
         try {
             // Check if status endpoint
             if (pathParts.length >= 3 && "status".equals(pathParts[2])) {
-                handleStatusRequest(request, response, requestId, tenantId);
+                handleStatusRequest(response, requestId, tenantId);
             } else {
                 handleRequestJwtRequest(response, requestId, tenantId);
             }
@@ -144,9 +142,8 @@ public class VPRequestServlet extends HttpServlet {
 
         String requestJwt = vpRequestService.getRequestJwt(requestId, tenantId);
 
-        // For now, return as JSON. In production, this should return JWT format
-        response.setContentType(OpenID4VPConstants.HTTP.CONTENT_TYPE_JSON + ";charset=UTF-8");
-
+        response.setContentType("application/oauth-authz-req+jwt");
+        response.setStatus(HttpServletResponse.SC_OK);
         writeResponse(response, requestJwt);
     }
 
@@ -165,74 +162,54 @@ public class VPRequestServlet extends HttpServlet {
      * @throws VPAuthenticatorException If error occurs
      * @throws IOException              If error occurs
      */
-    private void handleStatusRequest(HttpServletRequest request,
-                                     HttpServletResponse response,
+    private void handleStatusRequest(HttpServletResponse response,
                                      String requestId, int tenantId)
             throws VPAuthenticatorException, IOException {
 
-        // Get timeout parameter for long polling
-        String timeoutParam = getParameter(request, "timeout");
-        long timeout = DEFAULT_POLL_TIMEOUT_MS;
-        if (StringUtils.isNotBlank(timeoutParam)
-                && timeoutParam.matches("^[0-9]+$")) {
-            try {
-                timeout = Math.min(Long.parseLong(timeoutParam),
-                        DEFAULT_POLL_TIMEOUT_MS);
-            } catch (NumberFormatException e) {
-                // Use default
-            }
-        }
-
-        // Get request by ID to check status
-        // Note: For true long-polling, this should use async servlets with
-        // DeferredResult
-        VPRequest statusDTO = pollForStatus(requestId, tenantId, timeout);
-
-        sendJsonResponse(response, HttpServletResponse.SC_OK, statusDTO);
+        JsonObject statusResponse = pollForStatus(requestId, tenantId);
+        sendJsonResponse(response, HttpServletResponse.SC_OK, statusResponse);
     }
 
     /**
-     * Poll for status with timeout.
-     * Note: This is a simplified polling implementation. For production,
-     * consider using async servlets with DeferredResult pattern.
-     * Uses LongPollingManager to handle status checks via both cache and
-     * database.
+     * Get current status immediately without waiting.
      *
      * @param requestId Request ID
      * @param tenantId  Tenant ID
-     * @param timeout   Polling timeout
-     * @return VPRequestDTO with status
+     * @return JsonObject with request status
      * @throws VPAuthenticatorException If error occurs
      */
-    private VPRequest pollForStatus(final String requestId,
-                                    final int tenantId,
-                                    final long timeout)
+    private JsonObject pollForStatus(final String requestId,
+                                     final int tenantId)
             throws VPAuthenticatorException {
 
         LongPollingManager pollingManager = LongPollingManager.getInstance();
-        PollingResult result = pollingManager.waitForStatusChange(requestId, timeout, tenantId);
+        PollingResult result = pollingManager.checkCurrentStatus(requestId, tenantId);
 
-        VPRequest.Builder builder = new VPRequest.Builder()
-                .requestId(requestId);
+        JsonObject statusResponse = new JsonObject();
+        statusResponse.addProperty("requestId", requestId);
 
-        org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling.PollingResult.ResultStatus status =
-                result.getResultStatus();
+        PollingResult.ResultStatus status = result.getResultStatus();
 
-        if (status == PollingResult.ResultStatus.SUBMITTED
-                || status == PollingResult.ResultStatus.SUBMITTED_WITH_ERROR) {
+        if (status == PollingResult.ResultStatus.SUBMITTED) {
             String statusStr = result.getStatus();
             if (VPRequestStatus.COMPLETED.name().equals(statusStr)) {
-                builder.status(VPRequestStatus.COMPLETED);
+                statusResponse.addProperty("status", VPRequestStatus.COMPLETED.name());
             } else {
-                builder.status(VPRequestStatus.VP_SUBMITTED);
+                statusResponse.addProperty("status", VPRequestStatus.VP_SUBMITTED.name());
             }
         } else if (status == PollingResult.ResultStatus.EXPIRED) {
-            builder.status(VPRequestStatus.EXPIRED);
+            statusResponse.addProperty("status", VPRequestStatus.EXPIRED.name());
+        } else if (status == PollingResult.ResultStatus.NOT_FOUND) {
+            throw new VPAuthenticatorClientException(VPAuthenticatorErrorCode.VP_REQUEST_NOT_FOUND,
+                    "VP request not found for requestId: " + requestId);
+        } else if (status == PollingResult.ResultStatus.ERROR) {
+            throw new VPAuthenticatorServerException(VPAuthenticatorErrorCode.INTERNAL_SERVER_ERROR,
+                    result.getErrorMessage());
         } else {
-            builder.status(VPRequestStatus.ACTIVE);
+            statusResponse.addProperty("status", VPRequestStatus.ACTIVE.name());
         }
 
-        return builder.build();
+        return statusResponse;
     }
 
     /**
@@ -281,38 +258,4 @@ public class VPRequestServlet extends HttpServlet {
         return DEFAULT_TENANT_ID;
     }
 
-    /**
-     * Read and sanitize a request parameter.
-     *
-     * @param request HTTP request.
-     * @param name    Parameter name.
-     * @return Sanitized parameter value, or null.
-     */
-    private String getParameter(final HttpServletRequest request, final String name) {
-
-        if (request == null || StringUtils.isBlank(name)) {
-            return null;
-        }
-
-        String value = request.getParameter(name);
-        if (StringUtils.isBlank(value)) {
-            return null;
-        }
-
-        return Encode.forJava(sanitizeParam(value));
-    }
-
-    /**
-     * Strip CRLF/control characters from request parameter input.
-     *
-     * @param value Request parameter value.
-     * @return Sanitized parameter value.
-     */
-    private String sanitizeParam(final String value) {
-
-        if (value == null) {
-            return null;
-        }
-        return value.replace('\r', '_').replace('\n', '_').replaceAll("[\\p{Cntrl}]", "");
-    }
 }
