@@ -387,13 +387,16 @@
                 .then(function(data) {
                     console.log('Poll response:', data);
 
-                    var s = data.status ? data.status.toUpperCase() : '';
-                    if (s === 'VP_SUBMITTED' || s === 'COMPLETED' || s === 'VERIFIED' || s === 'SUBMITTED') {
+                    var pollingStatus = data.pollingStatus ? data.pollingStatus.toUpperCase() : '';
+                    var status = data.status ? data.status.toUpperCase() : '';
+
+                    if (pollingStatus === 'SUBMITTED' || status === 'VP_SUBMITTED') {
                         handleSuccess();
-                    } else if (s === 'FAILED') {
-                        handleError(data.error || data.message || 'Verification failed');
-                    } else if (s === 'EXPIRED') {
+                    } else if (pollingStatus === 'EXPIRED' || status === 'EXPIRED') {
                         handleExpired();
+                    } else if (pollingStatus === 'NOT_FOUND' || pollingStatus === 'ERROR'
+                            || status === 'NOT_FOUND' || status === 'ERROR') {
+                        handleError(data.message || 'Verification failed');
                     } else {
                         // Still pending, continue polling
                         updateStatus('pending', 'Waiting for wallet...');

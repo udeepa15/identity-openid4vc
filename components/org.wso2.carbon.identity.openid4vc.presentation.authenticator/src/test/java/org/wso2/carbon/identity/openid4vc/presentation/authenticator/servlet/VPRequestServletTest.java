@@ -25,7 +25,7 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling.LongPollingManager;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling.PollingManager;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling.PollingResult;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
 
@@ -56,7 +56,7 @@ public class VPRequestServletTest {
     private VPRequestService vpRequestService;
 
     @Mock
-    private LongPollingManager pollingManager;
+    private PollingManager pollingManager;
 
     private ByteArrayOutputStream responseOutputStream;
     private MockedStatic<IdentityTenantUtil> mockedIdentityTenantUtil;
@@ -101,8 +101,8 @@ public class VPRequestServletTest {
     public void testDoGetStatusSuccess() throws Exception {
         when(request.getPathInfo()).thenReturn("/test-request-id/status");
 
-        try (MockedStatic<LongPollingManager> mockedManager = mockStatic(LongPollingManager.class)) {
-            mockedManager.when(LongPollingManager::getInstance).thenReturn(pollingManager);
+        try (MockedStatic<PollingManager> mockedManager = mockStatic(PollingManager.class)) {
+            mockedManager.when(PollingManager::getInstance).thenReturn(pollingManager);
 
             PollingResult result = PollingResult.submitted("test-request-id", "VP_SUBMITTED");
             when(pollingManager.checkCurrentStatus(eq("test-request-id"), eq(-1234))).thenReturn(result);

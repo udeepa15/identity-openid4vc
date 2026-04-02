@@ -29,7 +29,7 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.V
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorServerException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling.LongPollingManager;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling.PollingManager;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling.PollingResult;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.impl.VPRequestServiceImpl;
@@ -153,14 +153,13 @@ public class VPRequestServlet extends HttpServlet {
     }
 
     /**
-     * Handle status polling request.
+    * Handle status polling request.
      *
-     * @param request   HTTP request
      * @param response  HTTP response
-     * @param requestId Request ID
-     * @param tenantId  Tenant ID
-     * @throws VPAuthenticatorException If error occurs
-     * @throws IOException              If error occurs
+    * @param requestId Request ID.
+    * @param tenantId  Tenant ID.
+    * @throws VPAuthenticatorException If error occurs.
+    * @throws IOException              If error occurs.
      */
     private void handleStatusRequest(HttpServletResponse response,
                                      String requestId, int tenantId)
@@ -171,40 +170,36 @@ public class VPRequestServlet extends HttpServlet {
     }
 
     /**
-     * Get current status immediately without waiting.
+    * Get current status immediately without waiting.
      *
-     * @param requestId Request ID
-     * @param tenantId  Tenant ID
-     * @return JsonObject with request status
-     * @throws VPAuthenticatorException If error occurs
+    * @param requestId Request ID.
+    * @param tenantId  Tenant ID.
+    * @return JsonObject with polling and VP status.
+    * @throws VPAuthenticatorException If error occurs.
      */
     private JsonObject pollForStatus(final String requestId,
                                      final int tenantId)
             throws VPAuthenticatorException {
 
-        LongPollingManager pollingManager = LongPollingManager.getInstance();
+        PollingManager pollingManager = PollingManager.getInstance();
         PollingResult result = pollingManager.checkCurrentStatus(requestId, tenantId);
 
         JsonObject statusResponse = new JsonObject();
         statusResponse.addProperty("requestId", requestId);
 
         PollingResult.ResultStatus status = result.getResultStatus();
+        statusResponse.addProperty("pollingStatus", status.name());
 
         if (status == PollingResult.ResultStatus.SUBMITTED) {
-            String statusStr = result.getStatus();
-            if (VPRequestStatus.COMPLETED.name().equals(statusStr)) {
-                statusResponse.addProperty("status", VPRequestStatus.COMPLETED.name());
-            } else {
-                statusResponse.addProperty("status", VPRequestStatus.VP_SUBMITTED.name());
-            }
+            statusResponse.addProperty("status", VPRequestStatus.VP_SUBMITTED.name());
         } else if (status == PollingResult.ResultStatus.EXPIRED) {
             statusResponse.addProperty("status", VPRequestStatus.EXPIRED.name());
         } else if (status == PollingResult.ResultStatus.NOT_FOUND) {
-            throw new VPAuthenticatorClientException(VPAuthenticatorErrorCode.VP_REQUEST_NOT_FOUND,
-                    "VP request not found for requestId: " + requestId);
+            statusResponse.addProperty("status", PollingResult.ResultStatus.NOT_FOUND.name());
         } else if (status == PollingResult.ResultStatus.ERROR) {
-            throw new VPAuthenticatorServerException(VPAuthenticatorErrorCode.INTERNAL_SERVER_ERROR,
-                    result.getErrorMessage());
+            statusResponse.addProperty("status", PollingResult.ResultStatus.ERROR.name());
+            statusResponse.addProperty("message",
+                    StringUtils.defaultString(result.getErrorMessage(), "Polling error."));
         } else {
             statusResponse.addProperty("status", VPRequestStatus.ACTIVE.name());
         }

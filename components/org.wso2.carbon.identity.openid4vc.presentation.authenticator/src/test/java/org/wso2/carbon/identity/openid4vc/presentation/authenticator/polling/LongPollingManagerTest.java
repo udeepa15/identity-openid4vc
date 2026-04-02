@@ -37,7 +37,7 @@ import static org.testng.Assert.assertNotNull;
 
 public class LongPollingManagerTest {
 
-    private LongPollingManager longPollingManager;
+    private PollingManager pollingManager;
 
     @Mock
     private VPRequestDAO vpRequestDAO;
@@ -48,17 +48,17 @@ public class LongPollingManagerTest {
     @BeforeMethod
     public void setUp() throws Exception {
         MockitoAnnotations.openMocks(this);
-        longPollingManager = LongPollingManager.getInstance();
+        pollingManager = PollingManager.getInstance();
 
         // Use reflection to inject mocks into singleton
-        setPrivateField(longPollingManager, "vpRequestDAO", vpRequestDAO);
-        setPrivateField(longPollingManager, "walletDataCache", walletDataCache);
+        setPrivateField(pollingManager, "vpRequestDAO", vpRequestDAO);
+        setPrivateField(pollingManager, "walletDataCache", walletDataCache);
     }
 
     @Test
     public void testCheckCurrentStatusSubmittedInCache() {
         when(walletDataCache.hasToken(anyString())).thenReturn(true);
-        PollingResult result = longPollingManager.checkCurrentStatus("test-id", 1);
+        PollingResult result = pollingManager.checkCurrentStatus("test-id", 1);
         
         assertNotNull(result);
         assertEquals(result.getStatus(), VPRequestStatus.VP_SUBMITTED.name());
@@ -75,10 +75,10 @@ public class LongPollingManagerTest {
                 .build();
         when(vpRequestDAO.getVPRequestById(anyString(), anyInt())).thenReturn(request);
 
-        PollingResult result = longPollingManager.checkCurrentStatus("test-id", 1);
+        PollingResult result = pollingManager.checkCurrentStatus("test-id", 1);
         
         assertNotNull(result);
-        assertEquals(result.getStatus(), VPRequestStatus.COMPLETED.name());
+        assertEquals(result.getStatus(), VPRequestStatus.VP_SUBMITTED.name());
         assertEquals(result.getResultStatus(), PollingResult.ResultStatus.SUBMITTED);
     }
 
@@ -93,7 +93,7 @@ public class LongPollingManagerTest {
                 .build();
         when(vpRequestDAO.getVPRequestById(anyString(), anyInt())).thenReturn(request);
 
-        PollingResult result = longPollingManager.checkCurrentStatus("test-id", 1);
+        PollingResult result = pollingManager.checkCurrentStatus("test-id", 1);
         
         assertNotNull(result);
         assertEquals(result.getStatus(), "EXPIRED");
