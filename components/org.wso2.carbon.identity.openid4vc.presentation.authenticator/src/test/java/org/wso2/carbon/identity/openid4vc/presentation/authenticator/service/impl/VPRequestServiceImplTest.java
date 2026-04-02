@@ -269,7 +269,7 @@ public class VPRequestServiceImplTest {
 
                  VPRequest response = vpRequestService.createVPRequest(context);
                  assertNotNull(response);
-                 assertEquals(response.getSigningAlgorithm(), "RS256");
+                                 assertEquals(response.getSigningAlgorithm(), "EdDSA");
              }
         }
     }

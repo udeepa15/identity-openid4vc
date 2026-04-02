@@ -175,31 +175,10 @@ public class VPRequestServiceImpl implements VPRequestService {
 
         // 3. Resolve and process presentation definition
         String presentationDefinition = resolvePresentationDefinition(presentationDefinitionId, null, tenantId);
-        
-        // Extract signing algorithm from internal config if present
-        if (StringUtils.isNotBlank(presentationDefinition)) {
-            try {
-                JsonObject pdJson = JsonParser.parseString(presentationDefinition).getAsJsonObject();
-                if (pdJson.has("_internal")) {
-                    JsonObject internal = pdJson.getAsJsonObject("_internal");
-                    if (internal.has("signing_algorithm")) {
-                        signingAlgorithm = internal.get("signing_algorithm").getAsString();
-                    }
-                    // Remove internal config to keep spec compliant
-                    pdJson.remove("_internal");
-                    presentationDefinition = pdJson.toString();
-                }
-
-            } catch (com.google.gson.JsonParseException | IllegalStateException e) {
-                // Ignore malformed JSON or invalid access
-            }
-        }
-        if (StringUtils.isBlank(signingAlgorithm)) {
-            signingAlgorithm = "EdDSA"; // Default to EdDSA
-        }
 
         // 4. Build the final request object
         String responseUri = buildResponseUri(getBaseUrl());
+
         VPRequest vpRequest = new VPRequest.Builder()
                 .requestId(requestId)
                 .transactionId(transactionId)
@@ -223,9 +202,8 @@ public class VPRequestServiceImpl implements VPRequestService {
         // 6. Persistence and dynamic URI building
         getVPRequestDAO().createVPRequest(vpRequest);
 
-        if (isRequestUriEnabled()) {
-            vpRequest.setRequestUri(buildRequestUri(getBaseUrl(), requestId));
-        }
+        vpRequest.setRequestUri(buildRequestUri(getBaseUrl(), requestId));
+
 
         vpRequest.setAuthorizationDetails(buildAuthorizationDetails(vpRequest, presentationDefinition));
 
@@ -303,9 +281,8 @@ public class VPRequestServiceImpl implements VPRequestService {
         VPRequest vpRequest = getVPRequestByTransactionId(transactionId, tenantId);
 
         // Populate request URI if enabled
-        if (isRequestUriEnabled()) {
-            vpRequest.setRequestUri(buildRequestUri(getBaseUrl(), vpRequest.getRequestId()));
-        }
+        vpRequest.setRequestUri(buildRequestUri(getBaseUrl(), vpRequest.getRequestId()));
+
 
         return vpRequest;
     }
@@ -677,22 +654,13 @@ public class VPRequestServiceImpl implements VPRequestService {
      */
     private String buildRequestUri(final String currentBaseUrl,
                                    final String requestId) {
-        String endpoint = "/identity/openid4vc/presentation/requests/"
+        String endpoint = "/openid4vp/v1/vp-request/"
                 + requestId;
         if (currentBaseUrl.endsWith("/")) {
             return currentBaseUrl.substring(0, currentBaseUrl.length() - 1)
                     + endpoint;
         }
         return currentBaseUrl + endpoint;
-    }
-
-    /**
-     * Check if request URI is enabled (always true for this implementation).
-     *
-     * @return True if enabling request URI, false otherwise
-     */
-    private boolean isRequestUriEnabled() {
-        return true;
     }
 
     /**
