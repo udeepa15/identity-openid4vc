@@ -50,7 +50,7 @@ public class Constraints {
     public static final String PROP_DID_METHOD = "DIDMethod";
     public static final String DEFAULT_DID_METHOD_WEB = "web";
     
-    public static final String DEFAULT_LOGIN_PAGE = "/authenticationendpoint/wallet_login.jsp";
+    public static final String WALLET_LOGIN_PAGE = "/authenticationendpoint/wallet_login.jsp";
     public static final String ALPHANUM_PATTERN = "^[a-zA-Z0-9_.-]+$";
     public static final int DEFAULT_TENANT_ID = -1234;
     public static final String TENANT_DOMAIN_PATTERN = "^[a-zA-Z0-9._-]+$";

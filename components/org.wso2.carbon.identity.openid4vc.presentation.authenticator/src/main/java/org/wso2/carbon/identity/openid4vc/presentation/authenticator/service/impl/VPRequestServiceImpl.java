@@ -35,9 +35,6 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.identity.application.authentication.framework.config.model.AuthenticatorConfig;
 import org.wso2.carbon.identity.application.authentication.framework.config.model.StepConfig;
 import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
-import org.wso2.carbon.identity.application.common.model.FederatedAuthenticatorConfig;
-import org.wso2.carbon.identity.application.common.model.IdentityProvider;
-import org.wso2.carbon.identity.application.common.model.Property;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dao.VPRequestDAO;
@@ -57,7 +54,6 @@ import org.wso2.carbon.identity.openid4vc.presentation.did.provider.DIDProviderF
 import org.wso2.carbon.identity.openid4vc.presentation.management.model.PresentationDefinition;
 import org.wso2.carbon.identity.openid4vc.presentation.management.service.PresentationDefinitionService;
 import org.wso2.carbon.identity.openid4vc.presentation.management.util.PresentationDefinitionUtil;
-import org.wso2.carbon.idp.mgt.IdentityProviderManager;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -139,18 +135,17 @@ public class VPRequestServiceImpl implements VPRequestService {
 
     @Override
     public VPRequest createVPRequest(AuthenticationContext context) throws VPAuthenticatorException {
+
         Map<String, String> authenticatorProperties = context.getAuthenticatorProperties();
 
-        // Set DID Method from config or default to web
+        // 1. Resolve basic configuration
         String didMethod = authenticatorProperties.get(Constraints.PROP_DID_METHOD);
         if (StringUtils.isBlank(didMethod)) {
             didMethod = Constraints.DEFAULT_DID_METHOD_WEB;
         }
 
-        // Set Signing Algorithm (Default to EdDSA)
         String signingAlgorithm = OpenID4VPConstants.Verification.ALG_EDDSA;
 
-        // Set client ID from config or hostname
         String clientId = authenticatorProperties.get(Constraints.PROP_CLIENT_ID);
         if (StringUtils.isBlank(clientId)) {
             clientId = IdentityUtil.getHostName();
@@ -161,56 +156,33 @@ public class VPRequestServiceImpl implements VPRequestService {
                     "Client ID (hostname) cannot be null or empty.");
         }
 
-        String presentationDefId = resolvePresentationDefinitionId(context);
-        if (StringUtils.isBlank(presentationDefId)) {
+        String presentationDefinitionId = context
+                .getAuthenticatorProperties().get(PROP_PRESENTATION_DEFINITION_ID);
+
+        if (StringUtils.isBlank(presentationDefinitionId)) {
             throw new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_PRESENTATION_DEFINITION,
                     "No presentation definition found for the application.");
         }
 
-        // Set response mode
-        String responseMode = OpenID4VPConstants.Protocol.RESPONSE_MODE_DIRECT_POST;
-
-        VPRequest createRequest = new VPRequest.Builder()
-                .clientId(clientId)
-                .presentationDefinitionId(presentationDefId)
-                .didMethod(didMethod)
-                .signingAlgorithm(signingAlgorithm)
-                .responseMode(responseMode)
-                .transactionId(context.getContextIdentifier())
-                .build();
-
         int tenantId = IdentityTenantUtil.getTenantId(context.getTenantDomain());
-        return createVPRequest(createRequest, tenantId);
-    }
 
-    @Override
-    public VPRequest createVPRequest(VPRequest request, int tenantId)
-            throws VPAuthenticatorException {
-
-        // Validate input
-        validateCreateRequest(request);
-
-        // Generate identifiers
+        // 2. Resolve identifiers and timestamps
         String requestId = generateRequestId();
-        String transactionId = StringUtils.isNotBlank(request.getTransactionId())
-                ? request.getTransactionId()
-                : generateTransactionId();
-        String nonce = StringUtils.isNotBlank(request.getNonce()) ? request.getNonce()
-                : generateNonce();
+        String transactionId = context.getContextIdentifier();
+        String nonce = generateNonce();
+        long createdAt = System.currentTimeMillis();
+        long expiresAt = calculateExpiryTime(createdAt);
 
-        // Resolve presentation definition
-        String presentationDefinition = resolvePresentationDefinition(request, tenantId);
-        String didMethod = StringUtils.isNotBlank(request.getDidMethod()) 
-                ? request.getDidMethod() : Constraints.DEFAULT_DID_METHOD_WEB;
-        String signingAlgorithm = request.getSigningAlgorithm(); // Use explicit algo from request
-
-        // Extract and clean internal configuration
+        // 3. Resolve and process presentation definition
+        String presentationDefinition = resolvePresentationDefinition(presentationDefinitionId, null, tenantId);
+        
+        // Extract signing algorithm from internal config if present
         if (StringUtils.isNotBlank(presentationDefinition)) {
             try {
                 JsonObject pdJson = JsonParser.parseString(presentationDefinition).getAsJsonObject();
                 if (pdJson.has("_internal")) {
                     JsonObject internal = pdJson.getAsJsonObject("_internal");
-                    if (StringUtils.isBlank(signingAlgorithm) && internal.has("signing_algorithm")) {
+                    if (internal.has("signing_algorithm")) {
                         signingAlgorithm = internal.get("signing_algorithm").getAsString();
                     }
                     // Remove internal config to keep spec compliant
@@ -223,47 +195,38 @@ public class VPRequestServiceImpl implements VPRequestService {
             }
         }
         if (StringUtils.isBlank(signingAlgorithm)) {
-            signingAlgorithm = "EdDSA"; // Default to EdDSA if not provided
+            signingAlgorithm = "EdDSA"; // Default to EdDSA
         }
 
-        // Calculate timestamps
-        long createdAt = System.currentTimeMillis();
-        long expiresAt = calculateExpiryTime(createdAt);
-
-        // Build response URI
+        // 4. Build the final request object
         String responseUri = buildResponseUri(getBaseUrl());
-
-        // Create VP request model
-        VPRequest.Builder vpRequestBuilder = new VPRequest.Builder()
+        VPRequest vpRequest = new VPRequest.Builder()
                 .requestId(requestId)
                 .transactionId(transactionId)
-                .clientId(request.getClientId())
+                .clientId(clientId)
                 .nonce(nonce)
-                .presentationDefinitionId(request.getPresentationDefinitionId())
-                .presentationDefinition(presentationDefinition) // Still set it in memory
+                .presentationDefinitionId(presentationDefinitionId)
+                .presentationDefinition(presentationDefinition)
                 .responseUri(responseUri)
                 .responseMode(OpenID4VPConstants.Protocol.RESPONSE_MODE_DIRECT_POST)
                 .status(VPRequestStatus.ACTIVE)
                 .expiresAt(expiresAt)
                 .tenantId(tenantId)
                 .didMethod(didMethod)
-                .signingAlgorithm(signingAlgorithm);
+                .signingAlgorithm(signingAlgorithm)
+                .build();
 
-        VPRequest vpRequest = vpRequestBuilder.build();
-
-        // Generate and set the Request JWT immediately
+        // 5. Generate request JWT
         String requestJwt = buildRequestObjectJwt(vpRequest, didMethod, signingAlgorithm);
         vpRequest.setRequestJwt(requestJwt);
 
-        // Persist to database (which is now backed by Cache via DAO)
+        // 6. Persistence and dynamic URI building
         getVPRequestDAO().createVPRequest(vpRequest);
 
-        // Generate request URI if enabled
         if (isRequestUriEnabled()) {
             vpRequest.setRequestUri(buildRequestUri(getBaseUrl(), requestId));
         }
 
-        // Build authorization details for by-value mode
         vpRequest.setAuthorizationDetails(buildAuthorizationDetails(vpRequest, presentationDefinition));
 
         return vpRequest;
@@ -374,20 +337,22 @@ public class VPRequestServiceImpl implements VPRequestService {
     }
 
     @Override
-    public String getRequestJwt(String requestId, int tenantId)
+    public String getRequestJwt(final String requestId, final int tenantId)
             throws VPAuthenticatorClientException, VPAuthenticatorException {
 
         VPRequest vpRequest = getVPRequestById(requestId, tenantId);
 
         // Check if expired
         if (isExpired(vpRequest.getExpiresAt())) {
-            throw new VPAuthenticatorClientException(VPAuthenticatorErrorCode.VP_REQUEST_EXPIRED,
+            throw new VPAuthenticatorClientException(
+                    VPAuthenticatorErrorCode.VP_REQUEST_EXPIRED,
                     "VP request has expired: " + requestId);
         }
 
         // Check if request is still active
         if (vpRequest.getStatus() != VPRequestStatus.ACTIVE) {
-            throw new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
+            throw new VPAuthenticatorClientException(
+                    VPAuthenticatorErrorCode.INVALID_REQUEST,
                     "Request is no longer active: " + requestId);
         }
 
@@ -399,10 +364,12 @@ public class VPRequestServiceImpl implements VPRequestService {
         // Regenerate JWT if missing (fallback)
         // Use stored metadata if available, otherwise default
         String didMethod = "web"; // Force did:web
-        String signingAlgorithm = StringUtils.isNotBlank(vpRequest.getSigningAlgorithm()) ? 
-        vpRequest.getSigningAlgorithm() : "RS256";
+        String explicitAlgo = vpRequest.getSigningAlgorithm();
+        String signingAlgorithm = StringUtils.isNotBlank(explicitAlgo)
+                ? explicitAlgo : "RS256";
 
-        String requestJwt = buildRequestObjectJwt(vpRequest, didMethod, signingAlgorithm);
+        String requestJwt = buildRequestObjectJwt(vpRequest, didMethod,
+                signingAlgorithm);
 
         // Store generated JWT
         getVPRequestDAO().updateVPRequestJwt(requestId, requestJwt, tenantId);
@@ -412,56 +379,52 @@ public class VPRequestServiceImpl implements VPRequestService {
 
     /**
      * Resolve the presentation definition from ID or inline value.
+     *
+     * @param definitionId      The presentation definition ID
+     * @param inlineDefinition  The inline presentation definition
+     * @param tenantId          The tenant ID
+     * @return The resolution presentation definition JSON
+     * @throws VPAuthenticatorException If an error occurs during resolution
      */
-    private String resolvePresentationDefinition(VPRequest request, int tenantId)
+    private String resolvePresentationDefinition(final String definitionId,
+                                                 final String inlineDefinition,
+                                                 final int tenantId)
             throws VPAuthenticatorException {
 
         // If inline definition provided, validate and use it
-        if (StringUtils.isNotBlank(request.getPresentationDefinition())) {
-            String definitionJson = request.getPresentationDefinition();
-            if (!PresentationDefinitionUtil.isValidPresentationDefinition(definitionJson)) {
-                throw new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_PRESENTATION_DEFINITION,
+        if (StringUtils.isNotBlank(inlineDefinition)) {
+            if (!PresentationDefinitionUtil
+                    .isValidPresentationDefinition(inlineDefinition)) {
+                throw new VPAuthenticatorClientException(
+                        VPAuthenticatorErrorCode
+                                .INVALID_PRESENTATION_DEFINITION,
                         "Invalid presentation definition JSON");
             }
-            return definitionJson;
+            return inlineDefinition;
         }
 
         // Otherwise, fetch from stored definitions
-        String definitionId = request.getPresentationDefinitionId();
         if (StringUtils.isNotBlank(definitionId)) {
-                PresentationDefinition definition = null;
-                try {
-                    definition = getPresentationDefinitionService().getPresentationDefinitionById(
-                        definitionId, tenantId);
-                } catch (Exception e) {
-                    throw new VPAuthenticatorServerException(VPAuthenticatorErrorCode.INTERNAL_SERVER_ERROR,
-                            "Error fetching presentation definition", e);
-                }
+            PresentationDefinition definition = null;
+            try {
+                definition = getPresentationDefinitionService()
+                        .getPresentationDefinitionById(definitionId, tenantId);
+            } catch (Exception e) {
+                throw new VPAuthenticatorServerException(
+                        VPAuthenticatorErrorCode.INTERNAL_SERVER_ERROR,
+                        "Error fetching presentation definition", e);
+            }
             return PresentationDefinitionUtil.buildDefinitionJson(definition);
         }
 
-        throw new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_PRESENTATION_DEFINITION,
+        throw new VPAuthenticatorClientException(
+                VPAuthenticatorErrorCode.INVALID_PRESENTATION_DEFINITION,
                 "No presentation definition available");
     }
 
     /**
      * Validate the creation request.
      */
-    private void validateCreateRequest(VPRequest request) throws VPAuthenticatorException {
-        if (request == null) {
-            throw new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
-                    "Request cannot be null");
-        }
-        if (StringUtils.isBlank(request.getClientId())) {
-            throw new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
-                    "Client ID is required");
-        }
-        if (StringUtils.isBlank(request.getPresentationDefinitionId()) &&
-                StringUtils.isBlank(request.getPresentationDefinition())) {
-            throw new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_PRESENTATION_DEFINITION,
-                    "Presentation definition ID or definition is required");
-        }
-    }
 
     /**
      * Build authorization details for request-by-value response mode.
@@ -472,9 +435,11 @@ public class VPRequestServiceImpl implements VPRequestService {
      */
     private VPRequest.AuthorizationDetails buildAuthorizationDetails(
             final VPRequest vpRequest, final String presentationDefinition) {
-        VPRequest.AuthorizationDetails details = new VPRequest.AuthorizationDetails();
+        VPRequest.AuthorizationDetails details =
+                new VPRequest.AuthorizationDetails();
         details.setClientId(vpRequest.getClientId());
-        details.setResponseType(OpenID4VPConstants.Protocol.RESPONSE_TYPE_VP_TOKEN);
+        details.setResponseType(
+                OpenID4VPConstants.Protocol.RESPONSE_TYPE_VP_TOKEN);
         details.setResponseMode(vpRequest.getResponseMode());
         details.setResponseUri(vpRequest.getResponseUri());
         details.setNonce(vpRequest.getNonce());
@@ -494,17 +459,24 @@ public class VPRequestServiceImpl implements VPRequestService {
      * Build the request object as a JWT.
      * Note: In production, this should be properly signed with the verifier's
      * private key.
+     *
+     * @param vpRequest         The VP request model
+     * @param didMethod         The DID method to use
+     * @param signingAlgorithm  The signing algorithm to use
+     * @return The signed request object JWT
+     * @throws VPAuthenticatorException If an error occurs during JWT building
      */
-    private String buildRequestObjectJwt(VPRequest vpRequest, String didMethod,
-                                         String signingAlgorithm)
+    private String buildRequestObjectJwt(final VPRequest vpRequest,
+                                         final String didMethod,
+                                         final String signingAlgorithm)
             throws VPAuthenticatorException {
         try {
             DIDProvider provider = DIDProviderFactory.getProvider(didMethod);
             int tenantId = vpRequest.getTenantId();
-            String baseUrl = getBaseUrl();
+            String activeBaseUrl = getBaseUrl();
 
-            String did = provider.getDID(tenantId, baseUrl);
-            String keyId = provider.getSigningKeyId(tenantId, baseUrl);
+            String did = provider.getDID(tenantId, activeBaseUrl);
+            String keyId = provider.getSigningKeyId(tenantId, activeBaseUrl);
 
             // Create claims set
             com.nimbusds.jwt.JWTClaimsSet.Builder claimsBuilder =
@@ -626,67 +598,12 @@ public class VPRequestServiceImpl implements VPRequestService {
 
         } catch (com.nimbusds.jose.JOSEException
                  | com.google.gson.JsonParseException
-                 | org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException
-                 | IllegalArgumentException e) {
-            throw new VPAuthenticatorServerException(VPAuthenticatorErrorCode.SIGNING_ERROR,
+                 | org.wso2.carbon.identity.openid4vc.presentation.common
+                         .exception.VPException | IllegalArgumentException e) {
+            throw new VPAuthenticatorServerException(
+                    VPAuthenticatorErrorCode.SIGNING_ERROR,
                     "Error building request object JWT", e);
         }
-    }
-
-    /**
-     * Resolve the presentation definition ID for the application.
-     *
-     * @param context Authentication context
-     * @return The resolved presentation definition ID, or null if not found
-     */
-    private String resolvePresentationDefinitionId(
-            final AuthenticationContext context) {
-        try {
-            Map<String, String> authenticatorProperties = context
-                    .getAuthenticatorProperties();
-            String configId = authenticatorProperties
-                    .get(PROP_PRESENTATION_DEFINITION_ID);
-
-            if (StringUtils.isBlank(configId)) {
-                String idpName = null;
-                if (context.getExternalIdP() != null) {
-                    idpName = context.getExternalIdP().getIdPName();
-                }
-
-                if (StringUtils.isBlank(idpName)) {
-                    idpName = resolveIdpNameFromSequenceConfig(context);
-                }
-
-                String tenantDomain = context.getTenantDomain();
-                if (StringUtils.isNotBlank(idpName)) {
-                    IdentityProvider idp = IdentityProviderManager.getInstance()
-                            .getIdPByName(idpName, tenantDomain);
-                    if (idp != null) {
-                        for (FederatedAuthenticatorConfig fedAuthConfig
-                                : idp.getFederatedAuthenticatorConfigs()) {
-                            if (AUTHENTICATOR_NAME
-                                    .equals(fedAuthConfig.getName())) {
-                                for (Property property : fedAuthConfig
-                                        .getProperties()) {
-                                    if (PROP_PRESENTATION_DEFINITION_ID
-                                            .equals(property.getName())) {
-                                        return property.getValue();
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            return configId;
-        } catch (org.wso2.carbon.idp.mgt
-                .IdentityProviderManagementException e) {
-            if (log.isDebugEnabled()) {
-                log.debug("Error occurred while resolving presentation "
-                        + "definition ID.", e);
-            }
-        }
-        return null;
     }
 
     /**

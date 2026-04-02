@@ -35,19 +35,10 @@ public interface VPRequestService {
      *
      * @param context The authentication context
      * @return VPRequest containing the created request details
-     * @throws VPAuthenticatorException If an error occurs during request creation
+     * @throws VPAuthenticatorException If an error occurs during request
+     *                                  creation
      */
-    VPRequest createVPRequest(AuthenticationContext context) throws VPAuthenticatorException;
-
-    /**
-     * Create a new VP authorization request.
-     *
-     * @param request    The request model containing creation parameters
-     * @param tenantId   The tenant ID
-     * @return VPRequest containing the created request details
-     * @throws VPAuthenticatorException If an error occurs during request creation
-     */
-    VPRequest createVPRequest(VPRequest request, int tenantId)
+    VPRequest createVPRequest(AuthenticationContext context)
             throws VPAuthenticatorException;
 
     /**

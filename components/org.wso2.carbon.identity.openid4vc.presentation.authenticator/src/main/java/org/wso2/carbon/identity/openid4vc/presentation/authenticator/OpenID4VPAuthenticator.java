@@ -67,7 +67,6 @@ import javax.servlet.http.HttpServletResponse;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.ALPHANUM_PATTERN;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.AUTHENTICATOR_FRIENDLY_NAME;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.AUTHENTICATOR_NAME;
-import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DEFAULT_LOGIN_PAGE;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DEFAULT_TENANT_ID;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DISPLAY_ORDER_3;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DISPLAY_ORDER_4;
@@ -89,6 +88,7 @@ import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.UI_REQUEST_URI;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.UI_SESSION_DATA_KEY;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.UI_TRANSACTION_ID;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.WALLET_LOGIN_PAGE;
 
 /**
  * OpenID4VP Wallet Authenticator for WSO2 Identity Server.
@@ -158,8 +158,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             request.setAttribute(UI_QR_CONTENT, qrContent);
 
             // Redirect the browser to authenticationendpoint UI with required parameters.
-            // Using redirect avoids cross-webapp RequestDispatcher limitations.
-            String redirectUrl = DEFAULT_LOGIN_PAGE
+            String redirectUrl = WALLET_LOGIN_PAGE
                     + "?sessionDataKey=" + URLEncoder.encode(context.getContextIdentifier(), StandardCharsets.UTF_8)
                     + "&requestId=" + URLEncoder.encode(vpRequestResponse.getRequestId(), StandardCharsets.UTF_8)
                     + "&transactionId=" + URLEncoder.
