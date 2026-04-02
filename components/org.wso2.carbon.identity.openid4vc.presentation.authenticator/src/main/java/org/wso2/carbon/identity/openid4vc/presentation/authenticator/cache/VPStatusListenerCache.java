@@ -18,7 +18,6 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache;
 
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPSubmission;
 
 import java.util.Iterator;
 import java.util.List;
@@ -161,15 +160,6 @@ public final class VPStatusListenerCache {
          */
         void onTimeout();
 
-        /**
-         * Called when a VP submission is received (direct processing).
-         *
-         * @param submission The VP submission
-         */
-        default void onSubmissionReceived(VPSubmission submission) {
-            // Default implementation for backward compatibility
-            // Subclasses should override this for direct processing
-        }
     }
 
     /**
@@ -273,29 +263,6 @@ public final class VPStatusListenerCache {
         }
     }
 
-    /**
-     * Notify all listeners for a request ID with VP submission (direct processing).
-     *
-     * @param requestId  Request ID
-     * @param submission VP submission to pass to listeners
-     */
-    public void notifyListenersWithSubmission(final String requestId, final VPSubmission submission) {
-
-        List<StatusListener> listeners = listenersByRequestId.get(requestId);
-        if (listeners != null) {
-
-            for (StatusListener listener : listeners) {
-                if (!listener.isNotified()) {
-                    // Mark as notified and call callback with submission
-                    listener.notified = true;
-                    if (listener.callback != null) {
-                        listener.callback.onSubmissionReceived(submission);
-                    }
-                }
-            }
-
-        }
-    }
 
     /**
      * Remove a specific listener.
@@ -394,20 +361,4 @@ public final class VPStatusListenerCache {
         return total;
     }
 
-    /**
-     * Shutdown the cache and cleanup executor.
-     */
-    public void shutdown() {
-
-        cleanupExecutor.shutdown();
-        try {
-            if (!cleanupExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
-                cleanupExecutor.shutdownNow();
-            }
-        } catch (InterruptedException e) {
-            cleanupExecutor.shutdownNow();
-            Thread.currentThread().interrupt();
-        }
-        listenersByRequestId.clear();
-    }
 }

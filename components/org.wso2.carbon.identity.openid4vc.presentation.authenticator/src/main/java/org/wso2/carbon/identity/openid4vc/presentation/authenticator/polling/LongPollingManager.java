@@ -22,9 +22,9 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPSta
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.WalletDataCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dao.VPRequestDAO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dao.impl.VPRequestDAOImpl;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
-import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException;
 
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -205,7 +205,7 @@ public class LongPollingManager {
                     }
                     return PollingResult.waiting(requestId);
             }
-        } catch (VPException e) {
+        } catch (VPAuthenticatorException e) {
             return PollingResult.error(requestId, e.getMessage());
         }
     }
@@ -278,11 +278,17 @@ public class LongPollingManager {
     }
 
     /**
+     * Length of the unique suffix for listener IDs.
+     */
+    private static final int LISTENER_ID_SUFFIX_LENGTH = 12;
+
+    /**
      * Generate unique listener ID.
      */
     private String generateListenerId() {
 
-        return "poll_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+        return "poll_" + UUID.randomUUID().toString().replace("-", "")
+                .substring(0, LISTENER_ID_SUFFIX_LENGTH);
     }
 
     /**
@@ -290,13 +296,26 @@ public class LongPollingManager {
      */
     private static class PollingResultHolder {
 
+        /**
+         * The polling result.
+         */
         private volatile PollingResult result;
 
-        void setResult(final PollingResult result) {
+        /**
+         * Set the polling result.
+         *
+         * @param pollingResult The result to set
+         */
+        void setResult(final PollingResult pollingResult) {
 
-            this.result = result;
+            this.result = pollingResult;
         }
 
+        /**
+         * Get the polling result.
+         *
+         * @return The result
+         */
         PollingResult getResult() {
 
             return result;

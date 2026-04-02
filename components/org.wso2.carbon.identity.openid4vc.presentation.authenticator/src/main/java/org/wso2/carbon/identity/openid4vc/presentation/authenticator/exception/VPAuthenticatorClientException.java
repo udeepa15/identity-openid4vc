@@ -23,35 +23,85 @@ package org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception;
  */
 public class VPAuthenticatorClientException extends VPAuthenticatorException {
 
+    /**
+     * Constructor with message.
+     *
+     * @param message Error message.
+     */
     public VPAuthenticatorClientException(final String message) {
 
         super(message);
     }
 
-    public VPAuthenticatorClientException(final String message, final Throwable cause) {
+    /**
+     * Constructor with message and cause.
+     *
+     * @param message Error message.
+     * @param cause   Throwable cause.
+     */
+    public VPAuthenticatorClientException(
+            final String message,
+            final Throwable cause) {
 
         super(message, cause);
     }
 
-    public VPAuthenticatorClientException(final VPAuthenticatorErrorCode errorCode, final String message) {
+    /**
+     * Constructor with error code and message.
+     *
+     * @param errorCode VPAuthenticatorErrorCode.
+     * @param message   Error message.
+     */
+    public VPAuthenticatorClientException(
+            final VPAuthenticatorErrorCode errorCode,
+            final String message) {
 
         super(errorCode, message);
     }
 
-    public VPAuthenticatorClientException(final VPAuthenticatorErrorCode errorCode, final String message,
-                                          final Throwable cause) {
+    /**
+     * Constructor with error code, message and cause.
+     *
+     * @param errorCode VPAuthenticatorErrorCode.
+     * @param message   Error message.
+     * @param cause     Throwable cause.
+     */
+    public VPAuthenticatorClientException(
+            final VPAuthenticatorErrorCode errorCode,
+            final String message,
+            final Throwable cause) {
 
         super(errorCode, message, cause);
     }
 
-    public VPAuthenticatorClientException(final VPAuthenticatorErrorCode errorCode, final String message,
-                                          final String description) {
+    /**
+     * Constructor with error code, message and description.
+     *
+     * @param errorCode   VPAuthenticatorErrorCode.
+     * @param message     Error message.
+     * @param description Error description.
+     */
+    public VPAuthenticatorClientException(
+            final VPAuthenticatorErrorCode errorCode,
+            final String message,
+            final String description) {
 
         super(errorCode, message, description);
     }
 
-    public VPAuthenticatorClientException(final VPAuthenticatorErrorCode errorCode, final String message,
-                                          final String description, final Throwable cause) {
+    /**
+     * Constructor with error code, message, description and cause.
+     *
+     * @param errorCode   VPAuthenticatorErrorCode.
+     * @param message     Error message.
+     * @param description Error description.
+     * @param cause       Throwable cause.
+     */
+    public VPAuthenticatorClientException(
+            final VPAuthenticatorErrorCode errorCode,
+            final String message,
+            final String description,
+            final Throwable cause) {
 
         super(errorCode, message, description, cause);
     }

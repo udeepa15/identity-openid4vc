@@ -27,8 +27,11 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.osgi.service.component.annotations.Component;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPStatusListenerCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.WalletDataCache;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorClientException;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorErrorCode;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorServerException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPSubmission;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.status.StatusNotificationService;
 import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
@@ -72,15 +75,14 @@ public class VPSubmissionServlet extends HttpServlet {
      */
     private static final int MAX_PARAM_LENGTH = 65536;
 
-    private transient VPStatusListenerCache statusListenerCache;
     private transient StatusNotificationService statusNotificationService;
     private transient WalletDataCache walletDataCache;
 
     @Override
     public void init() throws ServletException {
         super.init();
-        this.statusListenerCache = VPStatusListenerCache.getInstance();
-        this.statusNotificationService = StatusNotificationService.getInstance();
+        this.statusNotificationService =
+                StatusNotificationService.getInstance();
         this.walletDataCache = WalletDataCache.getInstance();
     }
 
@@ -102,13 +104,15 @@ public class VPSubmissionServlet extends HttpServlet {
             // Basic validation
             if (StringUtils.isBlank(state)) {
                 sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
-                        OpenID4VPConstants.ErrorCodes.INVALID_REQUEST, "Missing state parameter.");
+                        new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
+                                "Missing state parameter."));
                 return;
             }
 
             if (StringUtils.isBlank(vpToken) && StringUtils.isBlank(error)) {
                 sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
-                        OpenID4VPConstants.ErrorCodes.INVALID_REQUEST, "Missing vp_token or error.");
+                        new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
+                                "Missing vp_token or error."));
                 return;
             }
 
@@ -136,7 +140,8 @@ public class VPSubmissionServlet extends HttpServlet {
         } catch (RuntimeException e) {
             LOG.error("Unexpected error processing VP submission", e);
             sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                    OpenID4VPConstants.ErrorCodes.SERVER_ERROR, "Internal server error");
+                    new VPAuthenticatorServerException(VPAuthenticatorErrorCode.INTERNAL_SERVER_ERROR,
+                            "Internal server error", e));
         }
     }
 
@@ -175,7 +180,7 @@ public class VPSubmissionServlet extends HttpServlet {
      * Parse form-encoded submission.
      */
     private void parseFormEncodedSubmission(final String formBody,
-                                            final Map<String, String> params) {
+                                             final Map<String, String> params) {
 
         String[] requiredParams = {
             OpenID4VPConstants.ResponseParams.VP_TOKEN,
@@ -317,9 +322,6 @@ public class VPSubmissionServlet extends HttpServlet {
             } else {
                 statusNotificationService.notifyVPSubmitted(requestId, submission);
             }
-        } else if (statusListenerCache != null) {
-            // Direct processing: pass submission to listeners
-            statusListenerCache.notifyListenersWithSubmission(requestId, submission);
         }
 
     }
@@ -349,7 +351,8 @@ public class VPSubmissionServlet extends HttpServlet {
 
         // Add transaction ID if present for tracking
         if (submission.getTransactionId() != null) {
-            responseObj.addProperty("transaction_id", submission.getTransactionId());
+            responseObj.addProperty("transaction_id",
+                    submission.getTransactionId());
         }
 
         String responseJson = GSON.toJson(responseObj);
@@ -363,16 +366,14 @@ public class VPSubmissionServlet extends HttpServlet {
     /**
      * Send error response per OAuth 2.0 spec.
      *
-     * @param response         HTTP response
-     * @param statusCode       HTTP status code
-     * @param errorCode        Error code
-     * @param errorDescription Error description
+     * @param response   HTTP response
+     * @param statusCode HTTP status code
+     * @param exception  The exception to send as error
      * @throws IOException If writing fails
      */
     private void sendErrorResponse(final HttpServletResponse response,
-            final int statusCode,
-            final String errorCode,
-            final String errorDescription)
+                                    final int statusCode,
+                                    final VPAuthenticatorException exception)
             throws IOException {
 
         response.setStatus(statusCode);
@@ -381,20 +382,26 @@ public class VPSubmissionServlet extends HttpServlet {
         // Prevent browsers from MIME-sniffing the JSON response as HTML.
         response.setHeader("X-Content-Type-Options", "nosniff");
 
-        // Sanitize error values: errorCode is always a server-defined constant,
-        // but errorDescription may include user-originated text (e.g. validation messages).
+        // Use exception values for error response
         JsonObject errorObj = new JsonObject();
-        errorObj.addProperty("error", sanitize(errorCode));
-        if (StringUtils.isNotBlank(errorDescription)) {
-            errorObj.addProperty("error_description", sanitize(errorDescription));
-        }
+        errorObj.addProperty("error", sanitize(exception.getOAuth2ErrorCode()));
+        errorObj.addProperty("error_description",
+                sanitize(exception.getMessage()));
+        errorObj.addProperty("error_code", exception.getCode());
 
         byte[] payload = GSON.toJson(errorObj).getBytes(StandardCharsets.UTF_8);
         response.getOutputStream().write(payload);
         response.getOutputStream().flush();
     }
 
+    /**
+     * Default tenant ID to use when tenant domain cannot be resolved.
+     */
     private static final int DEFAULT_TENANT_ID = -1234;
+
+    /**
+     * Pattern to validate tenant domain names.
+     */
     private static final String TENANT_DOMAIN_PATTERN = "^[a-zA-Z0-9._-]+$";
 
     /**
@@ -405,16 +412,19 @@ public class VPSubmissionServlet extends HttpServlet {
      */
     private int getTenantId(final HttpServletRequest request) {
 
-        String tenantDomain = org.wso2.carbon.identity.core.util.IdentityTenantUtil.getTenantDomainFromContext();
+        String tenantDomain = org.wso2.carbon.identity.core.util.IdentityTenantUtil
+                .getTenantDomainFromContext();
         if (StringUtils.isBlank(tenantDomain)) {
             Object tenantDomainAttribute = request.getAttribute("tenantDomain");
-            tenantDomain = tenantDomainAttribute instanceof String ? (String) tenantDomainAttribute : null;
+            tenantDomain = tenantDomainAttribute instanceof String
+                    ? (String) tenantDomainAttribute : null;
         }
 
         if (StringUtils.isNotBlank(tenantDomain)
                 && tenantDomain.matches(TENANT_DOMAIN_PATTERN)) {
             try {
-                return org.wso2.carbon.identity.core.util.IdentityTenantUtil.getTenantId(tenantDomain);
+                return org.wso2.carbon.identity.core.util.IdentityTenantUtil
+                        .getTenantId(tenantDomain);
             } catch (Exception e) {
                 // Ignore.
             }

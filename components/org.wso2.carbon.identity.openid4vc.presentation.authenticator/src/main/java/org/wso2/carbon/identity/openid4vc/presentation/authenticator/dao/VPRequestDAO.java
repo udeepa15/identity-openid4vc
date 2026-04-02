@@ -18,9 +18,9 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.dao;
 
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
-import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException;
 
 import java.util.List;
 
@@ -33,9 +33,9 @@ public interface VPRequestDAO {
      * Create a new VP request.
      *
      * @param vpRequest VP request to create
-     * @throws VPException if creation fails
+     * @throws VPAuthenticatorException if creation fails
      */
-    void createVPRequest(VPRequest vpRequest) throws VPException;
+    void createVPRequest(VPRequest vpRequest) throws VPAuthenticatorException;
 
     /**
      * Get VP request by request ID.
@@ -43,9 +43,9 @@ public interface VPRequestDAO {
      * @param requestId Request ID
      * @param tenantId  Tenant ID
      * @return VP request or null if not found
-     * @throws VPException if retrieval fails
+     * @throws VPAuthenticatorException if retrieval fails
      */
-    VPRequest getVPRequestById(String requestId, int tenantId) throws VPException;
+    VPRequest getVPRequestById(String requestId, int tenantId) throws VPAuthenticatorException;
 
     /**
      * Get VP request by transaction ID.
@@ -53,9 +53,9 @@ public interface VPRequestDAO {
      * @param transactionId Transaction ID
      * @param tenantId      Tenant ID
      * @return VP request or null if not found
-     * @throws VPException if retrieval fails
+     * @throws VPAuthenticatorException if retrieval fails
      */
-    VPRequest getVPRequestByTransactionId(String transactionId, int tenantId) throws VPException;
+    VPRequest getVPRequestByTransactionId(String transactionId, int tenantId) throws VPAuthenticatorException;
 
     /**
      * Get all request IDs for a transaction.
@@ -63,9 +63,9 @@ public interface VPRequestDAO {
      * @param transactionId Transaction ID
      * @param tenantId      Tenant ID
      * @return List of request IDs
-     * @throws VPException if retrieval fails
+     * @throws VPAuthenticatorException if retrieval fails
      */
-    List<String> getRequestIdsByTransactionId(String transactionId, int tenantId) throws VPException;
+    List<String> getRequestIdsByTransactionId(String transactionId, int tenantId) throws VPAuthenticatorException;
 
     /**
      * Update VP request status.
@@ -73,10 +73,10 @@ public interface VPRequestDAO {
      * @param requestId Request ID
      * @param status    New status
      * @param tenantId  Tenant ID
-     * @throws VPException if update fails
+     * @throws VPAuthenticatorException if update fails
      */
     void updateVPRequestStatus(String requestId, VPRequestStatus status, int tenantId) 
-            throws VPException;
+            throws VPAuthenticatorException;
 
     /**
      * Update VP request with JWT.
@@ -84,36 +84,36 @@ public interface VPRequestDAO {
      * @param requestId  Request ID
      * @param requestJwt JWT string
      * @param tenantId   Tenant ID
-     * @throws VPException if update fails
+     * @throws VPAuthenticatorException if update fails
      */
-    void updateVPRequestJwt(String requestId, String requestJwt, int tenantId) throws VPException;
+    void updateVPRequestJwt(String requestId, String requestJwt, int tenantId) throws VPAuthenticatorException;
 
     /**
      * Delete VP request.
      *
      * @param requestId Request ID
      * @param tenantId  Tenant ID
-     * @throws VPException if deletion fails
+     * @throws VPAuthenticatorException if deletion fails
      */
-    void deleteVPRequest(String requestId, int tenantId) throws VPException;
+    void deleteVPRequest(String requestId, int tenantId) throws VPAuthenticatorException;
 
     /**
      * Get expired VP requests.
      *
      * @param tenantId Tenant ID
      * @return List of expired VP requests
-     * @throws VPException if retrieval fails
+     * @throws VPAuthenticatorException if retrieval fails
      */
-    List<VPRequest> getExpiredVPRequests(int tenantId) throws VPException;
+    List<VPRequest> getExpiredVPRequests(int tenantId) throws VPAuthenticatorException;
 
     /**
      * Update status of expired requests to EXPIRED.
      *
      * @param tenantId Tenant ID
      * @return Number of requests updated
-     * @throws VPException if update fails
+     * @throws VPAuthenticatorException if update fails
      */
-    int markExpiredRequests(int tenantId) throws VPException;
+    int markExpiredRequests(int tenantId) throws VPAuthenticatorException;
 
     /**
      * Get VP requests by status.
@@ -121,7 +121,7 @@ public interface VPRequestDAO {
      * @param status   Status to filter by
      * @param tenantId Tenant ID
      * @return List of VP requests with the given status
-     * @throws VPException if retrieval fails
+     * @throws VPAuthenticatorException if retrieval fails
      */
-    List<VPRequest> getVPRequestsByStatus(VPRequestStatus status, int tenantId) throws VPException;
+    List<VPRequest> getVPRequestsByStatus(VPRequestStatus status, int tenantId) throws VPAuthenticatorException;
 }

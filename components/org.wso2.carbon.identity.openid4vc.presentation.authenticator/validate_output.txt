@@ -1,0 +1,36 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] --< org.wso2.carbon.identity.openid4vc:org.wso2.carbon.identity.openid4vc.presentation.authenticator >--
+[INFO] Building WSO2 Carbon - OpenID4VP Presentation (Verifier Flow) 1.0.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] -------------------------------[ bundle ]-------------------------------
+[INFO] 
+[INFO] --- buildnumber:1.4:create (default) @ org.wso2.carbon.identity.openid4vc.presentation.authenticator ---
+[INFO] Executing: /bin/sh -c cd '/Users/udeepa/Desktop/VC/repos/identity-openid4vc/components/org.wso2.carbon.identity.openid4vc.presentation.authenticator' && 'git' 'rev-parse' '--verify' 'HEAD'
+[INFO] Working directory: /Users/udeepa/Desktop/VC/repos/identity-openid4vc/components/org.wso2.carbon.identity.openid4vc.presentation.authenticator
+[INFO] Storing buildNumber: e4516f68da661b84fdf3f9962918ac89fb6a18e7 at timestamp: 1775125395578
+[INFO] Storing buildScmBranch: oid4vp-presentation-authenticator
+[INFO] 
+[INFO] --- checkstyle:3.1.0:check (validate) @ org.wso2.carbon.identity.openid4vc.presentation.authenticator ---
+[INFO] Starting audit...
+[ERROR] /Users/udeepa/Desktop/VC/repos/identity-openid4vc/components/org.wso2.carbon.identity.openid4vc.presentation.authenticator/src/main/java/org/wso2/carbon/identity/openid4vc/presentation/authenticator/dao/impl/VPRequestDAOImpl.java:82: Line is longer than 120 characters (found 122). [LineLength]
+[ERROR] /Users/udeepa/Desktop/VC/repos/identity-openid4vc/components/org.wso2.carbon.identity.openid4vc.presentation.authenticator/src/main/java/org/wso2/carbon/identity/openid4vc/presentation/authenticator/dao/impl/VPRequestDAOImpl.java:92: Line is longer than 120 characters (found 127). [LineLength]
+[ERROR] /Users/udeepa/Desktop/VC/repos/identity-openid4vc/components/org.wso2.carbon.identity.openid4vc.presentation.authenticator/src/main/java/org/wso2/carbon/identity/openid4vc/presentation/authenticator/service/impl/VPRequestServiceImpl.java:48: Wrong order for 'org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException' import. [ImportOrder]
+[ERROR] /Users/udeepa/Desktop/VC/repos/identity-openid4vc/components/org.wso2.carbon.identity.openid4vc.presentation.authenticator/src/test/java/org/wso2/carbon/identity/openid4vc/presentation/authenticator/OpenID4VPAuthenticatorTest.java:21: Wrong order for 'org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException' import. [ImportOrder]
+[ERROR] /Users/udeepa/Desktop/VC/repos/identity-openid4vc/components/org.wso2.carbon.identity.openid4vc.presentation.authenticator/src/test/java/org/wso2/carbon/identity/openid4vc/presentation/authenticator/service/impl/VPRequestServiceImplTest.java:17: Wrong order for 'org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorClientException' import. [ImportOrder]
+[ERROR] /Users/udeepa/Desktop/VC/repos/identity-openid4vc/components/org.wso2.carbon.identity.openid4vc.presentation.authenticator/src/test/java/org/wso2/carbon/identity/openid4vc/presentation/authenticator/service/impl/VPRequestServiceImplTest.java:19:1: Duplicate import to line 16 - org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest. [RedundantImport]
+[ERROR] /Users/udeepa/Desktop/VC/repos/identity-openid4vc/components/org.wso2.carbon.identity.openid4vc.presentation.authenticator/src/test/java/org/wso2/carbon/identity/openid4vc/presentation/authenticator/service/impl/VPRequestServiceImplTest.java:190: Line is longer than 120 characters (found 123). [LineLength]
+Audit done.
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  17.041 s
+[INFO] Finished at: 2026-04-02T15:53:30+05:30
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-checkstyle-plugin:3.1.0:check (validate) on project org.wso2.carbon.identity.openid4vc.presentation.authenticator: Failed during checkstyle execution: There are 7 errors reported by Checkstyle 8.19 with https://raw.githubusercontent.com/wso2/code-quality-tools/v1.3/checkstyle/checkstyle.xml ruleset. -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException

@@ -17,6 +17,7 @@ import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPStatusListenerCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.WalletDataCache;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
@@ -187,7 +188,6 @@ public class OpenID4VPAuthenticatorTest {
 
         verify(context).setProperty("openid4vp_request_id", "req-123");
         verify(context).setProperty("openid4vp_transaction_id", "dummy-txn-id");
-        verify(vpStatusListenerCache).registerListener(anyString(), anyString(), any());
         verify(response).sendRedirect(contains("/authenticationendpoint/wallet_login.jsp"));
         verify(response).sendRedirect(contains("sessionDataKey=dummy-txn-id"));
         verify(response).sendRedirect(contains("requestId=req-123"));
@@ -200,8 +200,7 @@ public class OpenID4VPAuthenticatorTest {
         // missing presentationDefinitionId
         when(context.getAuthenticatorProperties()).thenReturn(authProperties);
         when(vpRequestService.createVPRequest(any(AuthenticationContext.class)))
-                .thenThrow(new org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException(
-                        "Missing config"));
+                .thenThrow(new VPAuthenticatorException("Missing config"));
         authenticator.initiateAuthenticationRequest(request, response, context);
     }
 
@@ -387,16 +386,6 @@ public class OpenID4VPAuthenticatorTest {
         authenticator.process(request, response, context);
     }
 
-    @Test
-    public void testOnSubmissionReceived() {
-        VPSubmission submission = new VPSubmission.Builder()
-                .requestId("req-123")
-                .vpToken("token")
-                .build();
-        authenticator.onSubmissionReceived(submission);
-        // This is primarily for coverage of the null check and defensive copy
-        authenticator.onSubmissionReceived(null);
-    }
 
     @Test
     public void testResolveIdpClaimMappingsSlowPath() throws Exception {

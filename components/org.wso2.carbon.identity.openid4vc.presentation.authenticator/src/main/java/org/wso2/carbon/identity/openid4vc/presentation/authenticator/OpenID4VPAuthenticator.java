@@ -39,13 +39,13 @@ import org.wso2.carbon.identity.application.common.model.IdentityProvider;
 import org.wso2.carbon.identity.application.common.model.Property;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPStatusListenerCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.WalletDataCache;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPSubmission;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.QRCodeUtil;
-import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.PresentationSubmission;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VerificationResult;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VerificationException;
@@ -107,13 +107,11 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
 
     private static final Log log = LogFactory.getLog(OpenID4VPAuthenticator.class);
 
-    // Instance variable to store received VP submission (direct processing)
-    private volatile VPSubmission receivedSubmission;
 
 
     // StatusCallback interface implementation for direct processing
     @Override
-    public void onStatusChange(String status) {
+    public void onStatusChange(final String status) {
 
     }
 
@@ -122,27 +120,6 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         // No-op: timeout handling is managed by the VP request expiry in VPRequestService.
     }
 
-    @Override
-    public void onSubmissionReceived(VPSubmission submission) {
-        // Use a defensive copy to prevent external mutation of the internal state (EI_EXPOSE_REP2 fix)
-        if (submission != null) {
-            this.receivedSubmission = new VPSubmission.Builder()
-                    .submissionId(submission.getSubmissionId())
-                    .requestId(submission.getRequestId())
-                    .transactionId(submission.getTransactionId())
-                    .vpToken(submission.getVpToken())
-                    .presentationSubmission(submission.getPresentationSubmission())
-                    .error(submission.getError())
-                    .errorDescription(submission.getErrorDescription())
-                    .verificationStatus(submission.getVerificationStatus())
-                    .verificationResult(submission.getVerificationResult())
-                    .submittedAt(submission.getSubmittedAt())
-                    .tenantId(submission.getTenantId())
-                    .build();
-        } else {
-            this.receivedSubmission = null;
-        }
-    }
 
     @Override
     public String getName() {
@@ -155,9 +132,9 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
     }
 
     @Override
-    protected void initiateAuthenticationRequest(HttpServletRequest request,
-            HttpServletResponse response,
-            AuthenticationContext context)
+    protected void initiateAuthenticationRequest(final HttpServletRequest request,
+            final HttpServletResponse response,
+            final AuthenticationContext context)
             throws AuthenticationFailedException {
 
         try {
@@ -168,13 +145,6 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             context.setProperty(SESSION_VP_REQUEST_ID, vpRequestResponse.getRequestId());
             context.setProperty(SESSION_TRANSACTION_ID, vpRequestResponse.getTransactionId());
 
-            // Register this authenticator as a listener for direct processing
-            VPStatusListenerCache listenerCache = VPStatusListenerCache.getInstance();
-            listenerCache.registerListener(
-                    vpRequestResponse.getRequestId(),
-                    "auth-" + context.getContextIdentifier(),
-                    this  // Pass this authenticator instance as the callback
-            );
 
             // Generate QR code content
             String qrContent = QRCodeUtil.generateRequestUriQRContent(
@@ -199,25 +169,25 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
 
             response.sendRedirect(redirectUrl);
 
-        } catch (VPException e) {
-            throw new AuthenticationFailedException("Failed to create VP request", e);
+        } catch (VPAuthenticatorException e) {
+            throw new AuthenticationFailedException("Failed to create VP request: " + e.getMessage(), e);
         } catch (IOException e) {
             throw new AuthenticationFailedException("Failed to redirect to login page", e);
         }
     }
 
     @Override
-    protected void processAuthenticationResponse(HttpServletRequest request, HttpServletResponse response,
-            AuthenticationContext context) throws AuthenticationFailedException {
+    protected void processAuthenticationResponse(final HttpServletRequest request,
+            final HttpServletResponse response,
+            final AuthenticationContext context) throws AuthenticationFailedException {
 
         // Retrieve Session Info first to get requestId
         String requestId = (String) context.getProperty(SESSION_VP_REQUEST_ID);
 
-        // Try to get submission from instance variable (direct listener) or Cache (polling/redirect)
-        VPSubmission submission = this.receivedSubmission;
-        if (submission == null && StringUtils.isNotBlank(requestId)) {
-            // Fallback: Check WalletDataCache
-             submission = WalletDataCache.getInstance().getSubmission(requestId);
+        VPSubmission submission = null;
+        // Try to get submission from Cache (polling/redirect)
+        if (StringUtils.isNotBlank(requestId)) {
+            submission = WalletDataCache.getInstance().getSubmission(requestId);
         }
 
         if (submission == null) {
@@ -231,8 +201,11 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             if (StringUtils.isNotBlank(requestId)) {
                 try {
                     vpRequest = getVPRequestService().getVPRequestById(requestId, tenantId);
-                } catch (VPException e) {
+                } catch (VPAuthenticatorException e) {
                     // Ignore for now or handle appropriately
+                    if (log.isDebugEnabled()) {
+                        log.debug("Error fetching VP request for requestId: " + requestId, e);
+                    }
                 }
             }
 
@@ -316,7 +289,8 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      * @param subjectRemoteClaim The remote (VC-side) claim name that corresponds to the IDP subject
      * @return Username string, or null if not determinable
      */
-    private String extractUsername(Map<String, Object> verifiedClaims, String subjectRemoteClaim) {
+    private String extractUsername(final Map<String, Object> verifiedClaims,
+                                   final String subjectRemoteClaim) {
         if (StringUtils.isBlank(subjectRemoteClaim)) {
             return null;
         }
@@ -390,8 +364,9 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
 
 
     @Override
-    public AuthenticatorFlowStatus process(HttpServletRequest request, HttpServletResponse response,
-            AuthenticationContext context)
+    public AuthenticatorFlowStatus process(final HttpServletRequest request,
+                                           final HttpServletResponse response,
+                                           final AuthenticationContext context)
             throws AuthenticationFailedException, LogoutFailedException {
 
         // Check if this is a polling request
@@ -412,8 +387,8 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
     /**
      * Handle polling request from the login page.
      */
-    private AuthenticatorFlowStatus handlePollRequest(HttpServletResponse response,
-            AuthenticationContext context)
+    private AuthenticatorFlowStatus handlePollRequest(final HttpServletResponse response,
+                                                  final AuthenticationContext context)
             throws AuthenticationFailedException {
         String requestId = (String) context.getProperty(SESSION_VP_REQUEST_ID);
         if (StringUtils.isBlank(requestId)) {
@@ -452,7 +427,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
 
             return AuthenticatorFlowStatus.INCOMPLETE;
 
-        } catch (VPException e) {
+        } catch (VPAuthenticatorException e) {
             sendPollResponse(response, "error", e.getMessage());
             return AuthenticatorFlowStatus.INCOMPLETE;
         }
@@ -461,10 +436,10 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
     /**
      * Handle status callback from the frontend.
      */
-    private AuthenticatorFlowStatus handleStatusCallback(HttpServletRequest request,
-            HttpServletResponse response,
-            AuthenticationContext context,
-            String status)
+    private AuthenticatorFlowStatus handleStatusCallback(final HttpServletRequest request,
+                                                     final HttpServletResponse response,
+                                                     final AuthenticationContext context,
+                                                     final String status)
             throws AuthenticationFailedException {
 
         if ("success".equals(status)) {

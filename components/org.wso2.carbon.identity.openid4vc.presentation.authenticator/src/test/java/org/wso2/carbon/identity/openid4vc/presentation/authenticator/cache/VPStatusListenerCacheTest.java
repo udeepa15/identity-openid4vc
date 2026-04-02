@@ -2,12 +2,10 @@ package org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache;
 
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPSubmission;
 
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertTrue;
 
 public class VPStatusListenerCacheTest {
@@ -40,24 +38,6 @@ public class VPStatusListenerCacheTest {
         assertEquals(result.get(), "COMPLETED");
     }
 
-    @Test
-    public void testNotifyWithSubmission() {
-        AtomicReference<VPSubmission> result = new AtomicReference<>();
-        cache.registerListener("req2", "l2", new VPStatusListenerCache.StatusCallback() {
-            @Override
-            public void onStatusChange(String status) {}
-            @Override
-            public void onTimeout() {}
-            @Override
-            public void onSubmissionReceived(VPSubmission submission) {
-                result.set(submission);
-            }
-        });
-        
-        VPSubmission submission = new VPSubmission();
-        cache.notifyListenersWithSubmission("req2", submission);
-        assertNotNull(result.get());
-    }
 
     @Test
     public void testRemoveListener() {

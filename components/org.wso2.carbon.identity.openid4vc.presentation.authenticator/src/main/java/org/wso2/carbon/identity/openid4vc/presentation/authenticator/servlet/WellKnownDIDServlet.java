@@ -22,6 +22,9 @@ import com.google.gson.JsonObject;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.osgi.service.component.annotations.Component;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorErrorCode;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorServerException;
 import org.wso2.carbon.identity.openid4vc.presentation.did.exception.DIDDocumentException;
 import org.wso2.carbon.identity.openid4vc.presentation.did.service.DIDDocumentService;
 import org.wso2.carbon.identity.openid4vc.presentation.did.service.impl.DIDDocumentServiceImpl;
@@ -109,11 +112,13 @@ public class WellKnownDIDServlet extends HttpServlet {
         } catch (DIDDocumentException e) {
             LOG.error("Failed to generate DID document.", e);
             sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                    "Failed to generate DID document: " + e.getMessage());
+                    new VPAuthenticatorServerException(VPAuthenticatorErrorCode.DID_RESOLUTION_FAILED,
+                            "Failed to generate DID document: " + e.getMessage(), e));
         } catch (Throwable e) {
             LOG.error("Internal server error while serving DID document.", e);
             sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                    "Internal server error");
+                    new VPAuthenticatorServerException(VPAuthenticatorErrorCode.INTERNAL_SERVER_ERROR,
+                            "Internal server error", e));
         }
     }
 
@@ -122,13 +127,16 @@ public class WellKnownDIDServlet extends HttpServlet {
     /**
      * Send error response.
      */
-    private void sendErrorResponse(HttpServletResponse response, int statusCode, String message)
+    private void sendErrorResponse(HttpServletResponse response, int statusCode,
+                                   VPAuthenticatorException exception)
             throws IOException {
         response.setContentType("application/json;charset=UTF-8");
         response.setStatus(statusCode);
 
         JsonObject errorJson = new JsonObject();
-        errorJson.addProperty("error", message);
+        errorJson.addProperty("error", exception.getOAuth2ErrorCode());
+        errorJson.addProperty("error_description", exception.getMessage());
+        errorJson.addProperty("error_code", exception.getCode());
 
         writeResponse(response, errorJson.toString());
     }

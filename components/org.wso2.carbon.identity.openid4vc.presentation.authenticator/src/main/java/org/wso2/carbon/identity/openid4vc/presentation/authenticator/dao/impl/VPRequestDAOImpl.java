@@ -22,9 +22,9 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPRequestCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dao.VPRequestDAO;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
-import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -43,13 +43,13 @@ public class VPRequestDAOImpl implements VPRequestDAO {
     }
 
     @Override
-    public void createVPRequest(VPRequest vpRequest) throws VPException {
+    public void createVPRequest(VPRequest vpRequest) throws VPAuthenticatorException {
         // Store in cache
         vpRequestCache.put(vpRequest);
     }
 
     @Override
-    public VPRequest getVPRequestById(String requestId, int tenantId) throws VPException {
+    public VPRequest getVPRequestById(String requestId, int tenantId) throws VPAuthenticatorException {
         // Retrieve from cache
         VPRequest request = vpRequestCache.getByRequestId(requestId);
         if (request != null && request.getTenantId() != tenantId) {
@@ -64,7 +64,7 @@ public class VPRequestDAOImpl implements VPRequestDAO {
     }
 
     @Override
-    public VPRequest getVPRequestByTransactionId(String transactionId, int tenantId) throws VPException {
+    public VPRequest getVPRequestByTransactionId(String transactionId, int tenantId) throws VPAuthenticatorException {
         // Retrieve from cache
         VPRequest request = vpRequestCache.getByTransactionId(transactionId);
         if (request != null && request.getTenantId() != tenantId) {
@@ -79,7 +79,8 @@ public class VPRequestDAOImpl implements VPRequestDAO {
     }
 
     @Override
-    public List<String> getRequestIdsByTransactionId(String transactionId, int tenantId) throws VPException {
+    public List<String> getRequestIdsByTransactionId(String transactionId, int tenantId)
+            throws VPAuthenticatorException {
         List<String> requestIds = new ArrayList<>();
         VPRequest request = getVPRequestByTransactionId(transactionId, tenantId);
         if (request != null) {
@@ -89,7 +90,8 @@ public class VPRequestDAOImpl implements VPRequestDAO {
     }
 
     @Override
-    public void updateVPRequestStatus(String requestId, VPRequestStatus status, int tenantId) throws VPException {
+    public void updateVPRequestStatus(String requestId, VPRequestStatus status, int tenantId)
+            throws VPAuthenticatorException {
         VPRequest request = getVPRequestById(requestId, tenantId);
         if (request != null) {
             request.setStatus(status);
@@ -100,7 +102,7 @@ public class VPRequestDAOImpl implements VPRequestDAO {
     }
 
     @Override
-    public void updateVPRequestJwt(String requestId, String requestJwt, int tenantId) throws VPException {
+    public void updateVPRequestJwt(String requestId, String requestJwt, int tenantId) throws VPAuthenticatorException {
         VPRequest request = getVPRequestById(requestId, tenantId);
         if (request != null) {
             request.setRequestJwt(requestJwt);
@@ -110,7 +112,7 @@ public class VPRequestDAOImpl implements VPRequestDAO {
     }
 
     @Override
-    public void deleteVPRequest(String requestId, int tenantId) throws VPException {
+    public void deleteVPRequest(String requestId, int tenantId) throws VPAuthenticatorException {
         VPRequest request = getVPRequestById(requestId, tenantId);
         if (request != null) {
             vpRequestCache.remove(requestId);
@@ -118,20 +120,20 @@ public class VPRequestDAOImpl implements VPRequestDAO {
     }
 
     @Override
-    public List<VPRequest> getExpiredVPRequests(int tenantId) throws VPException {
+    public List<VPRequest> getExpiredVPRequests(int tenantId) throws VPAuthenticatorException {
         // Not efficiently supported by cache. Returning empty list as cache handles its own expiry.
         // This method was for the DB cleanup task.
         return new ArrayList<>();
     }
 
     @Override
-    public int markExpiredRequests(int tenantId) throws VPException {
+    public int markExpiredRequests(int tenantId) throws VPAuthenticatorException {
         // Not needed for cache. Cache expiry handles it.
         return 0;
     }
 
     @Override
-    public List<VPRequest> getVPRequestsByStatus(VPRequestStatus status, int tenantId) throws VPException {
+    public List<VPRequest> getVPRequestsByStatus(VPRequestStatus status, int tenantId) throws VPAuthenticatorException {
         // Iterating cache is expensive and not standard pattern, but supported if needed for admin APIs.
         // For now, returning empty list as this is rarely used in core flow.
         return new ArrayList<>();

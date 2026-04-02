@@ -12,11 +12,12 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dao.VPRequestDAO;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorClientException;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
-import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException;
 import org.wso2.carbon.identity.openid4vc.presentation.did.provider.DIDProvider;
 import org.wso2.carbon.identity.openid4vc.presentation.did.provider.DIDProviderFactory;
 import org.wso2.carbon.identity.openid4vc.presentation.management.model.PresentationDefinition;
@@ -155,7 +156,7 @@ public class VPRequestServiceImplTest {
                 .presentationDefinitionId(DEFINITION_ID)
                 .build();
 
-        assertThrows(VPException.class, () -> vpRequestService.createVPRequest(createRequest, TENANT_ID));
+        assertThrows(VPAuthenticatorException.class, () -> vpRequestService.createVPRequest(createRequest, TENANT_ID));
     }
 
     @Test
@@ -164,7 +165,7 @@ public class VPRequestServiceImplTest {
                 .clientId(CLIENT_ID)
                 .build();
 
-        assertThrows(VPException.class, () -> vpRequestService.createVPRequest(createRequest, TENANT_ID));
+        assertThrows(VPAuthenticatorException.class, () -> vpRequestService.createVPRequest(createRequest, TENANT_ID));
     }
 
     @Test
@@ -185,7 +186,8 @@ public class VPRequestServiceImplTest {
     public void testGetVPRequestByIdNotFound() throws Exception {
         when(vpRequestDAO.getVPRequestById(REQUEST_ID, TENANT_ID)).thenReturn(null);
 
-        assertThrows(VPException.class, () -> vpRequestService.getVPRequestById(REQUEST_ID, TENANT_ID));
+        assertThrows(VPAuthenticatorClientException.class,
+                () -> vpRequestService.getVPRequestById(REQUEST_ID, TENANT_ID));
     }
 
     @Test
@@ -372,7 +374,7 @@ public class VPRequestServiceImplTest {
         assertEquals(jwt, "dummy-jwt");
     }
 
-    @Test(expectedExceptions = VPException.class)
+    @Test(expectedExceptions = VPAuthenticatorClientException.class)
     public void testGetRequestJwtInactive() throws Exception {
         VPRequest vpRequest = new VPRequest.Builder()
                 .requestId(REQUEST_ID)

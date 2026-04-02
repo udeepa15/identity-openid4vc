@@ -23,9 +23,21 @@ package org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception;
  */
 public class VPAuthenticatorException extends Exception {
 
+    /**
+     * VP authenticator error code.
+     */
     private final VPAuthenticatorErrorCode errorCode;
+
+    /**
+     * VP authenticator error description.
+     */
     private final String description;
 
+    /**
+     * Constructor with message.
+     *
+     * @param message Error message.
+     */
     public VPAuthenticatorException(final String message) {
 
         super(message);
@@ -33,59 +45,126 @@ public class VPAuthenticatorException extends Exception {
         this.description = null;
     }
 
-    public VPAuthenticatorException(final String message, final Throwable cause) {
+    /**
+     * Constructor with message and cause.
+     *
+     * @param message Error message.
+     * @param cause   Throwable cause.
+     */
+    public VPAuthenticatorException(
+            final String message,
+            final Throwable cause) {
 
         super(message, cause);
         this.errorCode = null;
         this.description = null;
     }
 
-    public VPAuthenticatorException(final VPAuthenticatorErrorCode errorCode, final String message) {
+    /**
+     * Constructor with error code and message.
+     *
+     * @param errorCodeParam VPAuthenticatorErrorCode.
+     * @param message        Error message.
+     */
+    public VPAuthenticatorException(
+            final VPAuthenticatorErrorCode errorCodeParam,
+            final String message) {
 
         super(message);
-        this.errorCode = errorCode;
-        this.description = errorCode != null ? errorCode.getDescription() : null;
+        this.errorCode = errorCodeParam;
+        this.description = errorCodeParam != null
+                ? errorCodeParam.getDescription() : null;
     }
 
-    public VPAuthenticatorException(final VPAuthenticatorErrorCode errorCode, final String message,
-                                    final Throwable cause) {
+    /**
+     * Constructor with error code, message and cause.
+     *
+     * @param errorCodeParam VPAuthenticatorErrorCode.
+     * @param message        Error message.
+     * @param cause          Throwable cause.
+     */
+    public VPAuthenticatorException(
+            final VPAuthenticatorErrorCode errorCodeParam,
+            final String message,
+            final Throwable cause) {
 
         super(message, cause);
-        this.errorCode = errorCode;
-        this.description = errorCode != null ? errorCode.getDescription() : null;
+        this.errorCode = errorCodeParam;
+        this.description = errorCodeParam != null
+                ? errorCodeParam.getDescription() : null;
     }
 
-    public VPAuthenticatorException(final VPAuthenticatorErrorCode errorCode, final String message,
-                                    final String description) {
+    /**
+     * Constructor with error code, message and description.
+     *
+     * @param errorCodeParam   VPAuthenticatorErrorCode.
+     * @param message          Error message.
+     * @param descriptionParam Error description.
+     */
+    public VPAuthenticatorException(
+            final VPAuthenticatorErrorCode errorCodeParam,
+            final String message,
+            final String descriptionParam) {
 
         super(message);
-        this.errorCode = errorCode;
-        this.description = description;
+        this.errorCode = errorCodeParam;
+        this.description = descriptionParam;
     }
 
-    public VPAuthenticatorException(final VPAuthenticatorErrorCode errorCode, final String message,
-                                    final String description, final Throwable cause) {
+    /**
+     * Constructor with error code, message, description and cause.
+     *
+     * @param errorCodeParam   VPAuthenticatorErrorCode.
+     * @param message          Error message.
+     * @param descriptionParam Error description.
+     * @param cause            Throwable cause.
+     */
+    public VPAuthenticatorException(
+            final VPAuthenticatorErrorCode errorCodeParam,
+            final String message,
+            final String descriptionParam,
+            final Throwable cause) {
 
         super(message, cause);
-        this.errorCode = errorCode;
-        this.description = description;
+        this.errorCode = errorCodeParam;
+        this.description = descriptionParam;
     }
 
+    /**
+     * Get error code.
+     *
+     * @return VPAuthenticatorErrorCode.
+     */
     public VPAuthenticatorErrorCode getErrorCode() {
 
         return errorCode;
     }
 
+    /**
+     * Get error code.
+     *
+     * @return Error code.
+     */
     public String getCode() {
 
         return errorCode != null ? errorCode.getCode() : null;
     }
 
+    /**
+     * Get OAuth2 error code.
+     *
+     * @return OAuth2 error code.
+     */
     public String getOAuth2ErrorCode() {
 
         return errorCode != null ? errorCode.getOAuth2ErrorCode() : null;
     }
 
+    /**
+     * Get error description.
+     *
+     * @return Error description.
+     */
     public String getDescription() {
 
         return description;

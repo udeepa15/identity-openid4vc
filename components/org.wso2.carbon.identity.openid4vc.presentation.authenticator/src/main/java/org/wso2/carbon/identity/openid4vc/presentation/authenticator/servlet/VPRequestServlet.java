@@ -35,7 +35,6 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling.Pol
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.impl.VPRequestServiceImpl;
 import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
-import org.wso2.carbon.identity.openid4vc.presentation.common.exception.VPException;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -126,14 +125,10 @@ public class VPRequestServlet extends HttpServlet {
             if (VPAuthenticatorErrorCode.VP_REQUEST_EXPIRED.getCode().equals(e.getCode())) {
                 sendErrorResponse(response, HttpServletResponse.SC_GONE, e);
             } else {
-                sendErrorResponse(response, HttpServletResponse.SC_NOT_FOUND,
-                    new VPAuthenticatorClientException(VPAuthenticatorErrorCode.VP_REQUEST_NOT_FOUND,
-                        e.getMessage(), e));
+                sendErrorResponse(response, HttpServletResponse.SC_NOT_FOUND, e);
             }
-        } catch (VPException e) {
-            sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
-                new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
-                    e.getMessage(), e));
+        } catch (VPAuthenticatorException e) {
+            sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST, e);
         } catch (RuntimeException e) {
             sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
                 new VPAuthenticatorServerException(VPAuthenticatorErrorCode.INTERNAL_SERVER_ERROR,
@@ -145,7 +140,7 @@ public class VPRequestServlet extends HttpServlet {
      * Handle request JWT retrieval (for request_uri flow).
      */
     private void handleRequestJwtRequest(HttpServletResponse response, String requestId,
-            int tenantId) throws VPAuthenticatorClientException, VPException, IOException {
+            int tenantId) throws VPAuthenticatorException, IOException {
 
         String requestJwt = vpRequestService.getRequestJwt(requestId, tenantId);
 
@@ -162,16 +157,27 @@ public class VPRequestServlet extends HttpServlet {
 
     /**
      * Handle status polling request.
+     *
+     * @param request   HTTP request
+     * @param response  HTTP response
+     * @param requestId Request ID
+     * @param tenantId  Tenant ID
+     * @throws VPAuthenticatorException If error occurs
+     * @throws IOException              If error occurs
      */
-    private void handleStatusRequest(HttpServletRequest request, HttpServletResponse response,
-            String requestId, int tenantId) throws VPException, IOException {
+    private void handleStatusRequest(HttpServletRequest request,
+                                     HttpServletResponse response,
+                                     String requestId, int tenantId)
+            throws VPAuthenticatorException, IOException {
 
         // Get timeout parameter for long polling
         String timeoutParam = getParameter(request, "timeout");
         long timeout = DEFAULT_POLL_TIMEOUT_MS;
-        if (StringUtils.isNotBlank(timeoutParam) && timeoutParam.matches("^[0-9]+$")) {
+        if (StringUtils.isNotBlank(timeoutParam)
+                && timeoutParam.matches("^[0-9]+$")) {
             try {
-                timeout = Math.min(Long.parseLong(timeoutParam), DEFAULT_POLL_TIMEOUT_MS);
+                timeout = Math.min(Long.parseLong(timeoutParam),
+                        DEFAULT_POLL_TIMEOUT_MS);
             } catch (NumberFormatException e) {
                 // Use default
             }
@@ -189,16 +195,19 @@ public class VPRequestServlet extends HttpServlet {
      * Poll for status with timeout.
      * Note: This is a simplified polling implementation. For production,
      * consider using async servlets with DeferredResult pattern.
-     * Uses LongPollingManager to handle status checks via both cache and database.
+     * Uses LongPollingManager to handle status checks via both cache and
+     * database.
      *
      * @param requestId Request ID
-     * @param tenantId Tenant ID
-     * @param timeout Polling timeout
+     * @param tenantId  Tenant ID
+     * @param timeout   Polling timeout
      * @return VPRequestDTO with status
-     * @throws VPException If error occurs
+     * @throws VPAuthenticatorException If error occurs
      */
-    private VPRequest pollForStatus(final String requestId, final int tenantId, final long timeout)
-            throws VPException {
+    private VPRequest pollForStatus(final String requestId,
+                                    final int tenantId,
+                                    final long timeout)
+            throws VPAuthenticatorException {
 
         LongPollingManager pollingManager = LongPollingManager.getInstance();
         PollingResult result = pollingManager.waitForStatusChange(requestId, timeout, tenantId);
