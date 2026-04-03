@@ -59,10 +59,12 @@ public class VerificationServiceImpl implements VerificationService {
     private final List<Verifier> verifiers;
 
     public VerificationServiceImpl() {
+
         this.verifiers = initVerifiers();
     }
 
     private List<Verifier> initVerifiers() {
+
         List<Verifier> verifierList = new java.util.ArrayList<>();
         verifierList.add(new JwtVerifier());
         verifierList.add(new SdJwtVerifier());
@@ -270,10 +272,12 @@ public class VerificationServiceImpl implements VerificationService {
             unbind = "unsetPresentationDefinitionService"
     )
     protected void setPresentationDefinitionService(PresentationDefinitionService service) {
+
         this.presentationDefinitionService = service;
     }
 
     protected void unsetPresentationDefinitionService(PresentationDefinitionService service) {
+
         this.presentationDefinitionService = null;
     }
 }

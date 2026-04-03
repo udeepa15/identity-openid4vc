@@ -95,6 +95,7 @@ public class VerificationException extends Exception {
      * @return The {@link VerificationErrorCode}.
      */
     public VerificationErrorCode getErrorCode() {
+
         return errorCode;
     }
 
@@ -104,6 +105,7 @@ public class VerificationException extends Exception {
      * @return Internal error code string.
      */
     public String getCode() {
+
         return errorCode != null ? errorCode.getCode() : null;
     }
 
@@ -113,6 +115,7 @@ public class VerificationException extends Exception {
      * @return OAuth2 error code.
      */
     public String getOAuth2ErrorCode() {
+
         return errorCode != null ? errorCode.getOAuth2ErrorCode() : null;
     }
 
@@ -122,6 +125,7 @@ public class VerificationException extends Exception {
      * @return Error description.
      */
     public String getDescription() {
+
         return description;
     }
 }

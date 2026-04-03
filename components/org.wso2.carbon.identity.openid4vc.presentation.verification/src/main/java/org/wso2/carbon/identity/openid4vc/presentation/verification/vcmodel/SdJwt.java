@@ -78,6 +78,7 @@ public class SdJwt extends Jwt {
         private Object value;
 
         public Disclosure(String salt, String name, Object value) {
+
             this.salt = salt;
             this.name = name;
             this.value = value;

@@ -32,18 +32,22 @@ public class VerificationResult implements Serializable {
     private VerificationStatus status;
 
     public Map<String, Object> getVerifiedClaims() {
+
         return verifiedClaims;
     }
 
     public void setVerifiedClaims(Map<String, Object> verifiedClaims) {
+
         this.verifiedClaims = verifiedClaims;
     }
 
     public VerificationStatus getStatus() {
+
         return status;
     }
 
     public void setStatus(VerificationStatus status) {
+
         this.status = status;
     }
 
@@ -51,6 +55,7 @@ public class VerificationResult implements Serializable {
      * Enum for verification status.
      */
     public enum VerificationStatus {
+
         SUBMITTED,
         PENDING,
         VERIFIED,

@@ -132,6 +132,7 @@ public class SignatureVerifier {
      */
     public static boolean verifyJwtSignature(String jwtString, PublicKey publicKey, String algorithm)
             throws VerificationException {
+
         try {
             SignedJWT jwt = SignedJWT.parse(jwtString);
             JWSVerifier verifier = new DefaultJWSVerifierFactory().createJWSVerifier(
@@ -148,6 +149,7 @@ public class SignatureVerifier {
      */
     public static boolean validateSignatureUsingJwks(String jwtString, String jwksUri, String algorithm)
             throws VerificationException {
+
         try {
             ConfigurableJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
             jwtProcessor.setJWSTypeVerifier(
@@ -178,6 +180,7 @@ public class SignatureVerifier {
      * Resolve JWKS URI from the issuer URL.
      */
     public static String resolveJwksUri(String issuer) throws VerificationException {
+
         try {
             String metadataUrl = issuer.endsWith("/") ? issuer + ".well-known/jwt-vc-issuer"
                     : issuer + "/.well-known/jwt-vc-issuer";
@@ -200,6 +203,7 @@ public class SignatureVerifier {
      * Verify credential expiration.
      */
     public static void verifyExpiration(Jwt payload) throws VerificationException {
+
         Long exp = payload.getExp();
         if (exp != null) {
             long currentTime = System.currentTimeMillis();
@@ -209,5 +213,4 @@ public class SignatureVerifier {
             }
         }
     }
-
 }

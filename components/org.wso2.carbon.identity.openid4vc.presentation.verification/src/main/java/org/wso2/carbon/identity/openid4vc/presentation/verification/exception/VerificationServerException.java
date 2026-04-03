@@ -33,6 +33,7 @@ public class VerificationServerException extends VerificationException {
      * @param message   A concise, developer-facing message.
      */
     public VerificationServerException(VerificationErrorCode errorCode, String message) {
+
         super(errorCode, message);
     }
 
@@ -44,6 +45,7 @@ public class VerificationServerException extends VerificationException {
      * @param cause     The underlying exception.
      */
     public VerificationServerException(VerificationErrorCode errorCode, String message, Throwable cause) {
+
         super(errorCode, message, cause);
     }
 
@@ -55,6 +57,7 @@ public class VerificationServerException extends VerificationException {
      * @param description A detailed, user-facing description that overrides the code's default.
      */
     public VerificationServerException(VerificationErrorCode errorCode, String message, String description) {
+
         super(errorCode, message, description);
     }
 
@@ -68,6 +71,7 @@ public class VerificationServerException extends VerificationException {
      */
     public VerificationServerException(VerificationErrorCode errorCode, String message, String description,
                                        Throwable cause) {
+
         super(errorCode, message, description, cause);
     }
 }

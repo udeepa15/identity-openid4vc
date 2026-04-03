@@ -43,6 +43,7 @@ public final class SdJwtVerifier implements Verifier {
  
     @Override
     public boolean canHandle(final String format) {
+        
         return VerificationConstants.FORMAT_SD_JWT.equals(format);
     }
 
@@ -94,6 +95,7 @@ public final class SdJwtVerifier implements Verifier {
      * Get claims from the SdJwt payload.
      */
     private Map<String, Object> getClaims(final SdJwt payload) {
+        
         Map<String, Object> claims = new HashMap<>(payload.getAdditionalClaims());
         claims.put(VerificationConstants.CLAIM_ISS, payload.getIss());
         claims.put(VerificationConstants.CLAIM_SUB, payload.getSub());
@@ -112,7 +114,7 @@ public final class SdJwtVerifier implements Verifier {
                                    final List<Disclosure> disclosures,
                                    final Map<String, Object> claims)
             throws VerificationException {
- 
+        
         List<String> sdHashes = payload.getSd();
         if (sdHashes == null || sdHashes.isEmpty()) {
             return;
@@ -141,6 +143,7 @@ public final class SdJwtVerifier implements Verifier {
      * Map SignedJWT claims to SdJwt model.
      */
     private SdJwt mapToSdJwt(final SignedJWT jwt) throws ParseException {
+        
         SdJwt payload = new SdJwt();
         JwtVerifier.populateJwtModel(payload, jwt);
 

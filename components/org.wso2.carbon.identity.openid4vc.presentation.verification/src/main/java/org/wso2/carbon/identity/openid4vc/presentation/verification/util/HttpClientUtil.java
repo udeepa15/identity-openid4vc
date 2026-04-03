@@ -60,12 +60,12 @@ public final class HttpClientUtil {
         return new java.net.URL(uriString).openConnection();
     }
 
-
     /**
      * Fetch the response body from a URL as a String.
      */
     public static String fetchContent(final String urlString, Map<String, String> headers) 
             throws VerificationException {
+
         URI uri;
         try {
             uri = new URI(urlString);
@@ -135,6 +135,7 @@ public final class HttpClientUtil {
      * Fetch JSON content from a URL.
      */
     public static JsonObject fetchJson(final String urlString) throws VerificationException {
+
         String content = fetchContent(urlString, null);
         if (content == null) {
             return null;
@@ -151,6 +152,7 @@ public final class HttpClientUtil {
      * Validates that the hostname resolves to a public IP address.
      */
     private static void validateIpAddress(String host) throws VerificationException {
+
         try {
             InetAddress[] addresses = InetAddress.getAllByName(host);
             for (InetAddress address : addresses) {

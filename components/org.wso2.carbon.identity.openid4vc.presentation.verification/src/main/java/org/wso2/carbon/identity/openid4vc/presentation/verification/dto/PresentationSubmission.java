@@ -40,26 +40,32 @@ public class PresentationSubmission implements Serializable {
     private List<DescriptorMap> descriptorMap;
 
     public String getId() {
+
         return id;
     }
 
     public void setId(String id) {
+
         this.id = id;
     }
 
     public String getDefinitionId() {
+
         return definitionId;
     }
 
     public void setDefinitionId(String definitionId) {
+
         this.definitionId = definitionId;
     }
 
     public List<DescriptorMap> getDescriptorMap() {
+
         return descriptorMap;
     }
 
     public void setDescriptorMap(List<DescriptorMap> descriptorMap) {
+
         this.descriptorMap = descriptorMap;
     }
 
@@ -80,26 +86,32 @@ public class PresentationSubmission implements Serializable {
         private String path;
 
         public String getId() {
+
             return id;
         }
 
         public void setId(String id) {
+
             this.id = id;
         }
 
         public String getFormat() {
+
             return format;
         }
 
         public void setFormat(String format) {
+
             this.format = format;
         }
 
         public String getPath() {
+
             return path;
         }
 
         public void setPath(String path) {
+
             this.path = path;
         }
     }

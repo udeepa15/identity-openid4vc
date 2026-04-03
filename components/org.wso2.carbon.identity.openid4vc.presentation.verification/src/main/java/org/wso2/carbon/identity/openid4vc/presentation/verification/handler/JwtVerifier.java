@@ -39,6 +39,7 @@ public final class JwtVerifier implements Verifier {
 
     @Override
     public boolean canHandle(final String format) {
+
         return VerificationConstants.FORMAT_JWT.equals(format);
     }
 
@@ -75,6 +76,7 @@ public final class JwtVerifier implements Verifier {
      * Get claims from the Jwt payload.
      */
     private Map<String, Object> getClaims(final Jwt payload) {
+
         Map<String, Object> claims = new HashMap<>(payload.getAdditionalClaims());
         claims.put(VerificationConstants.CLAIM_ISS, payload.getIss());
         claims.put(VerificationConstants.CLAIM_SUB, payload.getSub());
@@ -90,6 +92,7 @@ public final class JwtVerifier implements Verifier {
      * Map SignedJWT claims to Jwt model.
      */
     private Jwt mapToJwt(final SignedJWT jwt) throws ParseException {
+
         Jwt payload = new Jwt();
         populateJwtModel(payload, jwt);
         return payload;
@@ -100,6 +103,7 @@ public final class JwtVerifier implements Verifier {
      */
     public static void populateJwtModel(final Jwt model,
                                         final SignedJWT jwt) throws ParseException {
+
         Map<String, Object> claims = jwt.getJWTClaimsSet().getClaims();
 
         if (claims.containsKey(VerificationConstants.CLAIM_ISS)) {
