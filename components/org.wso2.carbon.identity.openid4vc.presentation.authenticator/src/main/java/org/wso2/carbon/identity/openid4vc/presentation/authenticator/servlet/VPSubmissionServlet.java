@@ -94,7 +94,7 @@ public class VPSubmissionServlet extends HttpServlet {
         try {
             // Parse submission parameters
             Map<String, String> params = parseSubmission(request);
-            
+            //ToDo: directly to the object (Submission)
             String vpToken = params.get(OpenID4VPConstants.ResponseParams.VP_TOKEN);
             String presentationSubmission = params.get(OpenID4VPConstants.ResponseParams.PRESENTATION_SUBMISSION);
             String state = params.get(OpenID4VPConstants.ResponseParams.STATE);

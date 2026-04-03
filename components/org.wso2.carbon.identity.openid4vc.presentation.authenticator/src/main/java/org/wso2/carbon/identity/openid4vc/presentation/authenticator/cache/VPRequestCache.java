@@ -35,6 +35,7 @@ import java.util.concurrent.TimeUnit;
  * Provides fast access to active VP requests during the authorization flow.
  * Entries are automatically expired based on configurable TTL.
  */
+//ToDo: use base cache
 public final class VPRequestCache {
 
     private final Map<String, VPRequestCacheEntry> cacheByRequestId;

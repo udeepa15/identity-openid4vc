@@ -126,7 +126,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             // Store request ID in session
             context.setProperty(SESSION_VP_REQUEST_ID, vpRequestResponse.getRequestId());
             context.setProperty(SESSION_TRANSACTION_ID, vpRequestResponse.getTransactionId());
-
+            //ToDo: session_transaction ID (use one)
 
             // Generate QR code content
             String qrContent = QRCodeUtil.generateRequestUriQRContent(
@@ -207,7 +207,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             }
 
             Map<String, Object> verifiedClaims = new HashMap<>(verificationResult.getVerifiedClaims());
-
+            //ToDo: use framework
             // Fix 1: Always resolve IDP claim mappings, even when getExternalIdP() is null.
             ClaimMapping[] idpClaimMappings = resolveIdpClaimMappings(context);
 

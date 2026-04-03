@@ -58,7 +58,7 @@ import javax.servlet.http.HttpServletResponse;
     service = Servlet.class,
     immediate = true,
     property = {
-        "osgi.http.whiteboard.servlet.pattern=/openid4vp/v1/vp-request/*",
+        "osgi.http.whiteboard.servlet.pattern=/openid4vp/v1/vp-request/*",//ToDo:oid4vp
         "osgi.http.whiteboard.servlet.name=OpenID4VPRequest",
         "osgi.http.whiteboard.servlet.asyncSupported=true"
     }
