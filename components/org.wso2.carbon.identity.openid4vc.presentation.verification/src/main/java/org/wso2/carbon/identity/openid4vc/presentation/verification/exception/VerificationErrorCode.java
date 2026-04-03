@@ -69,6 +69,14 @@ public enum VerificationErrorCode {
     private final String message;
     private final String description;
 
+        /**
+         * Creates an error-code entry with internal and OAuth2-facing details.
+         *
+         * @param code Internal error code in {@code CV-XXXXX} format
+         * @param oauth2ErrorCode OAuth2-compliant error code value
+         * @param message Short error summary
+         * @param description Detailed, user-facing error description
+         */
     VerificationErrorCode(String code, String oauth2ErrorCode, String message, String description) {
 
         this.code = code;
@@ -113,7 +121,14 @@ public enum VerificationErrorCode {
         return description;
     }
 
-    @Override
+        /**
+         * {@inheritDoc}
+         *
+         * <p>Returns a compact representation containing the internal code and message.</p>
+         *
+         * @return A string in the form {@code <code> - <message>}
+         */
+        @Override
     public String toString() {
         return code + " - " + message;
     }

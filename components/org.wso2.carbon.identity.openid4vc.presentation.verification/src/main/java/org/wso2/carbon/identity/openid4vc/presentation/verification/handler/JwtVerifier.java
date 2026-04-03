@@ -37,12 +37,26 @@ import java.util.Map;
  */
 public final class JwtVerifier implements Verifier {
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean canHandle(final String format) {
 
         return VerificationConstants.FORMAT_JWT.equals(format);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Processing steps:</p>
+     * <ul>
+     *   <li>Parse the VP token as a compact {@link SignedJWT}.</li>
+     *   <li>Validate the signature using {@link SignatureVerifier}.</li>
+     *   <li>Map token claims into a {@link Jwt} model.</li>
+     *   <li>Return normalized claims for downstream validation.</li>
+     * </ul>
+     */
     @Override
     public Map<String, Object> handle(final PresentationSubmission submission,
                                      final int tenantId, final String vpToken) 
@@ -73,7 +87,10 @@ public final class JwtVerifier implements Verifier {
     }
 
     /**
-     * Get claims from the Jwt payload.
+        * Extracts normalized claims from a mapped {@link Jwt} payload.
+        *
+        * @param payload The mapped JWT payload model
+        * @return A mutable map containing standard and additional claims
      */
     private Map<String, Object> getClaims(final Jwt payload) {
 
@@ -89,7 +106,11 @@ public final class JwtVerifier implements Verifier {
     }
 
     /**
-     * Map SignedJWT claims to Jwt model.
+        * Maps a parsed {@link SignedJWT} into a {@link Jwt} model.
+        *
+        * @param jwt The parsed JWT token
+        * @return The populated JWT model
+        * @throws ParseException If JWT claims cannot be read from the token
      */
     private Jwt mapToJwt(final SignedJWT jwt) throws ParseException {
 
@@ -99,7 +120,12 @@ public final class JwtVerifier implements Verifier {
     }
 
     /**
-     * Populate a Jwt model with claims from a SignedJWT.
+        * Populates a {@link Jwt} model with standard and additional claims from a
+        * parsed {@link SignedJWT}.
+        *
+        * @param model The target model to populate
+        * @param jwt The source parsed JWT
+        * @throws ParseException If JWT claims cannot be read from the token
      */
     public static void populateJwtModel(final Jwt model,
                                         final SignedJWT jwt) throws ParseException {

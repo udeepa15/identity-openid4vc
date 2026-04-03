@@ -58,11 +58,22 @@ public class SignatureVerifier {
 
     private static final long CLOCK_SKEW_TOLERANCE_MS = 60 * 1000;
 
+    /**
+     * Creates a utility class instance.
+     *
+     * <p>This constructor is intentionally private because this class exposes
+     * only static utility methods.</p>
+     */
     private SignatureVerifier() {
     }
 
     /**
-     * Verify the cryptographic signature of a JWT using DID or JWKS.
+     * Verifies the cryptographic signature of a JWT using either DID-based key
+     * resolution or issuer metadata/JWKS discovery.
+     *
+     * @param jwt The parsed JWT to verify
+     * @return {@code true} when signature and expiration checks pass
+     * @throws VerificationException If key resolution or signature validation fails
      */
     public static boolean verifySignature(SignedJWT jwt)
             throws VerificationException {
@@ -128,7 +139,13 @@ public class SignatureVerifier {
     }
 
     /**
-     * Verify a JWT signature using a public key and algorithm.
+         * Verifies a JWT signature using a provided public key and JWS algorithm.
+         *
+         * @param jwtString The raw compact JWT string
+         * @param publicKey The public key used for signature verification
+         * @param algorithm The expected JWS algorithm identifier
+         * @return {@code true} if the signature is valid; otherwise {@code false}
+         * @throws VerificationException If verification fails due to parsing or JOSE errors
      */
     public static boolean verifyJwtSignature(String jwtString, PublicKey publicKey, String algorithm)
             throws VerificationException {
@@ -145,7 +162,13 @@ public class SignatureVerifier {
     }
 
     /**
-     * Validate a signature using a JWKS endpoint.
+         * Validates a JWT signature using a remote JWKS endpoint.
+         *
+         * @param jwtString The raw compact JWT string
+         * @param jwksUri The remote JWKS URI
+         * @param algorithm The expected JWS algorithm identifier
+         * @return {@code true} if the signature validates successfully
+         * @throws VerificationException If validation fails for any reason
      */
     public static boolean validateSignatureUsingJwks(String jwtString, String jwksUri, String algorithm)
             throws VerificationException {
@@ -177,7 +200,11 @@ public class SignatureVerifier {
     }
 
     /**
-     * Resolve JWKS URI from the issuer URL.
+        * Resolves the issuer JWKS URI from OpenID4VC issuer metadata.
+        *
+        * @param issuer The issuer URL
+        * @return The discovered JWKS URI, or {@code null} if not published
+        * @throws VerificationException If metadata retrieval or parsing fails
      */
     public static String resolveJwksUri(String issuer) throws VerificationException {
 
@@ -200,7 +227,11 @@ public class SignatureVerifier {
     }
 
     /**
-     * Verify credential expiration.
+        * Verifies that the credential has not expired, allowing a configured
+        * clock-skew tolerance.
+        *
+        * @param payload The mapped JWT payload containing time claims
+        * @throws VerificationException If the credential is expired
      */
     public static void verifyExpiration(Jwt payload) throws VerificationException {
 

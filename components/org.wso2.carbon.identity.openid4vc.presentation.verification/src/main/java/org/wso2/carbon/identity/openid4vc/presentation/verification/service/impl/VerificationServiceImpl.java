@@ -58,11 +58,20 @@ public class VerificationServiceImpl implements VerificationService {
     private PresentationDefinitionService presentationDefinitionService;
     private final List<Verifier> verifiers;
 
+    /**
+     * Creates a verification service instance and initializes supported
+     * format-specific verifiers.
+     */
     public VerificationServiceImpl() {
 
         this.verifiers = initVerifiers();
     }
 
+    /**
+     * Builds the list of format-specific verifier implementations.
+     *
+     * @return The ordered list of available {@link Verifier} implementations
+     */
     private List<Verifier> initVerifiers() {
 
         List<Verifier> verifierList = new java.util.ArrayList<>();
@@ -71,6 +80,17 @@ public class VerificationServiceImpl implements VerificationService {
         return verifierList;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Implementation flow:</p>
+     * <ol>
+     *   <li>Validate request shape and supported format.</li>
+     *   <li>Resolve the format-specific verifier and verify the VP token.</li>
+     *   <li>Resolve the Presentation Definition for the tenant.</li>
+     *   <li>Enforce requested issuer and claim constraints.</li>
+     * </ol>
+     */
     @Override
     public VerificationResult verify(PresentationSubmission submission, int tenantId, String vpToken)
             throws VerificationException {
@@ -114,7 +134,13 @@ public class VerificationServiceImpl implements VerificationService {
     }
 
     /**
-     * Verify verified claims against a Presentation Definition.
+        * Verifies extracted claims against the requested credential constraints in
+        * the supplied Presentation Definition.
+        *
+        * @param verifiedClaims The already verified claims extracted from the VP
+        * @param definition The Presentation Definition to enforce
+        * @return The verified claim map when all constraints are satisfied
+        * @throws VerificationException If an issuer or requested-claim constraint is not met
      */
     private Map<String, Object> verifyAgainstDefinition(Map<String, Object> verifiedClaims,
                                                        PresentationDefinition definition)
@@ -210,6 +236,12 @@ public class VerificationServiceImpl implements VerificationService {
 
     /**
      * Normalize an issuer identifier for strict comparison.
+        *
+        * <p>The method normalizes both DID Web and URL-based issuer values to a
+        * comparable canonical form.</p>
+        *
+        * @param issuer The issuer value to normalize
+        * @return The normalized issuer value, or {@code null} when normalization is not possible
      */
     private String normalizeIssuer(String issuer) {
 
@@ -264,18 +296,40 @@ public class VerificationServiceImpl implements VerificationService {
         }
     }
 
-    @Reference(
+        /**
+         * OSGi dynamic bind method for the {@link PresentationDefinitionService}.
+         *
+         * <p>Called by the OSGi runtime when the referenced service becomes available.
+         * The implementation stores the service for subsequent verification requests.</p>
+         *
+         * @param service The bound {@link PresentationDefinitionService} instance
+         */
+        @Reference(
             name = "presentation.definition.service",
             service = PresentationDefinitionService.class,
             cardinality = ReferenceCardinality.MANDATORY,
             policy = ReferencePolicy.DYNAMIC,
             unbind = "unsetPresentationDefinitionService"
     )
+            /**
+             * OSGi bind callback that receives the active
+             * {@link PresentationDefinitionService} reference.
+             *
+             * @param service The bound service instance
+             */
     protected void setPresentationDefinitionService(PresentationDefinitionService service) {
 
         this.presentationDefinitionService = service;
     }
 
+    /**
+     * OSGi dynamic unbind method for the {@link PresentationDefinitionService}.
+     *
+     * <p>Called by the OSGi runtime when the referenced service is withdrawn.
+     * The implementation clears the cached reference to prevent stale usage.</p>
+     *
+     * @param service The unbound {@link PresentationDefinitionService} instance
+     */
     protected void unsetPresentationDefinitionService(PresentationDefinitionService service) {
 
         this.presentationDefinitionService = null;

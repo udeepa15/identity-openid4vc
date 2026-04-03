@@ -31,21 +31,41 @@ public class VerificationResult implements Serializable {
     private Map<String, Object> verifiedClaims;
     private VerificationStatus status;
 
+    /**
+     * Returns the verified claim set produced by the verifier.
+     *
+     * @return A map containing verified claims
+     */
     public Map<String, Object> getVerifiedClaims() {
 
         return verifiedClaims;
     }
 
+    /**
+     * Sets the verified claim set produced by the verifier.
+     *
+     * @param verifiedClaims A map containing verified claims
+     */
     public void setVerifiedClaims(Map<String, Object> verifiedClaims) {
 
         this.verifiedClaims = verifiedClaims;
     }
 
+    /**
+     * Returns the verification workflow status.
+     *
+     * @return The {@link VerificationStatus}
+     */
     public VerificationStatus getStatus() {
 
         return status;
     }
 
+    /**
+     * Sets the verification workflow status.
+     *
+     * @param status The {@link VerificationStatus}
+     */
     public void setStatus(VerificationStatus status) {
 
         this.status = status;

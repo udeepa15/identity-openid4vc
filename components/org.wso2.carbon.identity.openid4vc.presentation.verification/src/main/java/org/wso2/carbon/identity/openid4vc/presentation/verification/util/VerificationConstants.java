@@ -23,6 +23,12 @@ package org.wso2.carbon.identity.openid4vc.presentation.verification.util;
  */
 public class VerificationConstants {
 
+    /**
+     * Creates a constants holder instance.
+     *
+     * <p>This constructor is intentionally private because this class exposes
+     * only {@code public static final} constants.</p>
+     */
     private VerificationConstants() {
     }
 

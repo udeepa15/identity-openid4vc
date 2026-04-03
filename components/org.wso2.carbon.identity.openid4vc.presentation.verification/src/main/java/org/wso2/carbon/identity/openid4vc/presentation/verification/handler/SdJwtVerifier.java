@@ -41,12 +41,26 @@ import java.util.Map;
  */
 public final class SdJwtVerifier implements Verifier {
  
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean canHandle(final String format) {
         
         return VerificationConstants.FORMAT_SD_JWT.equals(format);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Processing steps:</p>
+     * <ul>
+     *   <li>Parse the SD-JWT container token.</li>
+     *   <li>Parse and verify the issuer-signed JWT signature.</li>
+     *   <li>Map token claims into an {@link SdJwt} model.</li>
+     *   <li>Verify disclosures against {@code _sd} hashes and merge verified claims.</li>
+     * </ul>
+     */
     @Override
     public Map<String, Object> handle(final PresentationSubmission submission, 
                                      final int tenantId, final String vpToken) 
@@ -92,7 +106,10 @@ public final class SdJwtVerifier implements Verifier {
     }
 
     /**
-     * Get claims from the SdJwt payload.
+        * Extracts normalized claims from a mapped {@link SdJwt} payload.
+        *
+        * @param payload The mapped SD-JWT payload model
+        * @return A mutable map containing standard and additional claims
      */
     private Map<String, Object> getClaims(final SdJwt payload) {
         
@@ -108,7 +125,13 @@ public final class SdJwtVerifier implements Verifier {
     }
 
     /**
-     * Verify disclosures against the _sd hashes in the payload and add verified claims.
+        * Verifies disclosures against the {@code _sd} hash list and merges matching
+        * claim values into the provided claim map.
+        *
+        * @param payload The mapped SD-JWT payload model
+        * @param disclosures The disclosure list parsed from the SD-JWT container
+        * @param claims The target claim map to be enriched with verified disclosure values
+        * @throws VerificationException If disclosure verification fails
      */
     private void verifyDisclosures(final SdJwt payload,
                                    final List<Disclosure> disclosures,
@@ -140,7 +163,11 @@ public final class SdJwtVerifier implements Verifier {
     }
 
     /**
-     * Map SignedJWT claims to SdJwt model.
+        * Maps a parsed issuer-signed {@link SignedJWT} to an {@link SdJwt} model.
+        *
+        * @param jwt The parsed issuer-signed JWT
+        * @return The populated SD-JWT model
+        * @throws ParseException If JWT claims cannot be read from the token
      */
     private SdJwt mapToSdJwt(final SignedJWT jwt) throws ParseException {
         

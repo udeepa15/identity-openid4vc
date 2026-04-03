@@ -38,54 +38,120 @@ public class Jwt {
 
     private Map<String, Object> additionalClaims = new HashMap<>();
 
+    /**
+     * Returns the issuer claim.
+     *
+     * @return The {@code iss} claim value
+     */
     public String getIss() {
         return iss;
     }
 
+    /**
+     * Sets the issuer claim.
+     *
+     * @param iss The {@code iss} claim value
+     */
     public void setIss(String iss) {
         this.iss = iss;
     }
 
+    /**
+     * Returns the issued-at claim in epoch milliseconds.
+     *
+     * @return The {@code iat} claim value
+     */
     public Long getIat() {
         return iat;
     }
 
+    /**
+     * Sets the issued-at claim in epoch milliseconds.
+     *
+     * @param iat The {@code iat} claim value
+     */
     public void setIat(Long iat) {
         this.iat = iat;
     }
 
+    /**
+     * Returns the expiration claim in epoch milliseconds.
+     *
+     * @return The {@code exp} claim value
+     */
     public Long getExp() {
         return exp;
     }
 
+    /**
+     * Sets the expiration claim in epoch milliseconds.
+     *
+     * @param exp The {@code exp} claim value
+     */
     public void setExp(Long exp) {
         this.exp = exp;
     }
 
+    /**
+     * Returns the subject claim.
+     *
+     * @return The {@code sub} claim value
+     */
     public String getSub() {
         return sub;
     }
 
+    /**
+     * Sets the subject claim.
+     *
+     * @param sub The {@code sub} claim value
+     */
     public void setSub(String sub) {
         this.sub = sub;
     }
 
+    /**
+     * Returns the holder confirmation claim object.
+     *
+     * @return The {@code cnf} claim map
+     */
     public Map<String, Object> getCnf() {
         return cnf;
     }
 
+    /**
+     * Sets the holder confirmation claim object.
+     *
+     * @param cnf The {@code cnf} claim map
+     */
     public void setCnf(Map<String, Object> cnf) {
         this.cnf = cnf;
     }
 
+    /**
+     * Returns all non-standard claims captured from the token.
+     *
+     * @return A map of additional claims
+     */
     public Map<String, Object> getAdditionalClaims() {
         return additionalClaims;
     }
 
+    /**
+     * Replaces the map of non-standard claims captured from the token.
+     *
+     * @param additionalClaims A map of additional claims
+     */
     public void setAdditionalClaims(Map<String, Object> additionalClaims) {
         this.additionalClaims = additionalClaims;
     }
 
+    /**
+     * Adds a single non-standard claim entry.
+     *
+     * @param key The claim name
+     * @param value The claim value
+     */
     public void addAdditionalClaim(String key, Object value) {
         this.additionalClaims.put(key, value);
     }

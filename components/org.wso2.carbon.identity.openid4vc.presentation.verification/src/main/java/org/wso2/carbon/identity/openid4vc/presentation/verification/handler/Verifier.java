@@ -29,12 +29,21 @@ import java.util.Map;
 public interface Verifier {
 
     /**
-     * Check if the verifier can handle the given format.
+         * Determines whether this verifier supports the given presentation format.
+         *
+         * @param format The format value from {@code descriptor_map[*].format}
+         * @return {@code true} if this verifier can process the format; otherwise {@code false}
      */
     boolean canHandle(String format);
 
     /**
-     * Handle the verification of the token for the given format.
+         * Verifies the supplied VP token using a format-specific strategy.
+         *
+         * @param submission The {@link PresentationSubmission} metadata for the token
+         * @param tenantId The tenant identifier used for tenant-scoped resolution
+         * @param vpToken The raw verifiable presentation token
+         * @return A map of verified claims extracted from the presentation
+         * @throws VerificationException If verification fails due to client or server conditions
      */
     Map<String, Object> handle(PresentationSubmission submission, int tenantId, String vpToken) 
             throws VerificationException;

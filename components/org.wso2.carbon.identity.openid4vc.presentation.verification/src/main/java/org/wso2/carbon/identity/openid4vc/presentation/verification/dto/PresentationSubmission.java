@@ -39,31 +39,63 @@ public class PresentationSubmission implements Serializable {
     @JsonProperty("descriptor_map")
     private List<DescriptorMap> descriptorMap;
 
+    /**
+     * Returns the presentation submission identifier.
+     *
+     * @return The presentation submission {@code id}
+     */
     public String getId() {
 
         return id;
     }
 
+    /**
+     * Sets the presentation submission identifier.
+     *
+     * @param id The presentation submission {@code id}
+     */
     public void setId(String id) {
 
         this.id = id;
     }
 
+    /**
+     * Returns the Presentation Definition identifier associated with this submission.
+     *
+     * @return The {@code definition_id} value
+     */
     public String getDefinitionId() {
 
         return definitionId;
     }
 
+    /**
+     * Sets the Presentation Definition identifier associated with this submission.
+     *
+     * @param definitionId The {@code definition_id} value
+     */
     public void setDefinitionId(String definitionId) {
 
         this.definitionId = definitionId;
     }
 
+    /**
+     * Returns the descriptor map entries that describe how submitted credentials
+     * satisfy the Presentation Definition inputs.
+     *
+     * @return The list of {@link DescriptorMap} entries
+     */
     public List<DescriptorMap> getDescriptorMap() {
 
         return descriptorMap;
     }
 
+    /**
+     * Sets the descriptor map entries that describe how submitted credentials
+     * satisfy the Presentation Definition inputs.
+     *
+     * @param descriptorMap The list of {@link DescriptorMap} entries
+     */
     public void setDescriptorMap(List<DescriptorMap> descriptorMap) {
 
         this.descriptorMap = descriptorMap;
@@ -85,31 +117,61 @@ public class PresentationSubmission implements Serializable {
         @JsonProperty("path")
         private String path;
 
+        /**
+         * Returns the descriptor identifier.
+         *
+         * @return The descriptor {@code id}
+         */
         public String getId() {
 
             return id;
         }
 
+        /**
+         * Sets the descriptor identifier.
+         *
+         * @param id The descriptor {@code id}
+         */
         public void setId(String id) {
 
             this.id = id;
         }
 
+        /**
+         * Returns the VC format represented by this descriptor mapping.
+         *
+         * @return The descriptor {@code format}
+         */
         public String getFormat() {
 
             return format;
         }
 
+        /**
+         * Sets the VC format represented by this descriptor mapping.
+         *
+         * @param format The descriptor {@code format}
+         */
         public void setFormat(String format) {
 
             this.format = format;
         }
 
+        /**
+         * Returns the JSONPath expression that points to the submitted credential.
+         *
+         * @return The descriptor {@code path}
+         */
         public String getPath() {
 
             return path;
         }
 
+        /**
+         * Sets the JSONPath expression that points to the submitted credential.
+         *
+         * @param path The descriptor {@code path}
+         */
         public void setPath(String path) {
 
             this.path = path;

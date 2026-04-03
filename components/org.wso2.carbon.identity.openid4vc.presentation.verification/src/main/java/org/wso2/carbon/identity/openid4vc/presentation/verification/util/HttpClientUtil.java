@@ -47,11 +47,21 @@ public final class HttpClientUtil {
     private static final int HTTP_OK = 200;
     private static final int MAX_RESPONSE_SIZE = 1024 * 1024;
 
+    /**
+     * Creates a utility class instance.
+     *
+     * <p>This constructor is intentionally private because this class exposes
+     * only static utility methods.</p>
+     */
     private HttpClientUtil() {
     }
 
     /**
-     * Opens a connection to the provided URI string.
+     * Opens a URL connection for the provided URI string.
+     *
+     * @param uriString The URI string to open
+     * @return The opened {@link java.net.URLConnection}
+     * @throws IOException If the connection cannot be opened
      */
     @SuppressFBWarnings("URLCONNECTION_SSRF_FD")
     @SuppressWarnings("squid:S836")
@@ -61,7 +71,15 @@ public final class HttpClientUtil {
     }
 
     /**
-     * Fetch the response body from a URL as a String.
+         * Fetches a URL response body as a UTF-8 string.
+         *
+         * <p>Security checks include protocol validation, host validation, SSRF IP
+         * filtering, redirect disabling, and response-size bounds enforcement.</p>
+         *
+         * @param urlString The URL to fetch
+         * @param headers Optional request headers, or {@code null}
+         * @return The response body when HTTP status is {@code 200}; otherwise {@code null}
+         * @throws VerificationException If URL validation or network processing fails
      */
     public static String fetchContent(final String urlString, Map<String, String> headers) 
             throws VerificationException {
@@ -132,7 +150,11 @@ public final class HttpClientUtil {
     }
 
     /**
-     * Fetch JSON content from a URL.
+        * Fetches and parses JSON content from a URL.
+        *
+        * @param urlString The URL to fetch
+        * @return The parsed {@link JsonObject}, or {@code null} for non-{@code 200} responses
+        * @throws VerificationException If retrieval fails or the payload is not valid JSON
      */
     public static JsonObject fetchJson(final String urlString) throws VerificationException {
 
@@ -149,7 +171,11 @@ public final class HttpClientUtil {
     }
 
     /**
-     * Validates that the hostname resolves to a public IP address.
+        * Validates that the resolved host IP addresses are public and not internal.
+        *
+        * @param host The host name to resolve and validate
+        * @throws VerificationException If host resolution fails or an internal/restricted
+        *                               address is detected
      */
     private static void validateIpAddress(String host) throws VerificationException {
 
