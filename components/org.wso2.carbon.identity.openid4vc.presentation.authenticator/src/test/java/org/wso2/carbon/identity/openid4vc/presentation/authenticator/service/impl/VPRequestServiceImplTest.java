@@ -16,7 +16,6 @@ import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dao.VPRequestDAO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorClientException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints;
@@ -58,7 +57,7 @@ public class VPRequestServiceImplTest {
     @Mock
     private DIDProvider didProvider;
 
-        private VPRequestServiceImpl vpRequestService;
+    private VPRequestServiceImpl vpRequestService;
     private MockedStatic<IdentityUtil> identityUtilMockedStatic;
     private MockedStatic<IdentityTenantUtil> identityTenantUtilMockedStatic;
 
@@ -82,16 +81,13 @@ public class VPRequestServiceImplTest {
 
         vpRequestService = new VPRequestServiceImpl(vpRequestDAO, presentationDefinitionService,
                 "http://localhost:8080");
-
-        // Inject Mock PresentationDefinitionService into DataHolder
-        VPServiceDataHolder.setPresentationDefinitionService(presentationDefinitionService);
     }
 
     @AfterMethod
     public void tearDown() {
         identityUtilMockedStatic.close();
-        identityTenantUtilMockedStatic.close();
-    }
+                identityTenantUtilMockedStatic.close();
+        }
 
     private AuthenticationContext mockContext(String clientId, String pdId) {
         AuthenticationContext context = Mockito.mock(AuthenticationContext.class);

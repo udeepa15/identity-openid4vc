@@ -19,7 +19,7 @@
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal;
 
 import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.impl.VPRequestServiceImpl;
 import org.wso2.carbon.identity.openid4vc.presentation.did.service.DIDDocumentService;
 import org.wso2.carbon.identity.openid4vc.presentation.did.service.impl.DIDDocumentServiceImpl;
 import org.wso2.carbon.identity.openid4vc.presentation.management.service.PresentationDefinitionService;
@@ -35,7 +35,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public final class VPServiceDataHolder {
 
     private static final AtomicReference<RealmService> REALM_SERVICE = new AtomicReference<>();
-    private static final AtomicReference<VPRequestService> VP_REQUEST_SERVICE = new AtomicReference<>();
+    private static final AtomicReference<VPRequestServiceImpl> VP_REQUEST_SERVICE = new AtomicReference<>();
     private static final AtomicReference<PresentationDefinitionService> PRESENTATION_DEFINITION_SERVICE =
             new AtomicReference<>();
     private static final AtomicReference<VerificationService> VERIFICATION_SERVICE = new AtomicReference<>();
@@ -70,7 +70,7 @@ public final class VPServiceDataHolder {
      * 
      * @return VPRequestService instance
      */
-    public static VPRequestService getVPRequestService() {
+    public static VPRequestServiceImpl getVPRequestService() {
         return VP_REQUEST_SERVICE.get();
     }
 
@@ -79,7 +79,7 @@ public final class VPServiceDataHolder {
      * 
      * @param vpRequestService VPRequestService instance
      */
-    public static void setVPRequestService(VPRequestService vpRequestService) {
+    public static void setVPRequestService(VPRequestServiceImpl vpRequestService) {
         VP_REQUEST_SERVICE.set(vpRequestService);
     }
 

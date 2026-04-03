@@ -21,7 +21,7 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VP
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPSubmission;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.impl.VPRequestServiceImpl;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.QRCodeUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.management.service.PresentationDefinitionService;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VerificationResult;
@@ -59,7 +59,7 @@ public class OpenID4VPAuthenticatorTest {
     private AuthenticationContext context;
 
     @Mock
-    private VPRequestService vpRequestService;
+    private VPRequestServiceImpl vpRequestService;
 
     @Mock
     private PresentationDefinitionService presentationDefinitionService;

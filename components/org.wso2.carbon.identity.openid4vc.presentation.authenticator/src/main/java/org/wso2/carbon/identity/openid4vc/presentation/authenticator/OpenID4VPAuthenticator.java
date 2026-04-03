@@ -43,7 +43,7 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VP
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPSubmission;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.impl.VPRequestServiceImpl;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.QRCodeUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.PresentationSubmission;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VerificationResult;
@@ -368,7 +368,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         }
 
         try {
-            VPRequestService requestService = getVPRequestService();
+            VPRequestServiceImpl requestService = getVPRequestService();
             int tenantId = getTenantId(context);
             VPRequest vpRequest = requestService.getVPRequestById(requestId, tenantId);
 
@@ -634,7 +634,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
     /**
      * Get VPRequestService instance.
      */
-    private VPRequestService getVPRequestService() {
+    private VPRequestServiceImpl getVPRequestService() {
         return VPServiceDataHolder.getVPRequestService();
     }
 

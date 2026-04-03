@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, WSO2 LLC. (http://www.wso2.com).
+ * Copyright (c) 2025-2026, WSO2 LLC. (http://www.wso2.com).
  *
  * WSO2 LLC. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -8,11 +8,10 @@
  *
  * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
  * under the License.
  */
 
@@ -22,7 +21,6 @@ import org.wso2.carbon.identity.application.authentication.framework.context.Aut
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorClientException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 
 /**
  * Base service contract for managing VP requests.
@@ -32,79 +30,19 @@ public abstract class VPRequestService {
     /**
      * Create a new VP authorization request for the authentication session.
      *
-     * @param context The authentication context.
-     * @return VPRequest containing the created request details.
-     * @throws VPAuthenticatorException If an error occurs during request creation.
+     * @param context Authentication context.
+     * @return Created VP request.
+     * @throws VPAuthenticatorException If an error occurs.
      */
     public abstract VPRequest createVPRequest(AuthenticationContext context)
             throws VPAuthenticatorException;
 
     /**
-     * Get a VP request by its request ID.
+     * Get request JWT.
      *
-     * @param requestId The unique request identifier.
-     * @param tenantId The tenant ID.
-     * @return The VP request.
-     * @throws VPAuthenticatorClientException If the request is not found.
-     * @throws VPAuthenticatorException If an error occurs.
-     */
-    public abstract VPRequest getVPRequestById(String requestId, int tenantId)
-            throws VPAuthenticatorClientException, VPAuthenticatorException;
-
-    /**
-     * Get a VP request by its transaction ID.
-     *
-     * @param transactionId The transaction identifier.
-     * @param tenantId The tenant ID.
-     * @return The VP request.
-     * @throws VPAuthenticatorClientException If the request is not found.
-     * @throws VPAuthenticatorException If an error occurs.
-     */
-    public abstract VPRequest getVPRequestByTransactionId(String transactionId, int tenantId)
-            throws VPAuthenticatorClientException, VPAuthenticatorException;
-
-    /**
-     * Get the current status of a VP request.
-     *
-     * @param transactionId The transaction identifier.
-     * @param tenantId The tenant ID.
-     * @return VPRequest containing the status.
-     * @throws VPAuthenticatorClientException If the request is not found.
-     * @throws VPAuthenticatorException If an error occurs.
-     */
-    public abstract VPRequest getVPRequestStatus(String transactionId, int tenantId)
-            throws VPAuthenticatorClientException, VPAuthenticatorException;
-
-    /**
-     * Update the status of a VP request.
-     *
-     * @param requestId The request identifier.
-     * @param status The new status.
-     * @param tenantId The tenant ID.
-     * @throws VPAuthenticatorClientException If the request is not found or has expired.
-     * @throws VPAuthenticatorException If an error occurs.
-     */
-    public abstract void updateVPRequestStatus(String requestId, VPRequestStatus status,
-            int tenantId) throws VPAuthenticatorClientException, VPAuthenticatorException;
-
-    /**
-     * Get the request URI for a VP request (for request_uri flow).
-     *
-     * @param requestId The request identifier.
-     * @param tenantId The tenant ID.
-     * @return The request URI.
-     * @throws VPAuthenticatorClientException If the request is not found.
-     * @throws VPAuthenticatorException If an error occurs.
-     */
-    public abstract String getRequestUri(String requestId, int tenantId)
-            throws VPAuthenticatorClientException, VPAuthenticatorException;
-
-    /**
-     * Get the signed JWT for a VP request.
-     *
-     * @param requestId The request identifier.
-     * @param tenantId The tenant ID.
-     * @return The signed request JWT.
+     * @param requestId Request ID.
+     * @param tenantId Tenant ID.
+     * @return Request JWT.
      * @throws VPAuthenticatorClientException If the request is not found or has expired.
      * @throws VPAuthenticatorException If an error occurs.
      */

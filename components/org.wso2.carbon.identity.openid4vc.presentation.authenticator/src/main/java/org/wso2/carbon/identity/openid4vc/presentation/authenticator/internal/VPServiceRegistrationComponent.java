@@ -30,7 +30,6 @@ import org.slf4j.LoggerFactory;
 import org.wso2.carbon.identity.application.authentication.framework.ApplicationAuthenticator;
 import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.OpenID4VPAuthenticator;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.impl.VPRequestServiceImpl;
 import org.wso2.carbon.identity.openid4vc.presentation.management.service.PresentationDefinitionService;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.service.VerificationService;
@@ -64,11 +63,11 @@ public class VPServiceRegistrationComponent {
             BundleContext bundleContext = context.getBundleContext();
 
             // Initialize services using default constructors (which create their own DAOs)
-            VPRequestService vpRequestService = new VPRequestServiceImpl();
+            VPRequestServiceImpl vpRequestService = new VPRequestServiceImpl();
 
 
             // Register services with OSGi
-            bundleContext.registerService(VPRequestService.class.getName(),
+                bundleContext.registerService(VPRequestServiceImpl.class.getName(),
                     vpRequestService, new Hashtable<>());
 
 

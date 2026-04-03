@@ -29,7 +29,7 @@ import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPSubmissionCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.impl.VPRequestServiceImpl;
 
 import java.io.IOException;
 
@@ -50,7 +50,7 @@ public class VPSubmissionServletTest {
     private HttpServletResponse response;
 
     @Mock
-    private VPRequestService vpRequestService;
+    private VPRequestServiceImpl vpRequestService;
 
     @Mock
     private VPSubmissionCache vpSubmissionCache;

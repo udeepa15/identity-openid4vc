@@ -5,7 +5,7 @@ import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.impl.VPRequestServiceImpl;
 import org.wso2.carbon.identity.openid4vc.presentation.did.service.DIDDocumentService;
 import org.wso2.carbon.identity.openid4vc.presentation.management.service.PresentationDefinitionService;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.service.VerificationService;
@@ -20,7 +20,7 @@ public class VPServiceDataHolderTest {
     @Mock
     private RealmService realmService;
     @Mock
-    private VPRequestService vpRequestService;
+    private VPRequestServiceImpl vpRequestService;
     @Mock
     private PresentationDefinitionService presentationDefinitionService;
     @Mock

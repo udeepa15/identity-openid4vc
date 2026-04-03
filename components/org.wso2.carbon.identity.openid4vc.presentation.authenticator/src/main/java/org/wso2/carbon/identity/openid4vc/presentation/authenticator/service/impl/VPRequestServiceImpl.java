@@ -197,7 +197,6 @@ public class VPRequestServiceImpl extends VPRequestService {
         return vpRequest;
     }
 
-    @Override
     public VPRequest getVPRequestById(String requestId, int tenantId)
             throws VPAuthenticatorClientException, VPAuthenticatorException {
 
@@ -229,7 +228,6 @@ public class VPRequestServiceImpl extends VPRequestService {
         return vpRequest;
     }
 
-    @Override
     public VPRequest getVPRequestByTransactionId(String transactionId, int tenantId)
             throws VPAuthenticatorClientException, VPAuthenticatorException {
 
@@ -261,7 +259,6 @@ public class VPRequestServiceImpl extends VPRequestService {
         return vpRequest;
     }
 
-    @Override
     public VPRequest getVPRequestStatus(String transactionId, int tenantId)
             throws VPAuthenticatorClientException, VPAuthenticatorException {
 
@@ -274,7 +271,6 @@ public class VPRequestServiceImpl extends VPRequestService {
         return vpRequest;
     }
 
-    @Override
     public void updateVPRequestStatus(String requestId, VPRequestStatus status, int tenantId)
             throws VPAuthenticatorClientException, VPAuthenticatorException {
 
@@ -290,7 +286,6 @@ public class VPRequestServiceImpl extends VPRequestService {
         getVPRequestDAO().updateVPRequestStatus(requestId, status, tenantId);
     }
 
-    @Override
     public String getRequestUri(String requestId, int tenantId)
             throws VPAuthenticatorClientException, VPAuthenticatorException {
 

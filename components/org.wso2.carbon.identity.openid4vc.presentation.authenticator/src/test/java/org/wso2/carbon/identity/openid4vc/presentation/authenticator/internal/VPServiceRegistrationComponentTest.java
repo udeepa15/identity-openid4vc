@@ -10,7 +10,7 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.wso2.carbon.identity.application.authentication.framework.ApplicationAuthenticator;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.impl.VPRequestServiceImpl;
 import org.wso2.carbon.identity.openid4vc.presentation.management.service.PresentationDefinitionService;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -57,7 +57,7 @@ public class VPServiceRegistrationComponentTest {
 
         // Verify service registrations
         verify(bundleContext, atLeastOnce())
-            .registerService(eq(VPRequestService.class.getName()), any(), any());
+            .registerService(eq(VPRequestServiceImpl.class.getName()), any(), any());
         verify(bundleContext, atLeastOnce())
             .registerService(eq(ApplicationAuthenticator.class.getName()), any(), any());
         

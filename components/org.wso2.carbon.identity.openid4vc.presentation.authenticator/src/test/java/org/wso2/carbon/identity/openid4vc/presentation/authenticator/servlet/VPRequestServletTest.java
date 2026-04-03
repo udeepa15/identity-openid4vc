@@ -27,7 +27,7 @@ import org.testng.annotations.Test;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling.PollingManager;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling.PollingResult;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.impl.VPRequestServiceImpl;
 
 import java.io.ByteArrayOutputStream;
 import java.lang.reflect.Field;
@@ -53,7 +53,7 @@ public class VPRequestServletTest {
     private HttpServletResponse response;
 
     @Mock
-    private VPRequestService vpRequestService;
+    private VPRequestServiceImpl vpRequestService;
 
     @Mock
     private PollingManager pollingManager;
