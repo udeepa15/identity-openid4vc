@@ -49,6 +49,7 @@
         <module>components/org.wso2.carbon.identity.openid4vc.issuance.metadata</module>
         <module>components/org.wso2.carbon.identity.openid4vc.issuance.offer</module>
         <module>components/org.wso2.carbon.identity.openid4vc.issuance.endpoint</module>
+        <module>components/org.wso2.carbon.identity.openid4vc.presentation.verification</module>
         <module>features/org.wso2.carbon.identity.openid4vc.template.management.server.feature</module>
         <module>features/org.wso2.carbon.identity.openid4vc.issuance.common.server.feature</module>
         <module>features/org.wso2.carbon.identity.sdjwt.server.feature</module>
@@ -171,6 +172,7 @@
                 <version>${nimbusds.version}</version>
             </dependency>
             <dependency>
+
                 <groupId>org.eclipse.platform</groupId>
                 <artifactId>org.eclipse.osgi.services</artifactId>
                 <version>${equinox.osgi.services.version}</version>
@@ -405,6 +407,7 @@
 
         <!--Maven Plugin Version-->
         <carbon.p2.plugin.version>5.1.2</carbon.p2.plugin.version>
+
         <maven.compiler.plugin.version>3.14.1</maven.compiler.plugin.version>
         <maven.bundle.plugin.version>5.1.9</maven.bundle.plugin.version>
         <maven.buildnumber.plugin.version>1.4</maven.buildnumber.plugin.version>
@@ -414,8 +417,7 @@
 
         <!-- Carbon Identity Framework version -->
         <carbon.identity.framework.version>7.8.643</carbon.identity.framework.version>
-        <carbon.identity.framework.imp.pkg.version.range>[5.25.234, 8.0.0)
-        </carbon.identity.framework.imp.pkg.version.range>
+        <carbon.identity.framework.imp.pkg.version.range>[5.25.234, 8.0.0)</carbon.identity.framework.imp.pkg.version.range>
 
         <carbon.identity.oauth.package.import.version.range>[6.0.0, 8.0.0)</carbon.identity.oauth.package.import.version.range>
         <carbon.identity.oauth.version>7.0.386</carbon.identity.oauth.version>
@@ -426,6 +428,7 @@
         <jacoco.version>0.8.12</jacoco.version>
 
         <maven.checkstyleplugin.version>3.1.0</maven.checkstyleplugin.version>
+
         <spotbugs-maven-plugin.version>4.9.8.2</spotbugs-maven-plugin.version>
         <findsecbugs-plugin.version>1.10.1</findsecbugs-plugin.version>
         <maven.surefire.plugin.version>3.2.5</maven.surefire.plugin.version>
@@ -436,8 +439,11 @@
         <nimbusds.version>10.3.0.wso2v1</nimbusds.version>
         <nimbusds.osgi.version.range>[10.0.0,11.0.0)</nimbusds.osgi.version.range>
 
+
+        <equinox.osgi.services.version>3.5.100.v20160504-1419</equinox.osgi.services.version>
         <osgi.framework.imp.pkg.version.range>[1.7.0, 2.0.0)</osgi.framework.imp.pkg.version.range>
         <osgi.service.component.imp.pkg.version.range>[1.2.0, 2.0.0)</osgi.service.component.imp.pkg.version.range>
+        <osgi.service.http.version>1.2.1</osgi.service.http.version>
         <commons-logging.osgi.version.range>[1.2,2.0)</commons-logging.osgi.version.range>
         <commons-lang.wso2.osgi.version.range>[2.6.0,3.0.0)</commons-lang.wso2.osgi.version.range>
 
@@ -450,7 +456,7 @@
         <commons-collections.wso2.osgi.version.range>[3.2.0,4.0.0)</commons-collections.wso2.osgi.version.range>
 
         <!-- Carbon kernel version -->
-        <carbon.kernel.version>4.10.33</carbon.kernel.version>
+        <carbon.kernel.version>4.10.115</carbon.kernel.version>
         <carbon.kernel.feature.version>4.10.22</carbon.kernel.feature.version>
         <carbon.kernel.imp.pkg.version.range>[4.10.22, 5.0.0)</carbon.kernel.imp.pkg.version.range>
         <carbon.kernel.registry.imp.pkg.version.range>[1.0.1, 2.0.0)</carbon.kernel.registry.imp.pkg.version.range>
