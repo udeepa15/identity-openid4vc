@@ -63,10 +63,8 @@ import java.util.UUID;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.ALPHANUM_PATTERN;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.AUTHENTICATOR_FRIENDLY_NAME;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.AUTHENTICATOR_NAME;
-import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DEFAULT_TENANT_ID;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DISPLAY_ORDER_3;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DISPLAY_ORDER_4;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DISPLAY_ORDER_5;
@@ -81,7 +79,6 @@ import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.SESSION_TRANSACTION_ID;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.SESSION_VP_REQUEST_ID;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.SUPER_TENANT_ID_PLACEHOLDER;
-import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.TENANT_DOMAIN_PATTERN;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.UI_QR_CONTENT;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.UI_REQUEST_ID;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.UI_REQUEST_URI;
@@ -772,48 +769,6 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      */
     private String getValidatedParameter(final HttpServletRequest request, final String name) {
 
-        String value = getParameter(request, name);
-        if (StringUtils.isNotBlank(value) && value.matches(ALPHANUM_PATTERN)) {
-            return value;
-        }
-        return null;
-    }
-
-    /**
-     * Get tenant ID from request.
-     *
-     * @param request HTTP request
-     * @return tenant ID
-     */
-    private int getTenantId(final HttpServletRequest request) {
-
-        String tenantDomain = org.wso2.carbon.identity.core.util.IdentityTenantUtil.getTenantDomainFromContext();
-        if (StringUtils.isBlank(tenantDomain)) {
-            Object tenantDomainAttribute = request.getAttribute("tenantDomain");
-            tenantDomain = tenantDomainAttribute instanceof String ? (String) tenantDomainAttribute : null;
-        }
-
-        if (StringUtils.isNotBlank(tenantDomain)
-                && tenantDomain.matches(TENANT_DOMAIN_PATTERN)) {
-            try {
-                return org.wso2.carbon.identity.core.util.IdentityTenantUtil.getTenantId(tenantDomain);
-            } catch (Exception e) {
-                // Ignore.
-            }
-        }
-
-        return DEFAULT_TENANT_ID;
-    }
-
-    /**
-     * Read and sanitize a request parameter.
-     *
-     * @param request HTTP request.
-     * @param name    Parameter name.
-     * @return Sanitized parameter value, or null.
-     */
-    private String getParameter(final HttpServletRequest request, final String name) {
-
         if (request == null || StringUtils.isBlank(name)) {
             return null;
         }
@@ -823,20 +778,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             return null;
         }
 
-        return Encode.forJava(sanitizeParam(value));
-    }
+        return Encode.forJava(value);
 
-    /**
-     * Strip CRLF/control characters from request parameter input.
-     *
-     * @param value Request parameter value.
-     * @return Sanitized parameter value.
-     */
-    private String sanitizeParam(final String value) {
-
-        if (value == null) {
-            return null;
-        }
-        return value.replace('\r', '_').replace('\n', '_').replaceAll("[\\p{Cntrl}]", "");
     }
 }
