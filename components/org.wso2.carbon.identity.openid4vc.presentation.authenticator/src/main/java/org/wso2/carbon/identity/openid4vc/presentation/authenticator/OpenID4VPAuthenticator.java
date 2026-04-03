@@ -37,7 +37,7 @@ import org.wso2.carbon.identity.application.authentication.framework.model.Authe
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 import org.wso2.carbon.identity.application.common.model.IdentityProvider;
 import org.wso2.carbon.identity.application.common.model.Property;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.WalletDataCache;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPSubmissionCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
@@ -134,7 +134,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             // Generate QR code content
             String qrContent = QRCodeUtil.generateRequestUriQRContent(
                     vpRequestResponse.getRequestUri(),
-                    vpRequestResponse.getAuthorizationDetails().getClientId());
+                    vpRequestResponse.getClientId());
 
             request.setAttribute(UI_SESSION_DATA_KEY, context.getContextIdentifier());
             request.setAttribute(UI_REQUEST_ID, vpRequestResponse.getRequestId());
@@ -171,7 +171,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         VPSubmission submission = null;
         // Try to get submission from Cache (polling/redirect)
         if (StringUtils.isNotBlank(requestId)) {
-            submission = WalletDataCache.getInstance().getSubmission(requestId);
+            submission = VPSubmissionCache.getInstance().getSubmission(requestId);
         }
 
         if (submission == null) {
@@ -180,18 +180,6 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
 
         try {
             int tenantId = getTenantId(context);
-            VPRequest vpRequest = null;
-
-            if (StringUtils.isNotBlank(requestId)) {
-                try {
-                    vpRequest = getVPRequestService().getVPRequestById(requestId, tenantId);
-                } catch (VPAuthenticatorException e) {
-                    // Ignore for now or handle appropriately
-                    if (log.isDebugEnabled()) {
-                        log.debug("Error fetching VP request for requestId: " + requestId, e);
-                    }
-                }
-            }
 
             VerificationResult verificationResult;
 

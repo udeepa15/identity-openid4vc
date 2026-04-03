@@ -27,7 +27,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.osgi.service.component.annotations.Component;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.WalletDataCache;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPSubmissionCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorClientException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorErrorCode;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
@@ -76,14 +76,14 @@ public class VPSubmissionServlet extends HttpServlet {
     private static final int MAX_PARAM_LENGTH = 65536;
 
     private transient StatusNotificationService statusNotificationService;
-    private transient WalletDataCache walletDataCache;
+    private transient VPSubmissionCache vpSubmissionCache;
 
     @Override
     public void init() throws ServletException {
         super.init();
         this.statusNotificationService =
                 StatusNotificationService.getInstance();
-        this.walletDataCache = WalletDataCache.getInstance();
+        this.vpSubmissionCache = VPSubmissionCache.getInstance();
     }
 
     @Override
@@ -306,10 +306,10 @@ public class VPSubmissionServlet extends HttpServlet {
         }
 
         // Store submission in wallet data cache for status checks
-        if (walletDataCache != null) {
-            walletDataCache.storeSubmission(requestId, submission);
+        if (vpSubmissionCache != null) {
+            vpSubmissionCache.storeSubmission(requestId, submission);
         } else {
-            LOG.warn("WalletDataCache is null; submission will not be persisted.");
+            LOG.warn("VPSubmissionCache is null; submission will not be persisted.");
         }
 
         // Use the centralized notification service
@@ -320,7 +320,7 @@ public class VPSubmissionServlet extends HttpServlet {
                         submission.getError(),
                         submission.getErrorDescription());
             } else {
-                statusNotificationService.notifyVPSubmitted(requestId, submission);
+                statusNotificationService.notifyVPSubmitted(requestId);
             }
         }
 

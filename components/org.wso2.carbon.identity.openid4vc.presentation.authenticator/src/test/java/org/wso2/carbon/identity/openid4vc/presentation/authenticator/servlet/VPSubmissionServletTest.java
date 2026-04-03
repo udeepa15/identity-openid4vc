@@ -26,7 +26,7 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.WalletDataCache;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPSubmissionCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
@@ -53,10 +53,10 @@ public class VPSubmissionServletTest {
     private VPRequestService vpRequestService;
 
     @Mock
-    private WalletDataCache walletDataCache;
+    private VPSubmissionCache vpSubmissionCache;
 
     private MockedStatic<VPServiceDataHolder> mockedDataHolder;
-    private MockedStatic<WalletDataCache> mockedWalletCache;
+    private MockedStatic<VPSubmissionCache> mockedWalletCache;
     private MockedStatic<IdentityTenantUtil> mockedIdentityTenantUtil;
 
     @BeforeMethod
@@ -71,8 +71,8 @@ public class VPSubmissionServletTest {
         mockedDataHolder = Mockito.mockStatic(VPServiceDataHolder.class);
         mockedDataHolder.when(VPServiceDataHolder::getVPRequestService).thenReturn(vpRequestService);
 
-        mockedWalletCache = Mockito.mockStatic(WalletDataCache.class);
-        mockedWalletCache.when(WalletDataCache::getInstance).thenReturn(walletDataCache);
+        mockedWalletCache = Mockito.mockStatic(VPSubmissionCache.class);
+        mockedWalletCache.when(VPSubmissionCache::getInstance).thenReturn(vpSubmissionCache);
 
         // Mock input stream and output stream
         byte[] payload = "{\"vp_token\":\"test\",\"state\":\"req1\"}".getBytes(java.nio.charset.StandardCharsets.UTF_8);
@@ -92,16 +92,6 @@ public class VPSubmissionServletTest {
             return buffer.read();
         }
 
-        public boolean isFinished() {
-            return buffer.available() == 0;
-        }
-
-        public boolean isReady() {
-            return true;
-        }
-
-        public void setReadListener(javax.servlet.ReadListener readListener) {
-        }
     }
 
     @AfterMethod
@@ -125,11 +115,5 @@ public class VPSubmissionServletTest {
         public void write(int b) throws IOException {
         }
 
-        public boolean isReady() {
-            return true;
-        }
-
-        public void setWriteListener(javax.servlet.WriteListener writeListener) {
-        }
     }
 }

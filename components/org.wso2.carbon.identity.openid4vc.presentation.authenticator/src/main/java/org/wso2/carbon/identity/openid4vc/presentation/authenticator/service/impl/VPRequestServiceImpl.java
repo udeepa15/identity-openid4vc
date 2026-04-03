@@ -32,8 +32,6 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.carbon.identity.application.authentication.framework.config.model.AuthenticatorConfig;
-import org.wso2.carbon.identity.application.authentication.framework.config.model.StepConfig;
 import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
@@ -73,9 +71,6 @@ public class VPRequestServiceImpl implements VPRequestService {
 
     // Use property keys from Constraints
     private static final String PROP_PRESENTATION_DEFINITION_ID = Constraints.PROP_PRESENTATION_DEFINITION_ID;
-    private static final String PROP_RESPONSE_MODE = Constraints.PROP_RESPONSE_MODE;
-    private static final String PROP_CLIENT_ID = Constraints.PROP_CLIENT_ID;
-    private static final String AUTHENTICATOR_NAME = Constraints.AUTHENTICATOR_NAME;
     private static final long DEFAULT_EXPIRY_MS = 600000; // 10 minutes
 
     private final AtomicReference<VPRequestDAO> vpRequestDAORef;
@@ -202,9 +197,6 @@ public class VPRequestServiceImpl implements VPRequestService {
         getVPRequestDAO().createVPRequest(vpRequest);
 
         vpRequest.setRequestUri(buildRequestUri(getBaseUrl(), requestId));
-
-
-        vpRequest.setAuthorizationDetails(buildAuthorizationDetails(vpRequest, presentationDefinition));
 
         return vpRequest;
     }
@@ -388,39 +380,6 @@ public class VPRequestServiceImpl implements VPRequestService {
     }
 
     /**
-     * Validate the creation request.
-     */
-
-    /**
-     * Build authorization details for request-by-value response mode.
-     *
-     * @param vpRequest              The original VP request
-     * @param presentationDefinition The presentation definition JSON string
-     * @return The authorization details
-     */
-    private VPRequest.AuthorizationDetails buildAuthorizationDetails(
-            final VPRequest vpRequest, final String presentationDefinition) {
-        VPRequest.AuthorizationDetails details =
-                new VPRequest.AuthorizationDetails();
-        details.setClientId(vpRequest.getClientId());
-        details.setResponseType(
-                OpenID4VPConstants.Protocol.RESPONSE_TYPE_VP_TOKEN);
-        details.setResponseMode(vpRequest.getResponseMode());
-        details.setResponseUri(vpRequest.getResponseUri());
-        details.setNonce(vpRequest.getNonce());
-        details.setState(vpRequest.getRequestId());
-
-        // Convert String to JsonObject for the model
-        if (presentationDefinition != null) {
-            JsonObject pdJson = JsonParser.parseString(presentationDefinition)
-                    .getAsJsonObject();
-            details.setPresentationDefinition(pdJson);
-        }
-        return details;
-    }
-
-
-    /**
      * Build the request object as a JWT.
      * Note: In production, this should be properly signed with the verifier's
      * private key.
@@ -577,15 +536,7 @@ public class VPRequestServiceImpl implements VPRequestService {
      * @return A unique request identifier
      */
     private String generateRequestId() {
-        return UUID.randomUUID().toString();
-    }
 
-    /**
-     * Generate a unique transaction ID.
-     *
-     * @return A unique transaction identifier
-     */
-    private String generateTransactionId() {
         return UUID.randomUUID().toString();
     }
 
@@ -658,36 +609,5 @@ public class VPRequestServiceImpl implements VPRequestService {
      */
     private String getConfiguredBaseUrl() {
         return IdentityUtil.getServerURL("", true, true);
-    }
-
-    /**
-     * Extract the IDP name from the SequenceConfig StepMap.
-     *
-     * @param context Authentication context
-     * @return IDP name if found, null otherwise
-     */
-    private String resolveIdpNameFromSequenceConfig(
-            final AuthenticationContext context) {
-        if (context.getSequenceConfig() == null) {
-            return null;
-        }
-        Map<Integer, StepConfig> stepMap = context.getSequenceConfig()
-                .getStepMap();
-        if (stepMap == null) {
-            return null;
-        }
-        StepConfig stepConfig = stepMap.get(context.getCurrentStep());
-        if (stepConfig == null) {
-            return null;
-        }
-        for (AuthenticatorConfig authConfig : stepConfig
-                .getAuthenticatorList()) {
-            if (AUTHENTICATOR_NAME.equals(authConfig.getName())
-                    && authConfig.getIdpNames() != null
-                    && !authConfig.getIdpNames().isEmpty()) {
-                return authConfig.getIdpNames().get(0);
-            }
-        }
-        return null;
     }
 }

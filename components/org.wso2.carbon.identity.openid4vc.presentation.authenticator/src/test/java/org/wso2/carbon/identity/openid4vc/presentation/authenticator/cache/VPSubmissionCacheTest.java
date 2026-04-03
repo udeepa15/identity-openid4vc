@@ -6,7 +6,7 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPSub
 
 import static org.testng.Assert.assertNotNull;
 
-public class WalletDataCacheTest {
+public class VPSubmissionCacheTest {
 
     private VPSubmissionCache cache;
 

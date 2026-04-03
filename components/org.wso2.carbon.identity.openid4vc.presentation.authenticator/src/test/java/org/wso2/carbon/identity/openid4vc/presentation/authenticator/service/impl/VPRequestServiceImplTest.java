@@ -142,7 +142,6 @@ public class VPRequestServiceImplTest {
             assertNotNull(response);
             assertNotNull(response.getRequestId());
             assertEquals(response.getTransactionId(), TRANSACTION_ID);
-            assertNotNull(response.getAuthorizationDetails());
         }
     }
 

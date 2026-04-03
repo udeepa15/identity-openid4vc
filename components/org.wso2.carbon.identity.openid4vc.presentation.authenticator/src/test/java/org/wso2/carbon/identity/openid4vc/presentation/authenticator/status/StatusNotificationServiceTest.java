@@ -18,19 +18,16 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.status;
 
-import org.mockito.Mockito;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPSubmission;
 
 import java.lang.reflect.Field;
+import java.util.List;
 
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.testng.Assert.assertEquals;
 
 public class StatusNotificationServiceTest {
@@ -55,69 +52,44 @@ public class StatusNotificationServiceTest {
     public void testNotifyVPSubmitted() {
         StatusNotificationService.StatusChangeListener listener =
             mock(StatusNotificationService.StatusChangeListener.class);
-        statusNotificationService.registerStatusChangeListener(listener);
+        addStatusChangeListener(listener);
 
-        VPSubmission submission = new VPSubmission.Builder()
-                .requestId("req123")
-                .vpToken("token")
-                .build();
+        statusNotificationService.notifyVPSubmitted("req123");
 
-        statusNotificationService.notifyVPSubmitted("req123", submission);
-
-        verify(listener).onStatusChange("req123", VPRequestStatus.VP_SUBMITTED, submission);
+        verify(listener).onStatusChange("req123", VPRequestStatus.VP_SUBMITTED);
     }
 
     @Test
     public void testNotifySubmissionError() {
         StatusNotificationService.StatusChangeListener listener =
             mock(StatusNotificationService.StatusChangeListener.class);
-        statusNotificationService.registerStatusChangeListener(listener);
+        addStatusChangeListener(listener);
 
         statusNotificationService.notifySubmissionError("req123", "error_code", "description");
 
-        verify(listener).onStatusChange(Mockito.eq("req123"), Mockito.eq(VPRequestStatus.VP_SUBMITTED),
-            Mockito.argThat(submission -> "error_code".equals(submission.getError())
-                && "description".equals(submission.getErrorDescription())));
+        verify(listener).onStatusChange("req123", VPRequestStatus.VP_SUBMITTED);
     }
 
     @Test
-    public void testNotifyRequestExpired() {
-        StatusNotificationService.StatusChangeListener listener =
-            mock(StatusNotificationService.StatusChangeListener.class);
-        statusNotificationService.registerStatusChangeListener(listener);
-
-        statusNotificationService.notifyRequestExpired("req123");
-
-        verify(listener).onStatusChange("req123", VPRequestStatus.EXPIRED, null);
-    }
-
-    @Test
-    public void testNotifyVerificationComplete() {
-        StatusNotificationService.StatusChangeListener listener =
-            mock(StatusNotificationService.StatusChangeListener.class);
-        statusNotificationService.registerStatusChangeListener(listener);
-
-        VPSubmission submission = new VPSubmission();
-        statusNotificationService.notifyVerificationComplete("req123", submission);
-
-        verify(listener).onStatusChange("req123", VPRequestStatus.COMPLETED, submission);
-    }
-
-    @Test
-    public void testListeners() {
+    public void testGetStatusChangeListenerCount() {
         StatusNotificationService.StatusChangeListener listener =
                 mock(StatusNotificationService.StatusChangeListener.class);
-        statusNotificationService.registerStatusChangeListener(listener);
+        addStatusChangeListener(listener);
         assertEquals(statusNotificationService.getStatusChangeListenerCount(), 1);
-        
-        statusNotificationService.notifyRequestExpired("req123");
-        verify(listener).onStatusChange(anyString(), Mockito.eq(VPRequestStatus.EXPIRED),
-                Mockito.any());
+    }
 
-        statusNotificationService.unregisterStatusChangeListener(listener);
-        assertEquals(statusNotificationService.getStatusChangeListenerCount(), 0);
+    @SuppressWarnings("unchecked")
+    private void addStatusChangeListener(final StatusNotificationService.StatusChangeListener listener) {
 
-        statusNotificationService.notifyRequestExpired("req124");
-        verifyNoMoreInteractions(listener);
+        try {
+            Field listenersField = statusNotificationService.getClass().getDeclaredField("statusChangeListeners");
+            listenersField.setAccessible(true);
+            List<StatusNotificationService.StatusChangeListener> listeners =
+                    (List<StatusNotificationService.StatusChangeListener>) 
+                    listenersField.get(statusNotificationService);
+            listeners.add(listener);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException("Failed to add status change listener for test setup.", e);
+        }
     }
 }

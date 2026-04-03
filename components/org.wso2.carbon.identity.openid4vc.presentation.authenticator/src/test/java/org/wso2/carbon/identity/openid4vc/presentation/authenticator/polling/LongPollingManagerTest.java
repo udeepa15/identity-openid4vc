@@ -22,7 +22,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.WalletDataCache;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPSubmissionCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dao.VPRequestDAO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
@@ -43,7 +43,7 @@ public class LongPollingManagerTest {
     private VPRequestDAO vpRequestDAO;
 
     @Mock
-    private WalletDataCache walletDataCache;
+    private VPSubmissionCache vpSubmissionCache;
 
     @BeforeMethod
     public void setUp() throws Exception {
@@ -52,12 +52,12 @@ public class LongPollingManagerTest {
 
         // Use reflection to inject mocks into singleton
         setPrivateField(pollingManager, "vpRequestDAO", vpRequestDAO);
-        setPrivateField(pollingManager, "walletDataCache", walletDataCache);
+        setPrivateField(pollingManager, "vpSubmissionCache", vpSubmissionCache);
     }
 
     @Test
     public void testCheckCurrentStatusSubmittedInCache() {
-        when(walletDataCache.hasToken(anyString())).thenReturn(true);
+        when(vpSubmissionCache.hasSubmission(anyString())).thenReturn(true);
         PollingResult result = pollingManager.checkCurrentStatus("test-id", 1);
         
         assertNotNull(result);
@@ -67,8 +67,7 @@ public class LongPollingManagerTest {
 
     @Test
     public void testCheckCurrentStatusInDb() throws Exception {
-        when(walletDataCache.hasToken(anyString())).thenReturn(false);
-        when(walletDataCache.hasSubmission(anyString())).thenReturn(false);
+        when(vpSubmissionCache.hasSubmission(anyString())).thenReturn(false);
         
         VPRequest request = new VPRequest.Builder()
                 .status(VPRequestStatus.COMPLETED)
@@ -84,8 +83,7 @@ public class LongPollingManagerTest {
 
     @Test
     public void testCheckCurrentStatusExpired() throws Exception {
-        when(walletDataCache.hasToken(anyString())).thenReturn(false);
-        when(walletDataCache.hasSubmission(anyString())).thenReturn(false);
+        when(vpSubmissionCache.hasSubmission(anyString())).thenReturn(false);
         
         VPRequest request = new VPRequest.Builder()
                 .status(VPRequestStatus.ACTIVE)

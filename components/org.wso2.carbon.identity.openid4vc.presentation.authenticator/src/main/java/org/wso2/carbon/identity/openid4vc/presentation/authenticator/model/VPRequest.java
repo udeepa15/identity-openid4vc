@@ -291,14 +291,6 @@ public class VPRequest implements Serializable {
         this.signingAlgorithm = signingAlgorithm;
     }
 
-    public AuthorizationDetails getAuthorizationDetails() {
-        return authorizationDetails;
-    }
-
-    public void setAuthorizationDetails(AuthorizationDetails authorizationDetails) {
-        this.authorizationDetails = authorizationDetails;
-    }
-
     public String getRequestUri() {
         return requestUri;
     }

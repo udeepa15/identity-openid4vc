@@ -15,7 +15,7 @@ import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 import org.wso2.carbon.identity.application.common.model.IdentityProvider;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.WalletDataCache;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPSubmissionCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
@@ -65,13 +65,13 @@ public class OpenID4VPAuthenticatorTest {
     private PresentationDefinitionService presentationDefinitionService;
 
     @Mock
-    private WalletDataCache walletDataCache;
+    private VPSubmissionCache vpSubmissionCache;
 
     @Mock
     private VerificationService verificationService;
 
     private MockedStatic<VPServiceDataHolder> mockedVPServiceDataHolder;
-    private MockedStatic<WalletDataCache> mockedWalletDataCache;
+    private MockedStatic<VPSubmissionCache> mockedVPSubmissionCache;
     private MockedStatic<IdentityUtil> mockedIdentityUtil;
     private MockedStatic<QRCodeUtil> mockedQRCodeUtil;
     private MockedStatic<IdentityTenantUtil> mockedIdentityTenantUtil;
@@ -89,8 +89,8 @@ public class OpenID4VPAuthenticatorTest {
                 .thenReturn(presentationDefinitionService);
         mockedVPServiceDataHolder.when(VPServiceDataHolder::getVerificationService).thenReturn(verificationService);
 
-        mockedWalletDataCache = Mockito.mockStatic(WalletDataCache.class);
-        mockedWalletDataCache.when(WalletDataCache::getInstance).thenReturn(walletDataCache);
+        mockedVPSubmissionCache = Mockito.mockStatic(VPSubmissionCache.class);
+        mockedVPSubmissionCache.when(VPSubmissionCache::getInstance).thenReturn(vpSubmissionCache);
 
         mockedIdentityUtil = Mockito.mockStatic(IdentityUtil.class);
         mockedIdentityUtil.when(() -> IdentityUtil.getProperty("OpenID4VP.LoginPage"))
@@ -111,8 +111,8 @@ public class OpenID4VPAuthenticatorTest {
         if (mockedVPServiceDataHolder != null) {
             mockedVPServiceDataHolder.close();
         }
-        if (mockedWalletDataCache != null) {
-            mockedWalletDataCache.close();
+        if (mockedVPSubmissionCache != null) {
+            mockedVPSubmissionCache.close();
         }
         if (mockedIdentityUtil != null) {
             mockedIdentityUtil.close();
@@ -163,13 +163,19 @@ public class OpenID4VPAuthenticatorTest {
         when(context.getContextIdentifier()).thenReturn("dummy-txn-id");
         when(context.getTenantDomain()).thenReturn("carbon.super");
 
+        VPRequest.AuthorizationDetails authDetails = new VPRequest.AuthorizationDetails();
+        authDetails.setClientId("dummy-client");
+        authDetails.setResponseUri("http://example.com/response");
+        authDetails.setNonce("nonce-123");
+        authDetails.setState("state-123");
+
         VPRequest vpRequestResponse = new VPRequest.Builder()
                 .requestId("req-123")
+                .clientId("dummy-client")
                 .transactionId("dummy-txn-id")
                 .requestUri("urn:ietf:params:oauth:request_uri:req-123")
-                .authorizationDetails(new VPRequest.AuthorizationDetails())
+                .authorizationDetails(authDetails)
                 .build();
-        vpRequestResponse.getAuthorizationDetails().setClientId("dummy-client");
 
         when(vpRequestService.createVPRequest(any(AuthenticationContext.class))).thenReturn(vpRequestResponse);
         
@@ -231,7 +237,7 @@ public class OpenID4VPAuthenticatorTest {
         mockSubmission.setVpToken("dummy-vp-token");
 
         // mock authenticator's internal wallet data cache retrieval
-        when(walletDataCache.getSubmission("req-123")).thenReturn(mockSubmission);
+        when(vpSubmissionCache.getSubmission("req-123")).thenReturn(mockSubmission);
 
         VPRequest mockRequest = new VPRequest.Builder()
                 .requestId("req-123")
@@ -261,7 +267,7 @@ public class OpenID4VPAuthenticatorTest {
     public void testProcessAuthenticationResponseNoSubmission() throws Exception {
         when(request.getParameter("status")).thenReturn("success");
         when(context.getProperty("openid4vp_request_id")).thenReturn("req-123");
-        when(walletDataCache.getSubmission("req-123")).thenReturn(null);
+        when(vpSubmissionCache.getSubmission("req-123")).thenReturn(null);
         authenticator.process(request, response, context);
     }
 
@@ -276,7 +282,7 @@ public class OpenID4VPAuthenticatorTest {
         VPSubmission mockSubmission = new VPSubmission();
         mockSubmission.setPresentationSubmission("{\"descriptor_map\":[{\"format\":\"vc+sd-jwt\"}]}");
         mockSubmission.setVpToken("dummy-vp-token");
-        when(walletDataCache.getSubmission("req-123")).thenReturn(mockSubmission);
+        when(vpSubmissionCache.getSubmission("req-123")).thenReturn(mockSubmission);
 
         when(verificationService.verify(any(), anyInt(), anyString()))
                 .thenThrow(new org.wso2.carbon.identity.openid4vc.presentation.verification.exception
@@ -297,7 +303,7 @@ public class OpenID4VPAuthenticatorTest {
         VPSubmission mockSubmission = new VPSubmission();
         mockSubmission.setPresentationSubmission("{\"descriptor_map\":[{\"format\":\"vc+sd-jwt\"}]}");
         mockSubmission.setVpToken("dummy-vp-token");
-        when(walletDataCache.getSubmission("req-123")).thenReturn(mockSubmission);
+        when(vpSubmissionCache.getSubmission("req-123")).thenReturn(mockSubmission);
 
         Map<String, Object> verifiedClaims = new HashMap<>();
         // No "iss" or "issuer" claim
@@ -417,7 +423,7 @@ public class OpenID4VPAuthenticatorTest {
         VPSubmission mockSubmission = new VPSubmission();
         mockSubmission.setVpToken("token");
         mockSubmission.setPresentationSubmission("{\"descriptor_map\":[{\"format\":\"vc+sd-jwt\"}]}");
-        when(walletDataCache.getSubmission("req-123")).thenReturn(mockSubmission);
+        when(vpSubmissionCache.getSubmission("req-123")).thenReturn(mockSubmission);
         
         VerificationResult verificationResult = new VerificationResult();
         verificationResult.setStatus(VerificationResult.VerificationStatus.VERIFIED);
@@ -443,7 +449,7 @@ public class OpenID4VPAuthenticatorTest {
         VPSubmission mockSubmission = new VPSubmission();
         mockSubmission.setPresentationSubmission("{\"descriptor_map\":[{\"format\":\"vc+sd-jwt\"}]}");
         mockSubmission.setVpToken("token");
-        when(walletDataCache.getSubmission("req-123")).thenReturn(mockSubmission);
+        when(vpSubmissionCache.getSubmission("req-123")).thenReturn(mockSubmission);
 
         Map<String, Object> verifiedClaims = new HashMap<>();
         Map<String, Object> credentialSubject = new HashMap<>();
@@ -481,7 +487,7 @@ public class OpenID4VPAuthenticatorTest {
         VPSubmission mockSubmission = new VPSubmission();
         mockSubmission.setPresentationSubmission("{\"descriptor_map\":[{\"format\":\"vc+sd-jwt\"}]}");
         mockSubmission.setVpToken("token");
-        when(walletDataCache.getSubmission("req-123")).thenReturn(mockSubmission);
+        when(vpSubmissionCache.getSubmission("req-123")).thenReturn(mockSubmission);
 
         Map<String, Object> verifiedClaims = new HashMap<>();
         verifiedClaims.put("email", "test@example.com");
@@ -588,13 +594,19 @@ public class OpenID4VPAuthenticatorTest {
         when(context.getAuthenticatorProperties()).thenReturn(props);
         when(context.getContextIdentifier()).thenReturn("ctx1");
 
+        VPRequest.AuthorizationDetails authDetails2 = new VPRequest.AuthorizationDetails();
+        authDetails2.setClientId("client1");
+        authDetails2.setResponseUri("http://example.com/response");
+        authDetails2.setNonce("nonce-456");
+        authDetails2.setState("state-456");
+
         VPRequest responseDTO = new VPRequest.Builder()
                 .requestUri("http://example.com")
                 .requestId("req-123")
+                .clientId("client1")
                 .transactionId("txn-123")
-                .authorizationDetails(new VPRequest.AuthorizationDetails())
+                .authorizationDetails(authDetails2)
                 .build();
-        responseDTO.getAuthorizationDetails().setClientId("client1");
         when(vpRequestService.createVPRequest(any(AuthenticationContext.class))).thenReturn(responseDTO);
         
         authenticator.initiateAuthenticationRequest(request, response, context);

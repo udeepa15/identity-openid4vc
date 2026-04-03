@@ -18,7 +18,7 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling;
 
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.WalletDataCache;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPSubmissionCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dao.VPRequestDAO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
@@ -31,7 +31,7 @@ public class PollingManager {
 
     private static volatile PollingManager instance;
 
-    private WalletDataCache walletDataCache;
+    private VPSubmissionCache vpSubmissionCache;
     private VPRequestDAO vpRequestDAO;
 
     /**
@@ -39,7 +39,7 @@ public class PollingManager {
      */
     private PollingManager() {
 
-        this.walletDataCache = WalletDataCache.getInstance();
+        this.vpSubmissionCache = VPSubmissionCache.getInstance();
         this.vpRequestDAO = new VPRequestDAO();
 
     }
@@ -70,11 +70,7 @@ public class PollingManager {
      */
     public PollingResult checkCurrentStatus(final String requestId, final int tenantId) {
 
-        if (walletDataCache.hasToken(requestId)) {
-            return PollingResult.submitted(requestId, VPRequestStatus.VP_SUBMITTED.name());
-        }
-
-        if (walletDataCache.hasSubmission(requestId)) {
+        if (vpSubmissionCache.hasSubmission(requestId)) {
             return PollingResult.submitted(requestId, VPRequestStatus.VP_SUBMITTED.name());
         }
 
