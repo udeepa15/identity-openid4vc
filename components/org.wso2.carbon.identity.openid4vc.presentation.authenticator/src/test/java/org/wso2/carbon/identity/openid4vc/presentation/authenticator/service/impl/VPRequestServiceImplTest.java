@@ -58,7 +58,7 @@ public class VPRequestServiceImplTest {
     @Mock
     private DIDProvider didProvider;
 
-    private VPRequestServiceImpl vpRequestService;
+        private VPRequestServiceImpl vpRequestService;
     private MockedStatic<IdentityUtil> identityUtilMockedStatic;
     private MockedStatic<IdentityTenantUtil> identityTenantUtilMockedStatic;
 
@@ -66,9 +66,7 @@ public class VPRequestServiceImplTest {
     private static final String REQUEST_ID = "req-123";
     private static final String TRANSACTION_ID = "txn-123";
     private static final String CLIENT_ID = "client-123";
-    private static final String DEFINITION_ID = "def-123";
-    private static final String DEFINITION_JSON = "{\"id\":\"def-123\",\"input_descriptors\":[{\"id\":\"desc-1\","
-            + "\"constraints\":{\"fields\":[{\"path\":[\"$.credentialSubject.email\"]}]}}]}";
+        private static final String DEFINITION_ID = "def-123";
 
     @BeforeMethod
     public void setUp() {
@@ -82,7 +80,7 @@ public class VPRequestServiceImplTest {
         identityTenantUtilMockedStatic = Mockito.mockStatic(IdentityTenantUtil.class);
         identityTenantUtilMockedStatic.when(() -> IdentityTenantUtil.getTenantId(anyString())).thenReturn(TENANT_ID);
 
-        vpRequestService = new VPRequestServiceImpl(vpRequestDAO, presentationDefinitionService, 
+        vpRequestService = new VPRequestServiceImpl(vpRequestDAO, presentationDefinitionService,
                 "http://localhost:8080");
 
         // Inject Mock PresentationDefinitionService into DataHolder
@@ -211,26 +209,6 @@ public class VPRequestServiceImplTest {
         vpRequestService.updateVPRequestStatus(REQUEST_ID, VPRequestStatus.VP_SUBMITTED, TENANT_ID);
 
         verify(vpRequestDAO, times(1)).updateVPRequestStatus(REQUEST_ID, VPRequestStatus.VP_SUBMITTED, TENANT_ID);
-    }
-
-    @Test
-    public void testCreateVPRequestWithRequestedCredentials() throws Exception {
-        // PD with requested_credentials instead of input_descriptors
-        String pdWithReqCreds = "{\"id\":\"test-pd\",\"requested_credentials\":[{\"type\":"
-                + "\"VerifiedEmployee\",\"purpose\":\"Verify employment\",\"requested_claims\":"
-                + "[\"given_name\"]}]}";
-        
-        AuthenticationContext context = mockContext(CLIENT_ID, null);
-        // Inline PD resolution currently isn't supported via context properties directly in this test helper
-        // but we can inject it if we update the helper.
-        // Actually, the context method doesn't support inline PD yet, it just resolves ID.
-        // Wait, I should check if context method supports inline PD.
-        // Looking at VPRequestServiceImpl.java:
-        // String presentationDefinition = resolvePresentationDefinition(presentationDefinitionId, null, tenantId);
-        // It passes null for inlineDefinition.
-        
-        // This test might need adjustment or we might decide that context-based creation 
-        // ONLY supports resolved definition IDs for now, which is the standard flow.
     }
 
     @Test

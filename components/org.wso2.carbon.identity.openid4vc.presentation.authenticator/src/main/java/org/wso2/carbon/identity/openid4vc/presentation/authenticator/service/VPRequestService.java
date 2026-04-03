@@ -25,97 +25,89 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPReq
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 
 /**
- * Service interface for managing VP requests.
- * Handles creation, retrieval, and status management of authorization requests.
+ * Base service contract for managing VP requests.
  */
-public interface VPRequestService {
+public abstract class VPRequestService {
 
     /**
      * Create a new VP authorization request for the authentication session.
      *
-     * @param context The authentication context
-     * @return VPRequest containing the created request details
-     * @throws VPAuthenticatorException If an error occurs during request
-     *                                  creation
+     * @param context The authentication context.
+     * @return VPRequest containing the created request details.
+     * @throws VPAuthenticatorException If an error occurs during request creation.
      */
-    VPRequest createVPRequest(AuthenticationContext context)
+    public abstract VPRequest createVPRequest(AuthenticationContext context)
             throws VPAuthenticatorException;
 
     /**
      * Get a VP request by its request ID.
      *
-     * @param requestId The unique request identifier
-     * @param tenantId  The tenant ID
-     * @return The VP request
-     * @throws VPAuthenticatorClientException If the request is not found
-     * @throws VPAuthenticatorException       If an error occurs
+     * @param requestId The unique request identifier.
+     * @param tenantId The tenant ID.
+     * @return The VP request.
+     * @throws VPAuthenticatorClientException If the request is not found.
+     * @throws VPAuthenticatorException If an error occurs.
      */
-    VPRequest getVPRequestById(String requestId, int tenantId)
-             throws VPAuthenticatorClientException, VPAuthenticatorException;
+    public abstract VPRequest getVPRequestById(String requestId, int tenantId)
+            throws VPAuthenticatorClientException, VPAuthenticatorException;
 
     /**
      * Get a VP request by its transaction ID.
      *
-     * @param transactionId The transaction identifier
-     * @param tenantId      The tenant ID
-     * @return The VP request
-     * @throws VPAuthenticatorClientException If the request is not found
-     * @throws VPAuthenticatorException       If an error occurs
+     * @param transactionId The transaction identifier.
+     * @param tenantId The tenant ID.
+     * @return The VP request.
+     * @throws VPAuthenticatorClientException If the request is not found.
+     * @throws VPAuthenticatorException If an error occurs.
      */
-    VPRequest getVPRequestByTransactionId(String transactionId, int tenantId)
-             throws VPAuthenticatorClientException, VPAuthenticatorException;
+    public abstract VPRequest getVPRequestByTransactionId(String transactionId, int tenantId)
+            throws VPAuthenticatorClientException, VPAuthenticatorException;
 
     /**
      * Get the current status of a VP request.
      *
-     * @param transactionId The transaction identifier
-     * @param tenantId      The tenant ID
-     * @return VPRequest containing the status
-     * @throws VPAuthenticatorClientException If the request is not found
-     * @throws VPAuthenticatorException       If an error occurs
+     * @param transactionId The transaction identifier.
+     * @param tenantId The tenant ID.
+     * @return VPRequest containing the status.
+     * @throws VPAuthenticatorClientException If the request is not found.
+     * @throws VPAuthenticatorException If an error occurs.
      */
-    VPRequest getVPRequestStatus(String transactionId, int tenantId)
-             throws VPAuthenticatorClientException, VPAuthenticatorException;
+    public abstract VPRequest getVPRequestStatus(String transactionId, int tenantId)
+            throws VPAuthenticatorClientException, VPAuthenticatorException;
 
     /**
      * Update the status of a VP request.
      *
-     * @param requestId The request identifier
-     * @param status    The new status
-     * @param tenantId  The tenant ID
-     * @throws VPAuthenticatorClientException If the request is not found
-     *                                        or has expired.
-     * @throws VPAuthenticatorException       If an error occurs
+     * @param requestId The request identifier.
+     * @param status The new status.
+     * @param tenantId The tenant ID.
+     * @throws VPAuthenticatorClientException If the request is not found or has expired.
+     * @throws VPAuthenticatorException If an error occurs.
      */
-    void updateVPRequestStatus(String requestId, VPRequestStatus status,
-                               int tenantId)
-             throws VPAuthenticatorClientException,
-            VPAuthenticatorException;
+    public abstract void updateVPRequestStatus(String requestId, VPRequestStatus status,
+            int tenantId) throws VPAuthenticatorClientException, VPAuthenticatorException;
 
     /**
      * Get the request URI for a VP request (for request_uri flow).
      *
-     * @param requestId The request identifier
-     * @param tenantId  The tenant ID
-     * @return The request URI
-     * @throws VPAuthenticatorClientException If the request is not found
-     * @throws VPAuthenticatorException       If an error occurs
+     * @param requestId The request identifier.
+     * @param tenantId The tenant ID.
+     * @return The request URI.
+     * @throws VPAuthenticatorClientException If the request is not found.
+     * @throws VPAuthenticatorException If an error occurs.
      */
-    String getRequestUri(String requestId, int tenantId)
-             throws VPAuthenticatorClientException, VPAuthenticatorException;
+    public abstract String getRequestUri(String requestId, int tenantId)
+            throws VPAuthenticatorClientException, VPAuthenticatorException;
 
     /**
      * Get the signed JWT for a VP request.
      *
-     * @param requestId The request identifier
-     * @param tenantId  The tenant ID
-     * @return The signed request JWT
-     * @throws VPAuthenticatorClientException If the request is not found
-     *                                        or has expired.
-     * @throws VPAuthenticatorException       If an error occurs.
+     * @param requestId The request identifier.
+     * @param tenantId The tenant ID.
+     * @return The signed request JWT.
+     * @throws VPAuthenticatorClientException If the request is not found or has expired.
+     * @throws VPAuthenticatorException If an error occurs.
      */
-    String getRequestJwt(String requestId, int tenantId)
-             throws VPAuthenticatorClientException,
-            VPAuthenticatorException;
-
+    public abstract String getRequestJwt(String requestId, int tenantId)
+            throws VPAuthenticatorClientException, VPAuthenticatorException;
 }

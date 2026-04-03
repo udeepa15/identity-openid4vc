@@ -30,8 +30,6 @@ import com.nimbusds.jose.JWSSigner;
 import com.nimbusds.jose.Payload;
 import com.nimbusds.jwt.JWTClaimsSet;
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
@@ -65,9 +63,7 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * Implementation of VPRequestService for managing VP authorization requests.
  */
-public class VPRequestServiceImpl implements VPRequestService {
-
-    private static final Log log = LogFactory.getLog(VPRequestServiceImpl.class);
+public class VPRequestServiceImpl extends VPRequestService {
 
     // Use property keys from Constraints
     private static final String PROP_PRESENTATION_DEFINITION_ID = Constraints.PROP_PRESENTATION_DEFINITION_ID;
