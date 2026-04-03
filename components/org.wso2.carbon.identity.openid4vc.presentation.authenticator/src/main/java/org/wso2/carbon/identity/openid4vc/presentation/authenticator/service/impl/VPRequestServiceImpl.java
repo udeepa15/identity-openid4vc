@@ -38,7 +38,6 @@ import org.wso2.carbon.identity.application.authentication.framework.context.Aut
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dao.VPRequestDAO;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dao.impl.VPRequestDAOImpl;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorClientException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorErrorCode;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
@@ -89,7 +88,7 @@ public class VPRequestServiceImpl implements VPRequestService {
      * where IdentityUtil may not have loaded identity.xml yet.
      */
     public VPRequestServiceImpl() {
-        this.vpRequestDAORef = new AtomicReference<>(new VPRequestDAOImpl());
+        this.vpRequestDAORef = new AtomicReference<>(new VPRequestDAO());
         this.presentationDefinitionServiceRef =
                 new AtomicReference<>(VPServiceDataHolder.getPresentationDefinitionService());
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, WSO2 LLC. (http://www.wso2.com).
+ * Copyright (c) 2025-2026, WSO2 LLC. (http://www.wso2.com).
  *
  * WSO2 LLC. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -18,110 +18,206 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.dao;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPRequestCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Data Access Object interface for VP Request operations.
+ * Data Access Object for VP request operations.
  */
-public interface VPRequestDAO {
+public class VPRequestDAO {
+
+    private static final Log log = LogFactory.getLog(VPRequestDAO.class);
+    private final VPRequestCache vpRequestCache;
+
+    /**
+     * Create DAO instance.
+     */
+    public VPRequestDAO() {
+
+        this.vpRequestCache = VPRequestCache.getInstance();
+    }
 
     /**
      * Create a new VP request.
      *
-     * @param vpRequest VP request to create
-     * @throws VPAuthenticatorException if creation fails
+     * @param vpRequest VP request to create.
+     * @throws VPAuthenticatorException If creation fails.
      */
-    void createVPRequest(VPRequest vpRequest) throws VPAuthenticatorException;
+    public void createVPRequest(VPRequest vpRequest) throws VPAuthenticatorException {
+
+        vpRequestCache.put(vpRequest);
+    }
 
     /**
      * Get VP request by request ID.
      *
-     * @param requestId Request ID
-     * @param tenantId  Tenant ID
-     * @return VP request or null if not found
-     * @throws VPAuthenticatorException if retrieval fails
+     * @param requestId Request ID.
+     * @param tenantId  Tenant ID.
+     * @return VP request or null if not found.
+     * @throws VPAuthenticatorException If retrieval fails.
      */
-    VPRequest getVPRequestById(String requestId, int tenantId) throws VPAuthenticatorException;
+    public VPRequest getVPRequestById(String requestId, int tenantId) throws VPAuthenticatorException {
+
+        VPRequest request = vpRequestCache.getByRequestId(requestId);
+        if (request != null && request.getTenantId() != tenantId) {
+            if (log.isDebugEnabled()) {
+                log.debug(String.format("Cross-tenant access detected. Requested tenant: %d, " +
+                                "Actual tenant: %d for request ID: %s",
+                        tenantId, request.getTenantId(), sanitizeForLog(requestId)));
+            }
+            return null;
+        }
+        return request;
+    }
 
     /**
      * Get VP request by transaction ID.
      *
-     * @param transactionId Transaction ID
-     * @param tenantId      Tenant ID
-     * @return VP request or null if not found
-     * @throws VPAuthenticatorException if retrieval fails
+     * @param transactionId Transaction ID.
+     * @param tenantId      Tenant ID.
+     * @return VP request or null if not found.
+     * @throws VPAuthenticatorException If retrieval fails.
      */
-    VPRequest getVPRequestByTransactionId(String transactionId, int tenantId) throws VPAuthenticatorException;
+    public VPRequest getVPRequestByTransactionId(String transactionId, int tenantId) throws VPAuthenticatorException {
+
+        VPRequest request = vpRequestCache.getByTransactionId(transactionId);
+        if (request != null && request.getTenantId() != tenantId) {
+            if (log.isDebugEnabled()) {
+                log.debug(String.format("Cross-tenant access detected. Requested tenant: %d, " +
+                                "Actual tenant: %d for transaction ID: %s",
+                        tenantId, request.getTenantId(), sanitizeForLog(transactionId)));
+            }
+            return null;
+        }
+        return request;
+    }
 
     /**
      * Get all request IDs for a transaction.
      *
-     * @param transactionId Transaction ID
-     * @param tenantId      Tenant ID
-     * @return List of request IDs
-     * @throws VPAuthenticatorException if retrieval fails
+     * @param transactionId Transaction ID.
+     * @param tenantId      Tenant ID.
+     * @return List of request IDs.
+     * @throws VPAuthenticatorException If retrieval fails.
      */
-    List<String> getRequestIdsByTransactionId(String transactionId, int tenantId) throws VPAuthenticatorException;
+    public List<String> getRequestIdsByTransactionId(String transactionId, int tenantId)
+            throws VPAuthenticatorException {
+
+        List<String> requestIds = new ArrayList<>();
+        VPRequest request = getVPRequestByTransactionId(transactionId, tenantId);
+        if (request != null) {
+            requestIds.add(request.getRequestId());
+        }
+        return requestIds;
+    }
 
     /**
      * Update VP request status.
      *
-     * @param requestId Request ID
-     * @param status    New status
-     * @param tenantId  Tenant ID
-     * @throws VPAuthenticatorException if update fails
+     * @param requestId Request ID.
+     * @param status    New status.
+     * @param tenantId  Tenant ID.
+     * @throws VPAuthenticatorException If update fails.
      */
-    void updateVPRequestStatus(String requestId, VPRequestStatus status, int tenantId) 
-            throws VPAuthenticatorException;
+    public void updateVPRequestStatus(String requestId, VPRequestStatus status, int tenantId)
+            throws VPAuthenticatorException {
+
+        VPRequest request = getVPRequestById(requestId, tenantId);
+        if (request != null) {
+            request.setStatus(status);
+            vpRequestCache.put(request);
+        }
+    }
 
     /**
      * Update VP request with JWT.
      *
-     * @param requestId  Request ID
-     * @param requestJwt JWT string
-     * @param tenantId   Tenant ID
-     * @throws VPAuthenticatorException if update fails
+     * @param requestId  Request ID.
+     * @param requestJwt JWT string.
+     * @param tenantId   Tenant ID.
+     * @throws VPAuthenticatorException If update fails.
      */
-    void updateVPRequestJwt(String requestId, String requestJwt, int tenantId) throws VPAuthenticatorException;
+    public void updateVPRequestJwt(String requestId, String requestJwt, int tenantId)
+            throws VPAuthenticatorException {
+
+        VPRequest request = getVPRequestById(requestId, tenantId);
+        if (request != null) {
+            request.setRequestJwt(requestJwt);
+            vpRequestCache.put(request);
+        }
+    }
 
     /**
      * Delete VP request.
      *
-     * @param requestId Request ID
-     * @param tenantId  Tenant ID
-     * @throws VPAuthenticatorException if deletion fails
+     * @param requestId Request ID.
+     * @param tenantId  Tenant ID.
+     * @throws VPAuthenticatorException If deletion fails.
      */
-    void deleteVPRequest(String requestId, int tenantId) throws VPAuthenticatorException;
+    public void deleteVPRequest(String requestId, int tenantId) throws VPAuthenticatorException {
+
+        VPRequest request = getVPRequestById(requestId, tenantId);
+        if (request != null) {
+            vpRequestCache.remove(requestId);
+        }
+    }
 
     /**
      * Get expired VP requests.
      *
-     * @param tenantId Tenant ID
-     * @return List of expired VP requests
-     * @throws VPAuthenticatorException if retrieval fails
+     * @param tenantId Tenant ID.
+     * @return List of expired VP requests.
+     * @throws VPAuthenticatorException If retrieval fails.
      */
-    List<VPRequest> getExpiredVPRequests(int tenantId) throws VPAuthenticatorException;
+    public List<VPRequest> getExpiredVPRequests(int tenantId) throws VPAuthenticatorException {
+
+        return new ArrayList<>();
+    }
 
     /**
      * Update status of expired requests to EXPIRED.
      *
-     * @param tenantId Tenant ID
-     * @return Number of requests updated
-     * @throws VPAuthenticatorException if update fails
+     * @param tenantId Tenant ID.
+     * @return Number of requests updated.
+     * @throws VPAuthenticatorException If update fails.
      */
-    int markExpiredRequests(int tenantId) throws VPAuthenticatorException;
+    public int markExpiredRequests(int tenantId) throws VPAuthenticatorException {
+
+        return 0;
+    }
 
     /**
      * Get VP requests by status.
      *
-     * @param status   Status to filter by
-     * @param tenantId Tenant ID
-     * @return List of VP requests with the given status
-     * @throws VPAuthenticatorException if retrieval fails
+     * @param status   Status to filter by.
+     * @param tenantId Tenant ID.
+     * @return List of VP requests with the given status.
+     * @throws VPAuthenticatorException If retrieval fails.
      */
-    List<VPRequest> getVPRequestsByStatus(VPRequestStatus status, int tenantId) throws VPAuthenticatorException;
+    public List<VPRequest> getVPRequestsByStatus(VPRequestStatus status, int tenantId)
+            throws VPAuthenticatorException {
+
+        return new ArrayList<>();
+    }
+
+    /**
+     * Sanitize values for logging to prevent CRLF injection.
+     *
+     * @param value Value to sanitize.
+     * @return Sanitized string.
+     */
+    private String sanitizeForLog(Object value) {
+
+        if (value == null) {
+            return "null";
+        }
+        return value.toString().replaceAll("[\r\n]", "_");
+    }
 }

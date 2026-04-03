@@ -58,24 +58,6 @@ public enum VPRequestStatus {
         return value;
     }
 
-    /**
-     * Get VPRequestStatus from string value.
-     *
-     * @param value String value of the status
-     * @return VPRequestStatus enum or null if not found
-     */
-    public static VPRequestStatus fromValue(String value) {
-        if (value == null) {
-            return null;
-        }
-        for (VPRequestStatus status : VPRequestStatus.values()) {
-            if (status.value.equalsIgnoreCase(value)) {
-                return status;
-            }
-        }
-        return null;
-    }
-
     @Override
     public String toString() {
         return value;

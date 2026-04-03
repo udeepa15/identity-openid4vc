@@ -20,7 +20,6 @@ package org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling;
 
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.WalletDataCache;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dao.VPRequestDAO;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dao.impl.VPRequestDAOImpl;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
@@ -41,7 +40,7 @@ public class PollingManager {
     private PollingManager() {
 
         this.walletDataCache = WalletDataCache.getInstance();
-        this.vpRequestDAO = new VPRequestDAOImpl();
+        this.vpRequestDAO = new VPRequestDAO();
 
     }
 
