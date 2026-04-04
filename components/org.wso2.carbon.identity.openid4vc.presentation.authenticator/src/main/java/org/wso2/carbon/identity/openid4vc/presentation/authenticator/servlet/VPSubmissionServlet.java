@@ -27,7 +27,9 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.osgi.service.component.annotations.Component;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPSubmissionCache;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPSubmissionCacheByRequestId;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPSubmissionCacheEntry;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPSubmissionRequestIdCacheKey;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorClientException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorErrorCode;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
@@ -57,7 +59,7 @@ import javax.servlet.http.HttpServletResponse;
     service = Servlet.class,
     immediate = true,
     property = {
-        "osgi.http.whiteboard.servlet.pattern=/openid4vp/v1/response",
+        "osgi.http.whiteboard.servlet.pattern=/oid4vp/v1/response",
         "osgi.http.whiteboard.servlet.name=OpenID4VPSubmission",
         "osgi.http.whiteboard.servlet.asyncSupported=true"
     }
@@ -76,14 +78,14 @@ public class VPSubmissionServlet extends HttpServlet {
     private static final int MAX_PARAM_LENGTH = 65536;
 
     private transient StatusNotificationService statusNotificationService;
-    private transient VPSubmissionCache vpSubmissionCache;
+    private transient VPSubmissionCacheByRequestId vpSubmissionCache;
 
     @Override
     public void init() throws ServletException {
         super.init();
         this.statusNotificationService =
                 StatusNotificationService.getInstance();
-        this.vpSubmissionCache = VPSubmissionCache.getInstance();
+        this.vpSubmissionCache = VPSubmissionCacheByRequestId.getInstance();
     }
 
     @Override
@@ -307,7 +309,8 @@ public class VPSubmissionServlet extends HttpServlet {
 
         // Store submission in wallet data cache for status checks
         if (vpSubmissionCache != null) {
-            vpSubmissionCache.storeSubmission(requestId, submission);
+            vpSubmissionCache.addToCache(new VPSubmissionRequestIdCacheKey(requestId), 
+                    new VPSubmissionCacheEntry(submission), submission.getTenantId());
         } else {
             LOG.warn("VPSubmissionCache is null; submission will not be persisted.");
         }

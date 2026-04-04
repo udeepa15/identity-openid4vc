@@ -49,16 +49,16 @@ import javax.servlet.http.HttpServletResponse;
  * operations.
  * 
  * Endpoints:
- * - GET /api/identity/openid4vp/v1/vp-request/{requestId} - Get authorization
+ * - GET /api/identity/oid4vp/v1/vp-request/{requestId} - Get authorization
  * request JWT
- * - GET /api/identity/openid4vp/v1/vp-request/{requestId}/status - Get request
+ * - GET /api/identity/oid4vp/v1/vp-request/{requestId}/status - Get request
  * status (with polling)
  */
 @Component(
     service = Servlet.class,
     immediate = true,
     property = {
-        "osgi.http.whiteboard.servlet.pattern=/openid4vp/v1/vp-request/*",//ToDo:oid4vp
+        "osgi.http.whiteboard.servlet.pattern=/oid4vp/v1/vp-request/*",
         "osgi.http.whiteboard.servlet.name=OpenID4VPRequest",
         "osgi.http.whiteboard.servlet.asyncSupported=true"
     }

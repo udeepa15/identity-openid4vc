@@ -25,13 +25,19 @@ import org.mockito.MockitoAnnotations;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPRequestCache;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPRequestCacheById;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPRequestCacheByTransactionId;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPRequestCacheEntry;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPRequestIdCacheKey;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPRequestTransactionIdCacheKey;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dao.VPRequestDAO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.testng.Assert.assertEquals;
@@ -44,35 +50,49 @@ public class VPRequestDAOImplTest {
     private VPRequestDAO vpRequestDAO;
 
     @Mock
-    private VPRequestCache vpRequestCache;
+    private VPRequestCacheById vpRequestCacheById;
+    @Mock
+    private VPRequestCacheByTransactionId vpRequestCacheByTransactionId;
 
-    private MockedStatic<VPRequestCache> mockedCache;
+    private MockedStatic<VPRequestCacheById> mockedCacheById;
+    private MockedStatic<VPRequestCacheByTransactionId> mockedCacheByTransactionId;
 
     @BeforeMethod
     public void setUp() {
+        System.setProperty("carbon.home", ".");
         MockitoAnnotations.openMocks(this);
-        mockedCache = Mockito.mockStatic(VPRequestCache.class);
-        mockedCache.when(VPRequestCache::getInstance).thenReturn(vpRequestCache);
+        mockedCacheById = Mockito.mockStatic(VPRequestCacheById.class);
+        mockedCacheById.when(VPRequestCacheById::getInstance).thenReturn(vpRequestCacheById);
+        mockedCacheByTransactionId = Mockito.mockStatic(VPRequestCacheByTransactionId.class);
+        mockedCacheByTransactionId.when(VPRequestCacheByTransactionId::getInstance)
+                .thenReturn(vpRequestCacheByTransactionId);
         vpRequestDAO = new VPRequestDAO();
     }
 
     @AfterMethod
     public void tearDown() {
-        mockedCache.close();
+        if (mockedCacheById != null) {
+            mockedCacheById.close();
+        }
+        if (mockedCacheByTransactionId != null) {
+            mockedCacheByTransactionId.close();
+        }
     }
 
     @Test
     public void testCreateVPRequest() throws Exception {
-        VPRequest request = new VPRequest.Builder().requestId("req1").build();
+        VPRequest request = new VPRequest.Builder().requestId("req1").transactionId("tx1").build();
         vpRequestDAO.createVPRequest(request);
-        verify(vpRequestCache).put(request);
+        verify(vpRequestCacheById).addToCache(any(VPRequestIdCacheKey.class), 
+                any(VPRequestCacheEntry.class), anyInt());
     }
 
     @Test
     public void testGetVPRequestById() throws Exception {
         VPRequest request = new VPRequest.Builder().requestId("req1").tenantId(-1234)
                 .build();
-        when(vpRequestCache.getByRequestId("req1")).thenReturn(request);
+        when(vpRequestCacheById.getValueFromCache(any(VPRequestIdCacheKey.class), 
+                anyInt())).thenReturn(new VPRequestCacheEntry(request));
 
         VPRequest result = vpRequestDAO.getVPRequestById("req1", -1234);
         assertNotNull(result);
@@ -87,7 +107,8 @@ public class VPRequestDAOImplTest {
     public void testGetVPRequestByTransactionId() throws Exception {
         VPRequest request = new VPRequest.Builder().requestId("req1").transactionId("tx1")
                 .tenantId(-1234).build();
-        when(vpRequestCache.getByTransactionId("tx1")).thenReturn(request);
+        when(vpRequestCacheByTransactionId.getValueFromCache(any(VPRequestTransactionIdCacheKey.class), 
+                anyInt())).thenReturn(new VPRequestCacheEntry(request));
 
         VPRequest result = vpRequestDAO.getVPRequestByTransactionId("tx1", -1234);
         assertNotNull(result);
@@ -102,7 +123,8 @@ public class VPRequestDAOImplTest {
     public void testGetRequestIdsByTransactionId() throws Exception {
         VPRequest request = new VPRequest.Builder().requestId("req1").transactionId("tx1")
                 .tenantId(-1234).build();
-        when(vpRequestCache.getByTransactionId("tx1")).thenReturn(request);
+        when(vpRequestCacheByTransactionId.getValueFromCache(any(VPRequestTransactionIdCacheKey.class), 
+                anyInt())).thenReturn(new VPRequestCacheEntry(request));
 
         List<String> ids = vpRequestDAO.getRequestIdsByTransactionId("tx1", -1234);
         assertEquals(ids.size(), 1);
@@ -113,32 +135,34 @@ public class VPRequestDAOImplTest {
     public void testUpdateVPRequestStatus() throws Exception {
         VPRequest request = new VPRequest.Builder().requestId("req1").tenantId(-1234)
                 .status(VPRequestStatus.ACTIVE).build();
-        when(vpRequestCache.getByRequestId("req1")).thenReturn(request);
+        when(vpRequestCacheById.getValueFromCache(any(VPRequestIdCacheKey.class), 
+                anyInt())).thenReturn(new VPRequestCacheEntry(request));
 
         vpRequestDAO.updateVPRequestStatus("req1", VPRequestStatus.COMPLETED, -1234);
         assertEquals(request.getStatus(), VPRequestStatus.COMPLETED);
-        verify(vpRequestCache).put(request);
     }
 
     @Test
     public void testUpdateVPRequestJwt() throws Exception {
         VPRequest request = new VPRequest.Builder().requestId("req1").tenantId(-1234)
                 .build();
-        when(vpRequestCache.getByRequestId("req1")).thenReturn(request);
+        when(vpRequestCacheById.getValueFromCache(any(VPRequestIdCacheKey.class), 
+                anyInt())).thenReturn(new VPRequestCacheEntry(request));
 
         vpRequestDAO.updateVPRequestJwt("req1", "new-jwt", -1234);
         assertEquals(request.getRequestJwt(), "new-jwt");
-        verify(vpRequestCache).put(request);
     }
 
     @Test
     public void testDeleteVPRequest() throws Exception {
         VPRequest request = new VPRequest.Builder().requestId("req1").tenantId(-1234)
                 .build();
-        when(vpRequestCache.getByRequestId("req1")).thenReturn(request);
+        when(vpRequestCacheById.getValueFromCache(any(VPRequestIdCacheKey.class), 
+                anyInt())).thenReturn(new VPRequestCacheEntry(request));
 
         vpRequestDAO.deleteVPRequest("req1", -1234);
-        verify(vpRequestCache).remove("req1");
+        verify(vpRequestCacheById).clearCacheEntry(any(VPRequestIdCacheKey.class), 
+                anyInt());
     }
 
     @Test

@@ -26,7 +26,7 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPSubmissionCache;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPSubmissionCacheByRequestId;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.impl.VPRequestServiceImpl;
@@ -53,10 +53,10 @@ public class VPSubmissionServletTest {
     private VPRequestServiceImpl vpRequestService;
 
     @Mock
-    private VPSubmissionCache vpSubmissionCache;
+    private VPSubmissionCacheByRequestId vpSubmissionCache;
 
     private MockedStatic<VPServiceDataHolder> mockedDataHolder;
-    private MockedStatic<VPSubmissionCache> mockedWalletCache;
+    private MockedStatic<VPSubmissionCacheByRequestId> mockedWalletCache;
     private MockedStatic<IdentityTenantUtil> mockedIdentityTenantUtil;
 
     @BeforeMethod
@@ -71,8 +71,8 @@ public class VPSubmissionServletTest {
         mockedDataHolder = Mockito.mockStatic(VPServiceDataHolder.class);
         mockedDataHolder.when(VPServiceDataHolder::getVPRequestService).thenReturn(vpRequestService);
 
-        mockedWalletCache = Mockito.mockStatic(VPSubmissionCache.class);
-        mockedWalletCache.when(VPSubmissionCache::getInstance).thenReturn(vpSubmissionCache);
+        mockedWalletCache = Mockito.mockStatic(VPSubmissionCacheByRequestId.class);
+        mockedWalletCache.when(VPSubmissionCacheByRequestId::getInstance).thenReturn(vpSubmissionCache);
 
         // Mock input stream and output stream
         byte[] payload = "{\"vp_token\":\"test\",\"state\":\"req1\"}".getBytes(java.nio.charset.StandardCharsets.UTF_8);

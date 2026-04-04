@@ -15,7 +15,9 @@ import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 import org.wso2.carbon.identity.application.common.model.IdentityProvider;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPSubmissionCache;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPSubmissionCacheByRequestId;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPSubmissionCacheEntry;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPSubmissionRequestIdCacheKey;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
@@ -65,13 +67,13 @@ public class OpenID4VPAuthenticatorTest {
     private PresentationDefinitionService presentationDefinitionService;
 
     @Mock
-    private VPSubmissionCache vpSubmissionCache;
+    private VPSubmissionCacheByRequestId vpSubmissionCache;
 
     @Mock
     private VerificationService verificationService;
 
     private MockedStatic<VPServiceDataHolder> mockedVPServiceDataHolder;
-    private MockedStatic<VPSubmissionCache> mockedVPSubmissionCache;
+    private MockedStatic<VPSubmissionCacheByRequestId> mockedVPSubmissionCache;
     private MockedStatic<IdentityUtil> mockedIdentityUtil;
     private MockedStatic<QRCodeUtil> mockedQRCodeUtil;
     private MockedStatic<IdentityTenantUtil> mockedIdentityTenantUtil;
@@ -89,8 +91,8 @@ public class OpenID4VPAuthenticatorTest {
                 .thenReturn(presentationDefinitionService);
         mockedVPServiceDataHolder.when(VPServiceDataHolder::getVerificationService).thenReturn(verificationService);
 
-        mockedVPSubmissionCache = Mockito.mockStatic(VPSubmissionCache.class);
-        mockedVPSubmissionCache.when(VPSubmissionCache::getInstance).thenReturn(vpSubmissionCache);
+        mockedVPSubmissionCache = Mockito.mockStatic(VPSubmissionCacheByRequestId.class);
+        mockedVPSubmissionCache.when(VPSubmissionCacheByRequestId::getInstance).thenReturn(vpSubmissionCache);
 
         mockedIdentityUtil = Mockito.mockStatic(IdentityUtil.class);
         mockedIdentityUtil.when(() -> IdentityUtil.getProperty("OpenID4VP.LoginPage"))
@@ -237,7 +239,8 @@ public class OpenID4VPAuthenticatorTest {
         mockSubmission.setVpToken("dummy-vp-token");
 
         // mock authenticator's internal wallet data cache retrieval
-        when(vpSubmissionCache.getSubmission("req-123")).thenReturn(mockSubmission);
+        when(vpSubmissionCache.getValueFromCache(any(VPSubmissionRequestIdCacheKey.class), anyInt()))
+                .thenReturn(new VPSubmissionCacheEntry(mockSubmission));
 
         VPRequest mockRequest = new VPRequest.Builder()
                 .requestId("req-123")
@@ -267,7 +270,8 @@ public class OpenID4VPAuthenticatorTest {
     public void testProcessAuthenticationResponseNoSubmission() throws Exception {
         when(request.getParameter("status")).thenReturn("success");
         when(context.getProperty("openid4vp_request_id")).thenReturn("req-123");
-        when(vpSubmissionCache.getSubmission("req-123")).thenReturn(null);
+        when(vpSubmissionCache.getValueFromCache(any(VPSubmissionRequestIdCacheKey.class), anyInt()))
+                .thenReturn(null);
         authenticator.process(request, response, context);
     }
 
@@ -282,7 +286,8 @@ public class OpenID4VPAuthenticatorTest {
         VPSubmission mockSubmission = new VPSubmission();
         mockSubmission.setPresentationSubmission("{\"descriptor_map\":[{\"format\":\"vc+sd-jwt\"}]}");
         mockSubmission.setVpToken("dummy-vp-token");
-        when(vpSubmissionCache.getSubmission("req-123")).thenReturn(mockSubmission);
+        when(vpSubmissionCache.getValueFromCache(any(VPSubmissionRequestIdCacheKey.class), anyInt()))
+                .thenReturn(new VPSubmissionCacheEntry(mockSubmission));
 
         when(verificationService.verify(any(), anyInt(), anyString()))
                 .thenThrow(new org.wso2.carbon.identity.openid4vc.presentation.verification.exception
@@ -303,7 +308,8 @@ public class OpenID4VPAuthenticatorTest {
         VPSubmission mockSubmission = new VPSubmission();
         mockSubmission.setPresentationSubmission("{\"descriptor_map\":[{\"format\":\"vc+sd-jwt\"}]}");
         mockSubmission.setVpToken("dummy-vp-token");
-        when(vpSubmissionCache.getSubmission("req-123")).thenReturn(mockSubmission);
+        when(vpSubmissionCache.getValueFromCache(any(VPSubmissionRequestIdCacheKey.class), anyInt()))
+                .thenReturn(new VPSubmissionCacheEntry(mockSubmission));
 
         Map<String, Object> verifiedClaims = new HashMap<>();
         // No "iss" or "issuer" claim
@@ -423,7 +429,8 @@ public class OpenID4VPAuthenticatorTest {
         VPSubmission mockSubmission = new VPSubmission();
         mockSubmission.setVpToken("token");
         mockSubmission.setPresentationSubmission("{\"descriptor_map\":[{\"format\":\"vc+sd-jwt\"}]}");
-        when(vpSubmissionCache.getSubmission("req-123")).thenReturn(mockSubmission);
+        when(vpSubmissionCache.getValueFromCache(any(VPSubmissionRequestIdCacheKey.class), anyInt()))
+                .thenReturn(new VPSubmissionCacheEntry(mockSubmission));
         
         VerificationResult verificationResult = new VerificationResult();
         verificationResult.setStatus(VerificationResult.VerificationStatus.VERIFIED);
@@ -449,7 +456,8 @@ public class OpenID4VPAuthenticatorTest {
         VPSubmission mockSubmission = new VPSubmission();
         mockSubmission.setPresentationSubmission("{\"descriptor_map\":[{\"format\":\"vc+sd-jwt\"}]}");
         mockSubmission.setVpToken("token");
-        when(vpSubmissionCache.getSubmission("req-123")).thenReturn(mockSubmission);
+        when(vpSubmissionCache.getValueFromCache(any(VPSubmissionRequestIdCacheKey.class), anyInt()))
+                .thenReturn(new VPSubmissionCacheEntry(mockSubmission));
 
         Map<String, Object> verifiedClaims = new HashMap<>();
         Map<String, Object> credentialSubject = new HashMap<>();
@@ -487,7 +495,8 @@ public class OpenID4VPAuthenticatorTest {
         VPSubmission mockSubmission = new VPSubmission();
         mockSubmission.setPresentationSubmission("{\"descriptor_map\":[{\"format\":\"vc+sd-jwt\"}]}");
         mockSubmission.setVpToken("token");
-        when(vpSubmissionCache.getSubmission("req-123")).thenReturn(mockSubmission);
+        when(vpSubmissionCache.getValueFromCache(any(VPSubmissionRequestIdCacheKey.class), anyInt()))
+                .thenReturn(new VPSubmissionCacheEntry(mockSubmission));
 
         Map<String, Object> verifiedClaims = new HashMap<>();
         verifiedClaims.put("email", "test@example.com");

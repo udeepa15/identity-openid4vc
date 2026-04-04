@@ -18,7 +18,8 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling;
 
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPSubmissionCache;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPSubmissionCacheByRequestId;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPSubmissionRequestIdCacheKey;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dao.VPRequestDAO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
@@ -31,7 +32,7 @@ public class PollingManager {
 
     private static volatile PollingManager instance;
 
-    private VPSubmissionCache vpSubmissionCache;
+    private VPSubmissionCacheByRequestId vpSubmissionCache;
     private VPRequestDAO vpRequestDAO;
 
     /**
@@ -39,7 +40,7 @@ public class PollingManager {
      */
     private PollingManager() {
 
-        this.vpSubmissionCache = VPSubmissionCache.getInstance();
+        this.vpSubmissionCache = VPSubmissionCacheByRequestId.getInstance();
         this.vpRequestDAO = new VPRequestDAO();
 
     }
@@ -70,7 +71,7 @@ public class PollingManager {
      */
     public PollingResult checkCurrentStatus(final String requestId, final int tenantId) {
 
-        if (vpSubmissionCache.hasSubmission(requestId)) {
+        if (vpSubmissionCache.getValueFromCache(new VPSubmissionRequestIdCacheKey(requestId), tenantId) != null) {
             return PollingResult.submitted(requestId, VPRequestStatus.VP_SUBMITTED.name());
         }
 

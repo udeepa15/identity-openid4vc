@@ -37,7 +37,9 @@ import org.wso2.carbon.identity.application.authentication.framework.model.Authe
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 import org.wso2.carbon.identity.application.common.model.IdentityProvider;
 import org.wso2.carbon.identity.application.common.model.Property;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPSubmissionCache;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPSubmissionCacheByRequestId;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPSubmissionCacheEntry;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPSubmissionRequestIdCacheKey;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
@@ -168,7 +170,10 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         VPSubmission submission = null;
         // Try to get submission from Cache (polling/redirect)
         if (StringUtils.isNotBlank(requestId)) {
-            submission = VPSubmissionCache.getInstance().getSubmission(requestId);
+            int tenantId = org.wso2.carbon.identity.core.util.IdentityTenantUtil.getTenantId(context.getTenantDomain());
+            VPSubmissionCacheEntry cacheEntry = VPSubmissionCacheByRequestId.getInstance()
+                    .getValueFromCache(new VPSubmissionRequestIdCacheKey(requestId), tenantId);
+            submission = cacheEntry != null ? cacheEntry.getVPSubmission() : null;
         }
 
         if (submission == null) {
@@ -415,8 +420,10 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             processAuthenticationResponse(request, response, context);
             return AuthenticatorFlowStatus.SUCCESS_COMPLETED;
         } else if ("failed".equals(status)) {
+            context.setRetrying(true);
             throw new AuthenticationFailedException("VP verification failed");
         } else if ("expired".equals(status)) {
+            context.setRetrying(true);
             throw new AuthenticationFailedException("VP request expired");
         }
 
@@ -644,11 +651,11 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
     /**
      * Check if retry authentication is enabled.
      *
-     * @return False
+     * @return True
      */
     @Override
     protected boolean retryAuthenticationEnabled() {
-        return false;
+        return true;
     }
 
     /**
@@ -733,7 +740,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         timeout.setDisplayName("Timeout (seconds)");
         timeout.setDescription("Timeout for VP requests in seconds");
         timeout.setDisplayOrder(DISPLAY_ORDER_3);
-        timeout.setDefaultValue("300");
+        timeout.setDefaultValue("40");
         timeout.setRequired(false);
         configProperties.add(timeout);
 

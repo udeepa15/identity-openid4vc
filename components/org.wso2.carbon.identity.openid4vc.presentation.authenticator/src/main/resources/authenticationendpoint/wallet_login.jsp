@@ -254,7 +254,7 @@
                             <div class="header">Authentication Failed</div>
                             <p id="errorMessage">An error occurred during verification.</p>
                             <div class="ui divider hidden"></div>
-                            <button class="ui button" onclick="location.reload()">Try Again</button>
+                            <button class="ui button" onclick="retryAuth()">Try Again</button>
                         </div>
                     </div>
                 </div>
@@ -305,8 +305,8 @@
                 requestUri: '<%=requestUri != null ? Encode.forJavaScript(requestUri) : ""%>',
                 qrContent: '<%=qrContent != null ? Encode.forJavaScript(qrContent) : ""%>',
                 pollInterval: 5000,
-                timeout: 300,
-                pollEndpoint: '/openid4vp/v1/vp-request/<%=Encode.forUriComponent(requestId != null ? requestId : "")%>/status'
+                timeout: 40,
+                pollEndpoint: '/oid4vp/v1/vp-request/<%=Encode.forUriComponent(requestId != null ? requestId : "")%>/status'
             };
 
             var timeRemaining = CONFIG.timeout;
@@ -453,6 +453,12 @@
 
                 errorMessage.textContent = 'The QR code has expired. Please try again.';
                 errorContainer.style.display = 'block';
+            }
+
+            // Retry authentication
+            function retryAuth() {
+                document.getElementById('authStatus').value = 'expired';
+                document.getElementById('authForm').submit();
             }
 
             // Initialize

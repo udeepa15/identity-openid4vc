@@ -19,16 +19,22 @@
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling;
 
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
+import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPSubmissionCache;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPSubmissionCacheByRequestId;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPSubmissionCacheEntry;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPSubmissionRequestIdCacheKey;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dao.VPRequestDAO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 
 import java.lang.reflect.Field;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
@@ -43,11 +49,17 @@ public class LongPollingManagerTest {
     private VPRequestDAO vpRequestDAO;
 
     @Mock
-    private VPSubmissionCache vpSubmissionCache;
+    private VPSubmissionCacheByRequestId vpSubmissionCache;
+
+    private MockedStatic<VPSubmissionCacheByRequestId> mockedCache;
 
     @BeforeMethod
     public void setUp() throws Exception {
+        System.setProperty("carbon.home", ".");
         MockitoAnnotations.openMocks(this);
+        mockedCache = Mockito.mockStatic(VPSubmissionCacheByRequestId.class);
+        mockedCache.when(VPSubmissionCacheByRequestId::getInstance).thenReturn(vpSubmissionCache);
+        
         pollingManager = PollingManager.getInstance();
 
         // Use reflection to inject mocks into singleton
@@ -55,9 +67,18 @@ public class LongPollingManagerTest {
         setPrivateField(pollingManager, "vpSubmissionCache", vpSubmissionCache);
     }
 
+    @AfterMethod
+    public void tearDown() {
+        if (mockedCache != null) {
+            mockedCache.close();
+        }
+    }
+
     @Test
     public void testCheckCurrentStatusSubmittedInCache() {
-        when(vpSubmissionCache.hasSubmission(anyString())).thenReturn(true);
+        VPSubmissionCacheEntry mockEntry = Mockito.mock(VPSubmissionCacheEntry.class);
+        when(vpSubmissionCache.getValueFromCache(any(VPSubmissionRequestIdCacheKey.class), anyInt()))
+                .thenReturn(mockEntry);
         PollingResult result = pollingManager.checkCurrentStatus("test-id", 1);
         
         assertNotNull(result);
@@ -67,7 +88,8 @@ public class LongPollingManagerTest {
 
     @Test
     public void testCheckCurrentStatusInDb() throws Exception {
-        when(vpSubmissionCache.hasSubmission(anyString())).thenReturn(false);
+        when(vpSubmissionCache.getValueFromCache(any(VPSubmissionRequestIdCacheKey.class), anyInt()))
+                .thenReturn(null);
         
         VPRequest request = new VPRequest.Builder()
                 .status(VPRequestStatus.COMPLETED)
@@ -83,7 +105,8 @@ public class LongPollingManagerTest {
 
     @Test
     public void testCheckCurrentStatusExpired() throws Exception {
-        when(vpSubmissionCache.hasSubmission(anyString())).thenReturn(false);
+        when(vpSubmissionCache.getValueFromCache(any(VPSubmissionRequestIdCacheKey.class), anyInt()))
+                .thenReturn(null);
         
         VPRequest request = new VPRequest.Builder()
                 .status(VPRequestStatus.ACTIVE)

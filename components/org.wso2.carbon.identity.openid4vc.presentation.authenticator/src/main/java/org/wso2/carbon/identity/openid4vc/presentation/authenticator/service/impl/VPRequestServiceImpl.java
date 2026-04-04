@@ -156,12 +156,22 @@ public class VPRequestServiceImpl extends VPRequestService {
 
         int tenantId = IdentityTenantUtil.getTenantId(context.getTenantDomain());
 
+        String timeoutStr = authenticatorProperties.get(Constraints.PROP_TIMEOUT_SECONDS);
+        long timeoutMs = DEFAULT_EXPIRY_MS;
+        if (StringUtils.isNotBlank(timeoutStr)) {
+            try {
+                timeoutMs = Long.parseLong(timeoutStr) * 1000;
+            } catch (NumberFormatException e) {
+                // Ignore and use default
+            }
+        }
+
         // 2. Resolve identifiers and timestamps
         String requestId = generateRequestId();
         String transactionId = context.getContextIdentifier();
         String nonce = generateNonce();
         long createdAt = System.currentTimeMillis();
-        long expiresAt = calculateExpiryTime(createdAt);
+        long expiresAt = calculateExpiryTime(createdAt, timeoutMs);
 
         // 3. Resolve and process presentation definition
         String presentationDefinition = resolvePresentationDefinition(presentationDefinitionId, null, tenantId);
@@ -541,13 +551,14 @@ public class VPRequestServiceImpl extends VPRequestService {
     }
 
     /**
-     * Calculate expiry time (default 10 minutes).
+     * Calculate expiry time.
      *
      * @param createdAt The creation time in milliseconds
+     * @param timeoutMs The timeout duration in milliseconds
      * @return The expiration time in milliseconds
      */
-    private long calculateExpiryTime(final long createdAt) {
-        return createdAt + DEFAULT_EXPIRY_MS;
+    private long calculateExpiryTime(final long createdAt, final long timeoutMs) {
+        return createdAt + timeoutMs;
     }
 
     /**
@@ -567,7 +578,7 @@ public class VPRequestServiceImpl extends VPRequestService {
      * @return The complete response URI
      */
     private String buildResponseUri(final String currentBaseUrl) {
-        String endpoint = "/openid4vp/v1/response";
+        String endpoint = "/oid4vp/v1/response";
         if (currentBaseUrl.endsWith("/")) {
             return currentBaseUrl.substring(0, currentBaseUrl.length() - 1)
                     + endpoint;
@@ -584,7 +595,7 @@ public class VPRequestServiceImpl extends VPRequestService {
      */
     private String buildRequestUri(final String currentBaseUrl,
                                    final String requestId) {
-        String endpoint = "/openid4vp/v1/vp-request/"
+        String endpoint = "/oid4vp/v1/vp-request/"
                 + requestId;
         if (currentBaseUrl.endsWith("/")) {
             return currentBaseUrl.substring(0, currentBaseUrl.length() - 1)

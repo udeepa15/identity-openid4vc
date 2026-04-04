@@ -20,7 +20,11 @@ package org.wso2.carbon.identity.openid4vc.presentation.authenticator.dao;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPRequestCache;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPRequestCacheById;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPRequestCacheByTransactionId;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPRequestCacheEntry;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPRequestIdCacheKey;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPRequestTransactionIdCacheKey;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
@@ -34,14 +38,16 @@ import java.util.List;
 public class VPRequestDAO {
 
     private static final Log log = LogFactory.getLog(VPRequestDAO.class);
-    private final VPRequestCache vpRequestCache;
+    private final VPRequestCacheById vpRequestCacheById;
+    private final VPRequestCacheByTransactionId vpRequestCacheByTransactionId;
 
     /**
      * Create DAO instance.
      */
     public VPRequestDAO() {
 
-        this.vpRequestCache = VPRequestCache.getInstance();
+        this.vpRequestCacheById = VPRequestCacheById.getInstance();
+        this.vpRequestCacheByTransactionId = VPRequestCacheByTransactionId.getInstance();
     }
 
     /**
@@ -52,7 +58,7 @@ public class VPRequestDAO {
      */
     public void createVPRequest(VPRequest vpRequest) throws VPAuthenticatorException {
 
-        vpRequestCache.put(vpRequest);
+        addToAllCaches(vpRequest);
     }
 
     /**
@@ -65,16 +71,22 @@ public class VPRequestDAO {
      */
     public VPRequest getVPRequestById(String requestId, int tenantId) throws VPAuthenticatorException {
 
-        VPRequest request = vpRequestCache.getByRequestId(requestId);
-        if (request != null && request.getTenantId() != tenantId) {
-            if (log.isDebugEnabled()) {
-                log.debug(String.format("Cross-tenant access detected. Requested tenant: %d, " +
-                                "Actual tenant: %d for request ID: %s",
-                        tenantId, request.getTenantId(), sanitizeForLog(requestId)));
+        VPRequestIdCacheKey cacheKey = new VPRequestIdCacheKey(requestId);
+        VPRequestCacheEntry entry = vpRequestCacheById.getValueFromCache(cacheKey, tenantId);
+
+        if (entry != null) {
+            VPRequest request = entry.getVPRequest();
+            if (request != null && request.getTenantId() != tenantId) {
+                if (log.isDebugEnabled()) {
+                    log.debug(String.format("Cross-tenant access detected. Requested tenant: %d, " +
+                                    "Actual tenant: %d for request ID: %s",
+                            tenantId, request.getTenantId(), sanitizeForLog(requestId)));
+                }
+                return null;
             }
-            return null;
+            return request;
         }
-        return request;
+        return null;
     }
 
     /**
@@ -87,16 +99,22 @@ public class VPRequestDAO {
      */
     public VPRequest getVPRequestByTransactionId(String transactionId, int tenantId) throws VPAuthenticatorException {
 
-        VPRequest request = vpRequestCache.getByTransactionId(transactionId);
-        if (request != null && request.getTenantId() != tenantId) {
-            if (log.isDebugEnabled()) {
-                log.debug(String.format("Cross-tenant access detected. Requested tenant: %d, " +
-                                "Actual tenant: %d for transaction ID: %s",
-                        tenantId, request.getTenantId(), sanitizeForLog(transactionId)));
+        VPRequestTransactionIdCacheKey cacheKey = new VPRequestTransactionIdCacheKey(transactionId);
+        VPRequestCacheEntry entry = vpRequestCacheByTransactionId.getValueFromCache(cacheKey, tenantId);
+
+        if (entry != null) {
+            VPRequest request = entry.getVPRequest();
+            if (request != null && request.getTenantId() != tenantId) {
+                if (log.isDebugEnabled()) {
+                    log.debug(String.format("Cross-tenant access detected. Requested tenant: %d, " +
+                                    "Actual tenant: %d for transaction ID: %s",
+                            tenantId, request.getTenantId(), sanitizeForLog(transactionId)));
+                }
+                return null;
             }
-            return null;
+            return request;
         }
-        return request;
+        return null;
     }
 
     /**
@@ -132,7 +150,7 @@ public class VPRequestDAO {
         VPRequest request = getVPRequestById(requestId, tenantId);
         if (request != null) {
             request.setStatus(status);
-            vpRequestCache.put(request);
+            addToAllCaches(request);
         }
     }
 
@@ -150,7 +168,7 @@ public class VPRequestDAO {
         VPRequest request = getVPRequestById(requestId, tenantId);
         if (request != null) {
             request.setRequestJwt(requestJwt);
-            vpRequestCache.put(request);
+            addToAllCaches(request);
         }
     }
 
@@ -165,7 +183,13 @@ public class VPRequestDAO {
 
         VPRequest request = getVPRequestById(requestId, tenantId);
         if (request != null) {
-            vpRequestCache.remove(requestId);
+            if (request.getRequestId() != null) {
+                vpRequestCacheById.clearCacheEntry(new VPRequestIdCacheKey(request.getRequestId()), tenantId);
+            }
+            if (request.getTransactionId() != null) {
+                vpRequestCacheByTransactionId.clearCacheEntry(
+                        new VPRequestTransactionIdCacheKey(request.getTransactionId()), tenantId);
+            }
         }
     }
 
@@ -205,6 +229,26 @@ public class VPRequestDAO {
             throws VPAuthenticatorException {
 
         return new ArrayList<>();
+    }
+
+    /**
+     * Add a VP request to all caches.
+     *
+     * @param vpRequest VP request.
+     */
+    private void addToAllCaches(VPRequest vpRequest) {
+
+        VPRequestCacheEntry cacheEntry = new VPRequestCacheEntry(vpRequest);
+
+        if (vpRequest.getRequestId() != null) {
+            vpRequestCacheById.addToCache(new VPRequestIdCacheKey(vpRequest.getRequestId()), cacheEntry,
+                    vpRequest.getTenantId());
+        }
+        if (vpRequest.getTransactionId() != null) {
+            vpRequestCacheByTransactionId.addToCache(
+                    new VPRequestTransactionIdCacheKey(vpRequest.getTransactionId()), cacheEntry,
+                    vpRequest.getTenantId());
+        }
     }
 
     /**

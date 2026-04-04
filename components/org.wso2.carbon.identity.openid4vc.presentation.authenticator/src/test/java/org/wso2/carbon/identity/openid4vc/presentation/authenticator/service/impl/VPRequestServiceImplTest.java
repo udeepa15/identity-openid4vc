@@ -69,6 +69,7 @@ public class VPRequestServiceImplTest {
 
     @BeforeMethod
     public void setUp() {
+        System.setProperty("carbon.home", ".");
         MockitoAnnotations.openMocks(this);
         identityUtilMockedStatic = Mockito.mockStatic(IdentityUtil.class);
         identityUtilMockedStatic.when(() -> IdentityUtil.getProperty(any())).thenReturn("http://localhost:8080");
@@ -85,9 +86,13 @@ public class VPRequestServiceImplTest {
 
     @AfterMethod
     public void tearDown() {
-        identityUtilMockedStatic.close();
-                identityTenantUtilMockedStatic.close();
+        if (identityUtilMockedStatic != null) {
+            identityUtilMockedStatic.close();
         }
+        if (identityTenantUtilMockedStatic != null) {
+            identityTenantUtilMockedStatic.close();
+        }
+    }
 
     private AuthenticationContext mockContext(String clientId, String pdId) {
         AuthenticationContext context = Mockito.mock(AuthenticationContext.class);
