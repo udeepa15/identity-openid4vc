@@ -128,7 +128,6 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             // Store request ID in session
             context.setProperty(SESSION_VP_REQUEST_ID, vpRequestResponse.getRequestId());
             context.setProperty(SESSION_TRANSACTION_ID, vpRequestResponse.getTransactionId());
-            //ToDo: session_transaction ID (use one)
 
             // Generate QR code content
             String qrContent = QRCodeUtil.generateRequestUriQRContent(

@@ -18,6 +18,7 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.model;
 
+import com.google.gson.annotations.SerializedName;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VerificationResult;
 
 import java.io.Serializable;
@@ -31,11 +32,16 @@ public class VPSubmission implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private String submissionId;
+    @SerializedName("state")
     private String requestId;
     private String transactionId;
+    @SerializedName("vp_token")
     private String vpToken;
+    @SerializedName("presentation_submission")
     private String presentationSubmission;
+    @SerializedName("error")
     private String error;
+    @SerializedName("error_description")
     private String errorDescription;
     private VerificationResult.VerificationStatus verificationStatus;
     private String verificationResult;
@@ -178,11 +184,16 @@ public class VPSubmission implements Serializable {
      */
     public static class Builder {
         private String submissionId;
+        @SerializedName("state")
         private String requestId;
         private String transactionId;
+        @SerializedName("vp_token")
         private String vpToken;
+        @SerializedName("presentation_submission")
         private String presentationSubmission;
+        @SerializedName("error")
         private String error;
+        @SerializedName("error_description")
         private String errorDescription;
         private VerificationResult.VerificationStatus verificationStatus;
         private String verificationResult;
