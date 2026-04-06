@@ -18,9 +18,7 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.verification.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 
-import java.io.Serializable;
 import java.util.List;
 
 /**
@@ -28,13 +26,10 @@ import java.util.List;
  */
 public class PresentationSubmission {
 
-    @JsonProperty("id")
     private String id;
 
-    @JsonProperty("definition_id")
     private String definitionId;
 
-    @JsonProperty("descriptor_map")
     private List<DescriptorMap> descriptorMap;
 
     /**
@@ -104,13 +99,10 @@ public class PresentationSubmission {
      */
     public static class DescriptorMap {
 
-        @JsonProperty("id")
         private String id;
 
-        @JsonProperty("format")
         private String format;
 
-        @JsonProperty("path")
         private String path;
 
         /**
