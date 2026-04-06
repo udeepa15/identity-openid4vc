@@ -26,9 +26,7 @@ import java.util.List;
 /**
  * DTO representing the presentation_submission object in a Verifiable Presentation.
  */
-public class PresentationSubmission implements Serializable {
-
-    private static final long serialVersionUID = 753159842601L;
+public class PresentationSubmission {
 
     @JsonProperty("id")
     private String id;
@@ -104,9 +102,7 @@ public class PresentationSubmission implements Serializable {
     /**
      * DTO for descriptor map.
      */
-    public static class DescriptorMap implements Serializable {
-
-        private static final long serialVersionUID = 951357846201L;
+    public static class DescriptorMap {
 
         @JsonProperty("id")
         private String id;

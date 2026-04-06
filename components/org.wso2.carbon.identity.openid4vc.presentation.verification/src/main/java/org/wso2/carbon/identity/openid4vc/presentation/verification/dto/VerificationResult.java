@@ -24,9 +24,7 @@ import java.util.Map;
 /**
  * DTO class for verification result.
  */
-public class VerificationResult implements Serializable {
-
-    private static final long serialVersionUID = 159357486201L;
+public class VerificationResult {
 
     private Map<String, Object> verifiedClaims;
     private VerificationStatus status;
