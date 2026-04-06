@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025-2026, WSO2 LLC. (http://www.wso2.com).
+ * Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).
  *
  * WSO2 LLC. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -211,20 +211,19 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             }
 
             Map<String, Object> verifiedClaims = new HashMap<>(verificationResult.getVerifiedClaims());
-            //ToDo: use framework
-            // Fix 1: Always resolve IDP claim mappings, even when getExternalIdP() is null.
+
             ClaimMapping[] idpClaimMappings = resolveIdpClaimMappings(context);
 
             // Derive subject claim name from IDP's userIdClaim configuration when available.
             String subjectRemoteClaim = resolveSubjectRemoteClaim(context, idpClaimMappings);
 
-            boolean isSubjectClaimConfigured = isSubjectClaimConfigured(context);
+            boolean isSubjectClaimConfigured = StringUtils.isNotBlank(resolveConfiguredSubjectClaimUri(context));
 
             // If IDP subject claim is configured, enforce it.
                 // Otherwise, use a transient random UUID as the subject identifier.
             String username = isSubjectClaimConfigured
                     ? extractUsername(verifiedClaims, subjectRemoteClaim)
-                    : generateTransientSubjectIdentifier();
+                    : UUID.randomUUID().toString();
 
             if (isSubjectClaimConfigured && StringUtils.isBlank(username)) {
                 throw new AuthenticationFailedException("No user identifier found in verified credentials");
@@ -264,6 +263,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      */
     private String extractUsername(final Map<String, Object> verifiedClaims,
                                    final String subjectRemoteClaim) {
+
         if (StringUtils.isBlank(subjectRemoteClaim)) {
             return null;
         }
@@ -464,13 +464,13 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      */
     private ClaimMapping[] resolveIdpClaimMappings(AuthenticationContext context) {
 
-        // Fast path: ExternalIdP is already populated.
+        // ExternalIdP is already populated.
         if (context.getExternalIdP() != null) {
             ClaimMapping[] mappings = context.getExternalIdP().getClaimMappings();
             return mappings != null ? mappings : new ClaimMapping[0];
         }
 
-        // Slow path: resolve the IDP name from SequenceConfig and look it up.
+        // Resolve the IDP name from SequenceConfig and look it up.
         try {
             String idpName = resolveIdpNameFromSequenceConfig(context);
             if (StringUtils.isNotBlank(idpName)) {
@@ -533,17 +533,6 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             }
         }
         return null;
-    }
-
-    /**
-     * Check whether the IDP has configured a subject claim.
-     *
-     * @param context Authentication context
-     * @return True if subject claim is configured
-     */
-    private boolean isSubjectClaimConfigured(AuthenticationContext context) {
-
-        return StringUtils.isNotBlank(resolveConfiguredSubjectClaimUri(context));
     }
 
     /**
@@ -641,12 +630,6 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         return VPServiceDataHolder.getVPRequestService();
     }
 
-
-
-
-
-
-
     /**
      * Check if retry authentication is enabled.
      *
@@ -665,6 +648,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      */
     @Override
     public String getContextIdentifier(final HttpServletRequest request) {
+
         return StringUtils.trimToNull(getValidatedParameter(request, "sessionDataKey"));
     }
 
@@ -676,6 +660,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      */
     @Override
     public boolean canHandle(final HttpServletRequest request) {
+
         String sessionDataKey = StringUtils.trimToNull(
             getValidatedParameter(request, "sessionDataKey"));
         String vpRequestId = StringUtils.trimToNull(
