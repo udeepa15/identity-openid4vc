@@ -138,8 +138,20 @@ public class VerificationServiceImplTest {
         }
     }
 
+    @Test(description = "validateRequest: blank definition_id throws INVALID_VP_SUBMISSION")
+    public void testValidateRequest_blankDefinitionId_throwsSubmissionError() throws Exception {
+        PresentationSubmission sub = buildSubmission(VerificationConstants.FORMAT_JWT);
+        sub.setDefinitionId("   ");
+        try {
+            service.verify(sub, 1, validJwtToken);
+            fail("Expected VerificationServerException");
+        } catch (VerificationServerException e) {
+            assertEquals(e.getErrorCode(), VerificationErrorCode.INVALID_VP_SUBMISSION);
+        }
+    }
+
     // =========================================================================
-    // validateRequest — submission guards
+    // validateRequest — descriptorMap guards
     // =========================================================================
 
     @Test(description = "validateRequest: null submission throws INVALID_VP_SUBMISSION")
@@ -296,15 +308,20 @@ public class VerificationServiceImplTest {
     // verifyAgainstDefinition — tested through verify() with a stub Verifier
     // =========================================================================
 
-    @Test(description = "verifyAgainstDefinition: null definition — returns claims unchanged, status VERIFIED")
-    public void testVerifyAgainstDefinition_nullDefinition_success() throws Exception {
+    @Test(description = "verifyAgainstDefinition: null definition — throws INTERNAL_SERVER_ERROR")
+    public void testVerifyAgainstDefinition_nullDefinition_throwsServerError() throws Exception {
         when(pdService.getPresentationDefinitionById(anyString(), anyInt())).thenReturn(null);
         VerificationServiceImpl stub = buildStubService(
                 Collections.singletonMap("iss", (Object) validJwtIssuer));
         stub.setPresentationDefinitionService(pdService);
 
-        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
-        assertEquals(result.getStatus(), VerificationResult.VerificationStatus.VERIFIED);
+        try {
+            stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+            fail("Expected VerificationServerException");
+        } catch (VerificationServerException e) {
+            assertEquals(e.getErrorCode(), VerificationErrorCode.INTERNAL_SERVER_ERROR);
+            assertTrue(e.getMessage().contains("Presentation definition not found"));
+        }
     }
 
     @Test(description = "verifyAgainstDefinition: definition with null requestedCredentials — no checks performed")

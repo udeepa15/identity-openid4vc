@@ -120,6 +120,12 @@ public class VerificationServiceImpl implements VerificationService {
         try {
             definition = presentationDefinitionService.getPresentationDefinitionById(
                     submission.getDefinitionId(), tenantId);
+            if (definition == null) {
+                throw new VerificationServerException(VerificationErrorCode.INTERNAL_SERVER_ERROR,
+                        "Presentation definition not found for ID: " + submission.getDefinitionId());
+            }
+        } catch (VerificationException e) {
+            throw e;
         } catch (Exception e) {
             throw new VerificationServerException(VerificationErrorCode.INTERNAL_SERVER_ERROR,
                     "Error fetching presentation definition: " + e.getMessage(), e);
@@ -146,7 +152,7 @@ public class VerificationServiceImpl implements VerificationService {
                                                        PresentationDefinition definition)
             throws VerificationException {
 
-        if (definition == null || definition.getRequestedCredentials() == null) {
+        if (definition.getRequestedCredentials() == null) {
             return verifiedClaims;
         }
 
@@ -200,7 +206,7 @@ public class VerificationServiceImpl implements VerificationService {
      * @throws VerificationClientException If any validation rule is violated.
      */
     private void validateRequest(PresentationSubmission submission, String vpToken)
-            throws VerificationClientException {
+            throws VerificationException {
 
         // --- VP token checks ---
         if (StringUtils.isBlank(vpToken)) {
@@ -212,6 +218,11 @@ public class VerificationServiceImpl implements VerificationService {
         if (submission == null) {
             throw new VerificationClientException(VerificationErrorCode.INVALID_VP_SUBMISSION,
                     "Presentation submission is null.");
+        }
+
+        if (StringUtils.isBlank(submission.getDefinitionId())) {
+            throw new VerificationServerException(VerificationErrorCode.INVALID_VP_SUBMISSION,
+                    "Presentation submission is missing a definition_id.");
         }
 
         List<PresentationSubmission.DescriptorMap> descriptorMap = submission.getDescriptorMap();
