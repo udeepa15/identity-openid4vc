@@ -25,12 +25,16 @@ import java.io.Serializable;
  */
 public class PollingResult implements Serializable {
 
+    /**
+     * Serial version UID.
+     */
     private static final long serialVersionUID = 1L;
 
     /**
      * Polling result status types.
      */
     public enum ResultStatus {
+
         /**
          * Request is active and waiting for submission.
          */
@@ -57,13 +61,35 @@ public class PollingResult implements Serializable {
         ERROR
     }
 
+    /**
+     * The unique request identifier.
+     */
     private final String requestId;
+
+    /**
+     * The classification of the result.
+     */
     private final ResultStatus resultStatus;
+
+    /**
+     * The descriptive status string.
+     */
     private final String status;
+
+    /**
+     * Error message details if an error occurred.
+     */
     private final String errorMessage;
 
     /**
-     * Private constructor - use factory methods.
+     * Private constructor for PollingResult.
+     *
+     * <p>Use static factory methods to create instances.</p>
+     *
+     * @param requestId    The unique request identifier.
+     * @param resultStatus The classification of the result.
+     * @param status       The descriptive status string.
+     * @param errorMessage Error message details if applicable.
      */
     private PollingResult(final String requestId,
                           final ResultStatus resultStatus,
@@ -77,10 +103,10 @@ public class PollingResult implements Serializable {
     }
 
     /**
-     * Create a result indicating VP submission is still pending.
+     * Create a result indicating that the VP submission is still pending.
      *
-     * @param requestId Request ID
-     * @return PollingResult for waiting state
+     * @param requestId The unique request identifier.
+     * @return PollingResult for the waiting state.
      */
     public static PollingResult waiting(final String requestId) {
 
@@ -88,11 +114,11 @@ public class PollingResult implements Serializable {
     }
 
     /**
-     * Create a result indicating VP has been submitted.
+     * Create a result indicating that the VP has been submitted.
      *
-     * @param requestId Request ID
-     * @param status    Status string
-     * @return PollingResult for submitted state
+     * @param requestId The unique request identifier.
+     * @param status    The status string representing the current state.
+     * @return PollingResult for the submitted state.
      */
     public static PollingResult submitted(final String requestId, final String status) {
 
@@ -100,10 +126,10 @@ public class PollingResult implements Serializable {
     }
 
     /**
-     * Create a result indicating request has expired.
+     * Create a result indicating that the request has expired.
      *
-     * @param requestId Request ID
-     * @return PollingResult for expired state
+     * @param requestId The unique request identifier.
+     * @return PollingResult for the expired state.
      */
     public static PollingResult expired(final String requestId) {
 
@@ -111,23 +137,23 @@ public class PollingResult implements Serializable {
     }
 
     /**
-     * Create a result indicating request was not found.
+     * Create a result indicating that the request was not found.
      *
-     * @param requestId Request ID
-     * @return PollingResult for not found state
+     * @param requestId The unique request identifier.
+     * @return PollingResult for the not found state.
      */
     public static PollingResult notFound(final String requestId) {
 
         return new PollingResult(requestId, ResultStatus.NOT_FOUND, null,
-                "Request not found");
+                "Request not found.");
     }
 
     /**
-     * Create a result indicating an error occurred.
+     * Create a result indicating that an error occurred during polling.
      *
-     * @param requestId    Request ID
-     * @param errorMessage Error message
-     * @return PollingResult for error state
+     * @param requestId    The unique request identifier.
+     * @param errorMessage Details of the error that occurred.
+     * @return PollingResult for the error state.
      */
     public static PollingResult error(final String requestId, final String errorMessage) {
 
@@ -135,9 +161,9 @@ public class PollingResult implements Serializable {
     }
 
     /**
-     * Get the request ID.
+     * Get the unique request identifier.
      *
-     * @return Request ID
+     * @return The request identifier string.
      */
     public String getRequestId() {
 
@@ -145,9 +171,9 @@ public class PollingResult implements Serializable {
     }
 
     /**
-     * Get the result status.
+     * Get the classification of the result.
      *
-     * @return ResultStatus
+     * @return The ResultStatus enum value.
      */
     public ResultStatus getResultStatus() {
 
@@ -155,9 +181,9 @@ public class PollingResult implements Serializable {
     }
 
     /**
-     * Get the status string.
+     * Get the descriptive status string.
      *
-     * @return Status string
+     * @return The status string value.
      */
     public String getStatus() {
 
@@ -165,13 +191,12 @@ public class PollingResult implements Serializable {
     }
 
     /**
-     * Get error message if any.
+     * Get the error message if any.
      *
-     * @return Error message or null
+     * @return The error message string, or null if no error occurred.
      */
     public String getErrorMessage() {
 
         return errorMessage;
     }
-
 }

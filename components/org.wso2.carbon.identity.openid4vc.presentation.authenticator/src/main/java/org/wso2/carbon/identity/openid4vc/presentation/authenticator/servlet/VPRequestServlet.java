@@ -45,14 +45,13 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 /**
- * Servlet handling VP (Verifiable Presentation) authorization request
- * operations.
- * 
- * Endpoints:
- * - GET /api/identity/oid4vp/v1/vp-request/{requestId} - Get authorization
- * request JWT
- * - GET /api/identity/oid4vp/v1/vp-request/{requestId}/status - Get request
- * status (with polling)
+ * Servlet handling VP (Verifiable Presentation) authorization request operations.
+ *
+ * <p>Endpoints:</p>
+ * <ul>
+ *     <li>GET /api/identity/oid4vp/v1/vp-request/{requestId} - Get authorization request JWT.</li>
+ *     <li>GET /api/identity/oid4vp/v1/vp-request/{requestId}/status - Get request status (with polling).</li>
+ * </ul>
  */
 @Component(
     service = Servlet.class,
@@ -65,26 +64,52 @@ import javax.servlet.http.HttpServletResponse;
 )
 public class VPRequestServlet extends HttpServlet {
 
+    /**
+     * Serial version UID.
+     */
     private static final long serialVersionUID = 1L;
+
+    /**
+     * Gson instance for JSON operations.
+     */
     private static final Gson gson = new GsonBuilder()
             .setPrettyPrinting()
             .create();
 
-    private static final int DEFAULT_TENANT_ID = -1234; // Super tenant
+    /**
+     * Default tenant ID to use when tenant domain cannot be resolved.
+     */
+    private static final int DEFAULT_TENANT_ID = -1234;
+
+    /**
+     * Pattern to validate tenant domain names.
+     */
     private static final String TENANT_DOMAIN_PATTERN = "^[a-zA-Z0-9._-]+$";
 
+    /**
+     * Service instance for VP request operations.
+     */
     private transient VPRequestService vpRequestService;
 
+    /**
+     * Initialize the servlet and the VP request service.
+     *
+     * @throws ServletException If an error occurs during initialization.
+     */
     @Override
     public void init() throws ServletException {
+
         super.init();
         this.vpRequestService = new VPRequestServiceImpl();
     }
 
-
-
     /**
-     * Handle GET requests - Get request JWT or status.
+     * Handle GET requests to retrieve a request JWT or its status.
+     *
+     * @param request  HTTP request.
+     * @param response HTTP response.
+     * @throws ServletException If an error occurs in the servlet.
+     * @throws IOException      If an I/O error occurs.
      */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -95,17 +120,17 @@ public class VPRequestServlet extends HttpServlet {
         if (StringUtils.isBlank(pathInfo) || "/".equals(pathInfo)) {
             sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
                 new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
-                    "Request ID is required in path"));
+                    "Request ID is required in path."));
             return;
         }
 
-        // Parse path: /{requestId} or /{requestId}/status
+        // Parse path: /{requestId} or /{requestId}/status.
         String[] pathParts = pathInfo.split("/");
 
         if (pathParts.length < 2) {
             sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
                 new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
-                    "Invalid path format"));
+                    "Invalid path format."));
             return;
         }
 
@@ -113,7 +138,7 @@ public class VPRequestServlet extends HttpServlet {
         int tenantId = getTenantId(request);
 
         try {
-            // Check if status endpoint
+            // Check if status endpoint.
             if (pathParts.length >= 3 && "status".equals(pathParts[2])) {
                 handleStatusRequest(response, requestId, tenantId);
             } else {
@@ -130,12 +155,18 @@ public class VPRequestServlet extends HttpServlet {
         } catch (RuntimeException e) {
             sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
                 new VPAuthenticatorServerException(VPAuthenticatorErrorCode.INTERNAL_SERVER_ERROR,
-                    "Internal server error", e));
+                    "Internal server error.", e));
         }
     }
 
     /**
      * Handle request JWT retrieval (for request_uri flow).
+     *
+     * @param response  HTTP response.
+     * @param requestId Request ID.
+     * @param tenantId  Tenant ID.
+     * @throws VPAuthenticatorException If a VP authenticator error occurs.
+     * @throws IOException              If an I/O error occurs.
      */
     private void handleRequestJwtRequest(HttpServletResponse response, String requestId,
             int tenantId) throws VPAuthenticatorException, IOException {
@@ -147,19 +178,27 @@ public class VPRequestServlet extends HttpServlet {
         writeResponse(response, requestJwt);
     }
 
+    /**
+     * Write string content to the response output stream.
+     *
+     * @param response HTTP response.
+     * @param content  Content to write.
+     * @throws IOException If an I/O error occurs.
+     */
     private void writeResponse(HttpServletResponse response, String content) throws IOException {
+
         response.getOutputStream().write(content.getBytes(StandardCharsets.UTF_8));
         response.getOutputStream().flush();
     }
 
     /**
-    * Handle status polling request.
+     * Handle status polling request.
      *
-     * @param response  HTTP response
-    * @param requestId Request ID.
-    * @param tenantId  Tenant ID.
-    * @throws VPAuthenticatorException If error occurs.
-    * @throws IOException              If error occurs.
+     * @param response  HTTP response.
+     * @param requestId Request ID.
+     * @param tenantId  Tenant ID.
+     * @throws VPAuthenticatorException If a VP authenticator error occurs.
+     * @throws IOException              If an I/O error occurs.
      */
     private void handleStatusRequest(HttpServletResponse response,
                                      String requestId, int tenantId)
@@ -170,12 +209,12 @@ public class VPRequestServlet extends HttpServlet {
     }
 
     /**
-    * Get current status immediately without waiting.
+     * Get current status immediately without waiting.
      *
-    * @param requestId Request ID.
-    * @param tenantId  Tenant ID.
-    * @return JsonObject with polling and VP status.
-    * @throws VPAuthenticatorException If error occurs.
+     * @param requestId Request ID.
+     * @param tenantId  Tenant ID.
+     * @return JsonObject with polling and VP status.
+     * @throws VPAuthenticatorException If a VP authenticator error occurs.
      */
     private JsonObject pollForStatus(final String requestId,
                                      final int tenantId)
@@ -209,6 +248,11 @@ public class VPRequestServlet extends HttpServlet {
 
     /**
      * Send JSON response.
+     *
+     * @param response   HTTP response.
+     * @param statusCode HTTP status code.
+     * @param data       Data to send.
+     * @throws IOException If an I/O error occurs.
      */
     private void sendJsonResponse(HttpServletResponse response, int statusCode, Object data)
             throws IOException {
@@ -220,7 +264,12 @@ public class VPRequestServlet extends HttpServlet {
     }
 
     /**
-     * Send error response.
+     * Send error response formatted as JSON.
+     *
+     * @param response   HTTP response.
+     * @param statusCode HTTP status code.
+     * @param exception  Exception containing error information.
+     * @throws IOException If an I/O error occurs.
      */
     private void sendErrorResponse(final HttpServletResponse response, final int statusCode,
             final VPAuthenticatorException exception)
@@ -233,6 +282,12 @@ public class VPRequestServlet extends HttpServlet {
         sendJsonResponse(response, statusCode, errorObj);
     }
 
+    /**
+     * Resolve the tenant ID from the request context or attributes.
+     *
+     * @param request HTTP request.
+     * @return Tenant ID.
+     */
     private int getTenantId(HttpServletRequest request) {
 
         String tenantDomain = org.wso2.carbon.identity.core.util.IdentityTenantUtil.getTenantDomainFromContext();

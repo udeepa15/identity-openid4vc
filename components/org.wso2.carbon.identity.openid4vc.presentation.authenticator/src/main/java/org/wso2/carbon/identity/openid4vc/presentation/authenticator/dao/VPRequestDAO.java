@@ -37,12 +37,25 @@ import java.util.List;
  */
 public class VPRequestDAO {
 
+    /**
+     * Logger for VPRequestDAO.
+     */
     private static final Log log = LogFactory.getLog(VPRequestDAO.class);
+
+    /**
+     * Cache for VP requests by request ID.
+     */
     private final VPRequestCacheById vpRequestCacheById;
+
+    /**
+     * Cache for VP requests by transaction ID.
+     */
     private final VPRequestCacheByTransactionId vpRequestCacheByTransactionId;
 
     /**
-     * Create DAO instance.
+     * Create a new VPRequestDAO instance.
+     *
+     * <p>Initializes the internal request caches.</p>
      */
     public VPRequestDAO() {
 
@@ -51,9 +64,9 @@ public class VPRequestDAO {
     }
 
     /**
-     * Create a new VP request.
+     * Create a new VP request in the store.
      *
-     * @param vpRequest VP request to create.
+     * @param vpRequest The VP request to create.
      * @throws VPAuthenticatorException If creation fails.
      */
     public void createVPRequest(VPRequest vpRequest) throws VPAuthenticatorException {
@@ -62,11 +75,11 @@ public class VPRequestDAO {
     }
 
     /**
-     * Get VP request by request ID.
+     * Get a VP request by its request ID.
      *
-     * @param requestId Request ID.
-     * @param tenantId  Tenant ID.
-     * @return VP request or null if not found.
+     * @param requestId The unique request ID.
+     * @param tenantId  The tenant ID.
+     * @return The VP request or null if not found.
      * @throws VPAuthenticatorException If retrieval fails.
      */
     public VPRequest getVPRequestById(String requestId, int tenantId) throws VPAuthenticatorException {
@@ -90,11 +103,11 @@ public class VPRequestDAO {
     }
 
     /**
-     * Get VP request by transaction ID.
+     * Get a VP request by its transaction ID.
      *
-     * @param transactionId Transaction ID.
-     * @param tenantId      Tenant ID.
-     * @return VP request or null if not found.
+     * @param transactionId The transaction ID.
+     * @param tenantId      The tenant ID.
+     * @return The VP request or null if not found.
      * @throws VPAuthenticatorException If retrieval fails.
      */
     public VPRequest getVPRequestByTransactionId(String transactionId, int tenantId) throws VPAuthenticatorException {
@@ -118,11 +131,11 @@ public class VPRequestDAO {
     }
 
     /**
-     * Get all request IDs for a transaction.
+     * Get all request IDs associated with a transaction.
      *
-     * @param transactionId Transaction ID.
-     * @param tenantId      Tenant ID.
-     * @return List of request IDs.
+     * @param transactionId The transaction ID.
+     * @param tenantId      The tenant ID.
+     * @return List of request IDs found.
      * @throws VPAuthenticatorException If retrieval fails.
      */
     public List<String> getRequestIdsByTransactionId(String transactionId, int tenantId)
@@ -137,11 +150,11 @@ public class VPRequestDAO {
     }
 
     /**
-     * Update VP request status.
+     * Update the status of a VP request.
      *
-     * @param requestId Request ID.
-     * @param status    New status.
-     * @param tenantId  Tenant ID.
+     * @param requestId The request ID.
+     * @param status    The new status to set.
+     * @param tenantId  The tenant ID.
      * @throws VPAuthenticatorException If update fails.
      */
     public void updateVPRequestStatus(String requestId, VPRequestStatus status, int tenantId)
@@ -155,11 +168,11 @@ public class VPRequestDAO {
     }
 
     /**
-     * Update VP request with JWT.
+     * Update a VP request with the generated JWT.
      *
-     * @param requestId  Request ID.
-     * @param requestJwt JWT string.
-     * @param tenantId   Tenant ID.
+     * @param requestId  The request ID.
+     * @param requestJwt The signed JWT string.
+     * @param tenantId   The tenant ID.
      * @throws VPAuthenticatorException If update fails.
      */
     public void updateVPRequestJwt(String requestId, String requestJwt, int tenantId)
@@ -173,10 +186,10 @@ public class VPRequestDAO {
     }
 
     /**
-     * Delete VP request.
+     * Delete a VP request from the store.
      *
-     * @param requestId Request ID.
-     * @param tenantId  Tenant ID.
+     * @param requestId The request ID.
+     * @param tenantId  The tenant ID.
      * @throws VPAuthenticatorException If deletion fails.
      */
     public void deleteVPRequest(String requestId, int tenantId) throws VPAuthenticatorException {
@@ -194,9 +207,9 @@ public class VPRequestDAO {
     }
 
     /**
-     * Get expired VP requests.
+     * Get all expired VP requests for cleanup.
      *
-     * @param tenantId Tenant ID.
+     * @param tenantId The tenant ID.
      * @return List of expired VP requests.
      * @throws VPAuthenticatorException If retrieval fails.
      */
@@ -206,10 +219,10 @@ public class VPRequestDAO {
     }
 
     /**
-     * Update status of expired requests to EXPIRED.
+     * Update status of all expired requests to EXPIRED.
      *
-     * @param tenantId Tenant ID.
-     * @return Number of requests updated.
+     * @param tenantId The tenant ID.
+     * @return Number of requests marked as expired.
      * @throws VPAuthenticatorException If update fails.
      */
     public int markExpiredRequests(int tenantId) throws VPAuthenticatorException {
@@ -218,11 +231,11 @@ public class VPRequestDAO {
     }
 
     /**
-     * Get VP requests by status.
+     * Get VP requests filtered by their status.
      *
-     * @param status   Status to filter by.
-     * @param tenantId Tenant ID.
-     * @return List of VP requests with the given status.
+     * @param status   The status to filter by.
+     * @param tenantId The tenant ID.
+     * @return List of VP requests matching the status.
      * @throws VPAuthenticatorException If retrieval fails.
      */
     public List<VPRequest> getVPRequestsByStatus(VPRequestStatus status, int tenantId)
@@ -232,9 +245,9 @@ public class VPRequestDAO {
     }
 
     /**
-     * Add a VP request to all caches.
+     * Add a VP request to all applicable caches.
      *
-     * @param vpRequest VP request.
+     * @param vpRequest The VP request to cache.
      */
     private void addToAllCaches(VPRequest vpRequest) {
 
@@ -254,8 +267,8 @@ public class VPRequestDAO {
     /**
      * Sanitize values for logging to prevent CRLF injection.
      *
-     * @param value Value to sanitize.
-     * @return Sanitized string.
+     * @param value The value to sanitize.
+     * @return The sanitized string representation.
      */
     private String sanitizeForLog(Object value) {
 

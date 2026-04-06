@@ -30,23 +30,34 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPReq
  */
 public class PollingManager {
 
+    /**
+     * Singleton instance of PollingManager.
+     */
     private static volatile PollingManager instance;
 
+    /**
+     * Cache for VP submissions by request ID.
+     */
     private VPSubmissionCacheByRequestId vpSubmissionCache;
+
+    /**
+     * DAO for accessing VP request store.
+     */
     private VPRequestDAO vpRequestDAO;
 
     /**
-     * Private constructor for singleton.
+     * Private constructor for singleton initialization.
+     *
+     * <p>Initializes the internal submission cache and the request DAO.</p>
      */
     private PollingManager() {
 
         this.vpSubmissionCache = VPSubmissionCacheByRequestId.getInstance();
         this.vpRequestDAO = new VPRequestDAO();
-
     }
 
     /**
-     * Get singleton instance.
+     * Get the singleton instance of the PollingManager.
      *
      * @return PollingManager instance.
      */
@@ -63,11 +74,11 @@ public class PollingManager {
     }
 
     /**
-     * Check current status without waiting.
+     * Check the current status of a VP request without waiting.
      *
      * @param requestId Request ID to check.
      * @param tenantId  Tenant ID.
-     * @return PollingResult with current status.
+     * @return PollingResult with the current status of the request.
      */
     public PollingResult checkCurrentStatus(final String requestId, final int tenantId) {
 
@@ -103,10 +114,10 @@ public class PollingManager {
     }
 
     /**
-     * Check if request has expired.
+     * Check if a VP request has expired based on its timestamp.
      *
-     * @param vpRequest VP request.
-     * @return True if expired.
+     * @param vpRequest VP request to check.
+     * @return True if the request has expired, false otherwise.
      */
     private boolean isRequestExpired(final VPRequest vpRequest) {
 

@@ -23,7 +23,7 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.V
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 
 /**
- * Base service contract for managing VP requests.
+ * Base service contract for managing VP (Verifiable Presentation) requests.
  */
 public abstract class VPRequestService {
 
@@ -32,19 +32,19 @@ public abstract class VPRequestService {
      *
      * @param context Authentication context.
      * @return Created VP request.
-     * @throws VPAuthenticatorException If an error occurs.
+     * @throws VPAuthenticatorException If an error occurs during VP request creation.
      */
     public abstract VPRequest createVPRequest(AuthenticationContext context)
             throws VPAuthenticatorException;
 
     /**
-     * Get request JWT.
+     * Get the request JWT for a given request ID.
      *
      * @param requestId Request ID.
-     * @param tenantId Tenant ID.
-     * @return Request JWT.
+     * @param tenantId  Tenant ID.
+     * @return Signed request JWT string.
      * @throws VPAuthenticatorClientException If the request is not found or has expired.
-     * @throws VPAuthenticatorException If an error occurs.
+     * @throws VPAuthenticatorException       If a server error occurs during retrieval.
      */
     public abstract String getRequestJwt(String requestId, int tenantId)
             throws VPAuthenticatorClientException, VPAuthenticatorException;

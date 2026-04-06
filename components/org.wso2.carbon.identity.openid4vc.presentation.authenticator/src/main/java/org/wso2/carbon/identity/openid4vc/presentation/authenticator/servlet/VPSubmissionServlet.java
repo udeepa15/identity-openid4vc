@@ -48,9 +48,12 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-/**
+/*/**
  * Servlet handling VP (Verifiable Presentation) submissions from wallets.
- * Implements the OpenID4VP direct_post response mode.
+ *
+ * <p>Implements the OpenID4VP direct_post response mode. This servlet processes
+ * both JSON and application/x-www-form-urlencoded submissions, notifies
+ * status listeners, and provides spec-compliant feedback to the wallet.</p>
  */
 @Component(
     service = Servlet.class,
@@ -63,8 +66,19 @@ import javax.servlet.http.HttpServletResponse;
 )
 public class VPSubmissionServlet extends HttpServlet {
 
+    /**
+     * Serial version UID.
+     */
     private static final long serialVersionUID = 1L;
+
+    /**
+     * Logger for the VPSubmissionServlet class.
+     */
     private static final Log LOG = LogFactory.getLog(VPSubmissionServlet.class);
+
+    /**
+     * Gson instance for JSON serialization/deserialization.
+     */
     private static final Gson GSON = new GsonBuilder()
             .setPrettyPrinting()
             .create();
@@ -74,35 +88,56 @@ public class VPSubmissionServlet extends HttpServlet {
      */
     private static final int MAX_PARAM_LENGTH = 65536;
 
+    /**
+     * Service instance for status change notifications.
+     */
     private transient StatusNotificationService statusNotificationService;
+
+    /**
+     * Cache instance for storing VP submissions.
+     */
     private transient VPSubmissionCacheByRequestId vpSubmissionCache;
 
+    /**
+     * Initialize the servlet and its dependencies.
+     *
+     * @throws ServletException If an error occurs during initialization.
+     */
     @Override
     public void init() throws ServletException {
+
         super.init();
         this.statusNotificationService =
                 StatusNotificationService.getInstance();
         this.vpSubmissionCache = VPSubmissionCacheByRequestId.getInstance();
     }
 
+    /**
+     * Handle POST requests containing VP submissions.
+     *
+     * @param request  HTTP request.
+     * @param response HTTP response.
+     * @throws ServletException If an error occurs in the servlet.
+     * @throws IOException      If an I/O error occurs.
+     */
     @Override
     protected void doPost(final HttpServletRequest request,
             final HttpServletResponse response)
             throws ServletException, IOException {
 
         try {
-            // Parse submission directly into a builder
+            // Parse submission directly into a builder.
             VPSubmission.Builder submissionBuilder = parseSubmission(request);
-            
-            // Get tenant ID and other context
+
+            // Get tenant ID and other context.
             int tenantId = getTenantId(request);
             submissionBuilder.submissionId(OpenID4VPUtil.generateSubmissionId())
                     .submittedAt(System.currentTimeMillis())
                     .tenantId(tenantId);
-            
+
             VPSubmission submission = submissionBuilder.build();
 
-            // Basic validation
+            // Basic validation.
             if (StringUtils.isBlank(submission.getRequestId())) {
                 sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
                         new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
@@ -117,22 +152,26 @@ public class VPSubmissionServlet extends HttpServlet {
                 return;
             }
 
-            // Notify listeners
+            // Notify listeners.
             notifyStatusListeners(submission.getRequestId(), submission);
 
-            // Send success response
+            // Send success response.
             sendSuccessResponse(response, submission);
 
         } catch (RuntimeException e) {
-            LOG.error("Unexpected error processing VP submission", e);
+            LOG.error("Unexpected error processing VP submission.", e);
             sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
                     new VPAuthenticatorServerException(VPAuthenticatorErrorCode.INTERNAL_SERVER_ERROR,
-                            "Internal server error", e));
+                            "Internal server error.", e));
         }
     }
 
     /**
      * Parse submission from request body into a VPSubmission builder.
+     *
+     * @param request HTTP request.
+     * @return A VPSubmission.Builder populated with request data.
+     * @throws IOException If an I/O error occurs.
      */
     private VPSubmission.Builder parseSubmission(final HttpServletRequest request)
             throws IOException {
@@ -141,14 +180,14 @@ public class VPSubmissionServlet extends HttpServlet {
         VPSubmission.Builder builder = new VPSubmission.Builder();
 
         if (StringUtils.isNotBlank(body) && body.trim().startsWith("{")) {
-            // Handle JSON body
+            // Handle JSON body.
             try {
                 return GSON.fromJson(body, VPSubmission.Builder.class);
             } catch (JsonSyntaxException e) {
                 LOG.warn("Failed to parse JSON submission body.");
             }
         } else {
-            // Handle form-encoded body
+            // Handle form-encoded body.
             parseFormEncodedSubmission(body, builder);
         }
 
@@ -157,30 +196,33 @@ public class VPSubmissionServlet extends HttpServlet {
 
     /**
      * Parse form-encoded submission into the builder.
+     *
+     * @param formBody The raw form-encoded body string.
+     * @param builder  The builder to populate.
      */
     private void parseFormEncodedSubmission(final String formBody,
                                              final VPSubmission.Builder builder) {
 
         builder.vpToken(getDecodedFormParameter(formBody, OpenID4VPConstants.ResponseParams.VP_TOKEN))
-               .presentationSubmission(getDecodedFormParameter(formBody, 
+               .presentationSubmission(getDecodedFormParameter(formBody,
                        OpenID4VPConstants.ResponseParams.PRESENTATION_SUBMISSION))
                .requestId(getDecodedFormParameter(formBody, OpenID4VPConstants.ResponseParams.STATE))
                .error(getDecodedFormParameter(formBody, OpenID4VPConstants.ResponseParams.ERROR))
-               .errorDescription(getDecodedFormParameter(formBody, 
+               .errorDescription(getDecodedFormParameter(formBody,
                        OpenID4VPConstants.ResponseParams.ERROR_DESCRIPTION));
     }
 
     /**
-     * Get URL-decoded parameter value.
+     * Get URL-decoded parameter value from a form-encoded body.
      *
-     * @param request   HTTP request
-     * @param paramName Parameter name
-     * @return Decoded value or original if decoding fails
+     * @param formBody  The raw form-encoded body string.
+     * @param paramName Parameter name to extract.
+     * @return Decoded value, or null if not found or invalid.
      */
     private String getDecodedFormParameter(final String formBody,
             final String paramName) {
 
-        // Validating parameter name against a whitelist to build trust for SpotBugs
+        // Validating parameter name against a whitelist to build trust for SpotBugs.
         if (!OpenID4VPConstants.ResponseParams.VP_TOKEN.equals(paramName)
                 && !OpenID4VPConstants.ResponseParams.PRESENTATION_SUBMISSION.equals(paramName)
                 && !OpenID4VPConstants.ResponseParams.STATE.equals(paramName)
@@ -212,7 +254,7 @@ public class VPSubmissionServlet extends HttpServlet {
             }
             try {
                 String decodedValue = URLDecoder.decode(value, StandardCharsets.UTF_8.name());
-                // Special handling for vp_token to remove extraneous quotes if present (inji)
+                // Special handling for vp_token to remove extraneous quotes if present (inji).
                 if (OpenID4VPConstants.ResponseParams.VP_TOKEN.equals(paramName)) {
                     String sanitizedValue = decodedValue.trim();
 
@@ -237,7 +279,14 @@ public class VPSubmissionServlet extends HttpServlet {
         return value;
     }
 
+    /**
+     * Decode a single form token.
+     *
+     * @param value The token to decode.
+     * @return The decoded token.
+     */
     private String decodeFormToken(final String value) {
+
         if (value == null) {
             return null;
         }
@@ -256,6 +305,7 @@ public class VPSubmissionServlet extends HttpServlet {
      * @return The sanitized string, or an empty string if {@code input} is null.
      */
     private String sanitize(final String input) {
+
         if (input == null) {
             return "";
         }
@@ -265,10 +315,10 @@ public class VPSubmissionServlet extends HttpServlet {
     }
 
     /**
-     * Notify status listeners.
+     * Notify status listeners and store the submission in the cache.
      *
      * @param requestId  The request ID (state).
-     * @param submission The VP submission.
+     * @param submission The VP submission data.
      */
     private void notifyStatusListeners(final String requestId,
             final VPSubmission submission) {
@@ -277,15 +327,15 @@ public class VPSubmissionServlet extends HttpServlet {
             return;
         }
 
-        // Store submission in wallet data cache for status checks
+        // Store submission in wallet data cache for status checks.
         if (vpSubmissionCache != null) {
-            vpSubmissionCache.addToCache(new VPSubmissionRequestIdCacheKey(requestId), 
+            vpSubmissionCache.addToCache(new VPSubmissionRequestIdCacheKey(requestId),
                     new VPSubmissionCacheEntry(submission), submission.getTenantId());
         } else {
             LOG.warn("VPSubmissionCache is null; submission will not be persisted.");
         }
 
-        // Use the centralized notification service
+        // Use the centralized notification service.
         if (statusNotificationService != null) {
             if (StringUtils.isNotBlank(submission.getError())) {
                 statusNotificationService.notifySubmissionError(
@@ -296,15 +346,14 @@ public class VPSubmissionServlet extends HttpServlet {
                 statusNotificationService.notifyVPSubmitted(requestId);
             }
         }
-
     }
 
     /**
      * Send success response to wallet.
      *
-     * @param response   HTTP response
-     * @param submission The processed submission
-     * @throws IOException If writing fails
+     * @param response   HTTP response.
+     * @param submission The processed submission.
+     * @throws IOException If writing fails.
      */
     private void sendSuccessResponse(final HttpServletResponse response,
             final VPSubmission submission)
@@ -316,13 +365,13 @@ public class VPSubmissionServlet extends HttpServlet {
         // Prevent browsers from MIME-sniffing the JSON response as HTML.
         response.setHeader("X-Content-Type-Options", "nosniff");
 
-        // Build response object per OpenID4VP spec
+        // Build response object per OpenID4VP spec.
         // Values are server-generated (submission IDs), not reflected user input.
         JsonObject responseObj = new JsonObject();
         responseObj.addProperty("status", "received");
         responseObj.addProperty("submission_id", submission.getSubmissionId());
 
-        // Add transaction ID if present for tracking
+        // Add transaction ID if present for tracking.
         if (submission.getTransactionId() != null) {
             responseObj.addProperty("transaction_id",
                     submission.getTransactionId());
@@ -333,16 +382,15 @@ public class VPSubmissionServlet extends HttpServlet {
         byte[] payload = responseJson.getBytes(StandardCharsets.UTF_8);
         response.getOutputStream().write(payload);
         response.getOutputStream().flush();
-
     }
 
     /**
      * Send error response per OAuth 2.0 spec.
      *
-     * @param response   HTTP response
-     * @param statusCode HTTP status code
-     * @param exception  The exception to send as error
-     * @throws IOException If writing fails
+     * @param response   HTTP response.
+     * @param statusCode HTTP status code.
+     * @param exception  The exception to send as error.
+     * @throws IOException If writing fails.
      */
     private void sendErrorResponse(final HttpServletResponse response,
                                     final int statusCode,
@@ -355,7 +403,7 @@ public class VPSubmissionServlet extends HttpServlet {
         // Prevent browsers from MIME-sniffing the JSON response as HTML.
         response.setHeader("X-Content-Type-Options", "nosniff");
 
-        // Use exception values for error response
+        // Use exception values for error response.
         JsonObject errorObj = new JsonObject();
         errorObj.addProperty("error", sanitize(exception.getOAuth2ErrorCode()));
         errorObj.addProperty("error_description",
@@ -378,10 +426,10 @@ public class VPSubmissionServlet extends HttpServlet {
     private static final String TENANT_DOMAIN_PATTERN = "^[a-zA-Z0-9._-]+$";
 
     /**
-     * Get tenant ID from request context.
+     * Resolve the tenant ID from the request context or attributes.
      *
-     * @param request HTTP request
-     * @return Tenant ID
+     * @param request HTTP request.
+     * @return Tenant ID.
      */
     private int getTenantId(final HttpServletRequest request) {
 
@@ -405,6 +453,5 @@ public class VPSubmissionServlet extends HttpServlet {
 
         return DEFAULT_TENANT_ID;
     }
-
 }
 

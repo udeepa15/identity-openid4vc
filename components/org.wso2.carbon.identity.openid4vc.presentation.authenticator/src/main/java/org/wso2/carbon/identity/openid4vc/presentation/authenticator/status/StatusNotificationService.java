@@ -25,27 +25,35 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Service for managing status change notifications.
- * Coordinates between VP submissions and polling clients.
+ *
+ * <p>Coordinates between VP submissions and polling clients. This service maintains
+ * a list of listeners that are notified when a verifiable presentation is submitted
+ * or when an error occurs during submission.</p>
  */
 public class StatusNotificationService {
 
+    /**
+     * Singleton instance of the service.
+     */
     private static volatile StatusNotificationService instance;
 
+    /**
+     * List of registered status change listeners.
+     */
     private final List<StatusChangeListener> statusChangeListeners;
 
     /**
-     * Private constructor for singleton.
+     * Private constructor for the singleton pattern.
      */
     private StatusNotificationService() {
 
         this.statusChangeListeners = new CopyOnWriteArrayList<>();
-
     }
 
     /**
-     * Get singleton instance.
+     * Get the singleton instance of the service.
      *
-     * @return StatusNotificationService instance
+     * @return StatusNotificationService instance.
      */
     public static StatusNotificationService getInstance() {
 
@@ -76,9 +84,9 @@ public class StatusNotificationService {
     /**
      * Notify that a VP submission has an error.
      *
-         * @param requestId        Request ID.
-         * @param error            Error code.
-         * @param errorDescription Error description.
+     * @param requestId        Request ID.
+     * @param error            Error code.
+     * @param errorDescription Error description.
      */
     public void notifySubmissionError(final String requestId,
             final String error,
@@ -93,6 +101,9 @@ public class StatusNotificationService {
 
     /**
      * Notify all registered status change listeners.
+     *
+     * @param requestId Request ID.
+     * @param newStatus New status.
      */
     private void notifyStatusChangeListeners(final String requestId,
             final VPRequestStatus newStatus) {
@@ -101,15 +112,15 @@ public class StatusNotificationService {
             try {
                 listener.onStatusChange(requestId, newStatus);
             } catch (RuntimeException e) {
-                // Ignore runtime exceptions from listener to avoid disrupting notification flow
+                // Ignore runtime exceptions from listener to avoid disrupting notification flow.
             }
         }
     }
 
     /**
-     * Get count of registered status change listeners.
+     * Get the count of registered status change listeners.
      *
-     * @return Number of listeners
+     * @return Number of listeners.
      */
     public int getStatusChangeListenerCount() {
 

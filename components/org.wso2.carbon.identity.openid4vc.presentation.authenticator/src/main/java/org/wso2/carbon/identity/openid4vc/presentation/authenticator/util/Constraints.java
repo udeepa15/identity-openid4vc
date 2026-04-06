@@ -19,20 +19,26 @@
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.util;
 
 /**
- * Constants related to OpenID4VP Authenticator.
+ * Constants related to the OpenID for Verifiable Presentations (OpenID4VP) authenticator.
  */
 public class Constraints {
 
-    // Authenticator configuration properties
+    /**
+     * Authenticator configuration properties.
+     */
     public static final String AUTHENTICATOR_NAME = "OpenID4VPAuthenticator";
     public static final String AUTHENTICATOR_FRIENDLY_NAME = "Wallet (OpenID4VP)";
 
-    // Request parameter names
+    /**
+     * Request parameter names.
+     */
     public static final String PARAM_VP_REQUEST_ID = "vp_request_id";
     public static final String PARAM_STATUS = "status";
     public static final String PARAM_POLL = "poll";
 
-    // Session data keys
+    /**
+     * Session data and UI attribute keys.
+     */
     public static final String SESSION_VP_REQUEST_ID = "openid4vp_request_id";
     public static final String SESSION_TRANSACTION_ID = "openid4vp_transaction_id";
     public static final String UI_SESSION_DATA_KEY = "openid4vp_ui_session_data_key";
@@ -41,7 +47,9 @@ public class Constraints {
     public static final String UI_REQUEST_URI = "openid4vp_ui_request_uri";
     public static final String UI_QR_CONTENT = "openid4vp_ui_qr_content";
 
-    // Configuration property keys
+    /**
+     * Configuration property names and defaults.
+     */
     public static final String PROP_PRESENTATION_DEFINITION_ID = "presentationDefinitionId";
     public static final String PROP_RESPONSE_MODE = "ResponseMode";
     public static final String PROP_TIMEOUT_SECONDS = "TimeoutSeconds";
@@ -49,18 +57,28 @@ public class Constraints {
     public static final String PROP_SUBJECT_CLAIM = "SubjectClaim";
     public static final String PROP_DID_METHOD = "DIDMethod";
     public static final String DEFAULT_DID_METHOD_WEB = "web";
-    
+
+    /**
+     * Endpoint and pattern constants.
+     */
     public static final String WALLET_LOGIN_PAGE = "/authenticationendpoint/wallet_login.jsp";
     public static final String ALPHANUM_PATTERN = "^[a-zA-Z0-9_.-]+$";
     public static final int DEFAULT_TENANT_ID = -1234;
     public static final String TENANT_DOMAIN_PATTERN = "^[a-zA-Z0-9._-]+$";
 
+    /**
+     * Display order and boundary constants.
+     */
     public static final int DISPLAY_ORDER_3 = 3;
     public static final int DISPLAY_ORDER_4 = 4;
     public static final int DISPLAY_ORDER_5 = 5;
-    
+
     public static final int SUPER_TENANT_ID_PLACEHOLDER = -1234;
 
+    /**
+     * Private constructor to prevent instantiation of utility class.
+     */
     private Constraints() {
+
     }
 }

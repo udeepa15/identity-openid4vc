@@ -24,7 +24,7 @@ package org.wso2.carbon.identity.openid4vc.presentation.authenticator.model;
 public enum VPRequestStatus {
 
     /**
-     * Authorization request created, waiting for VP submission from wallet.
+     * Authorization request created, waiting for VP submission from the wallet.
      */
     ACTIVE("ACTIVE"),
 
@@ -39,7 +39,7 @@ public enum VPRequestStatus {
     EXPIRED("EXPIRED"),
 
     /**
-     * Verification process has been completed.
+     * Verification process has been completed successfully.
      */
     COMPLETED("COMPLETED"),
 
@@ -48,18 +48,39 @@ public enum VPRequestStatus {
      */
     CANCELLED("CANCELLED");
 
+    /**
+     * String value of the status.
+     */
     private final String value;
 
+    /**
+     * Constructor for VPRequestStatus enum.
+     *
+     * @param value String value of the status.
+     */
     VPRequestStatus(String value) {
+
         this.value = value;
     }
 
+    /**
+     * Get the string value of the status.
+     *
+     * @return The status string.
+     */
     public String getValue() {
+
         return value;
     }
 
+    /**
+     * Returns the string representation of the status.
+     *
+     * @return The status string value.
+     */
     @Override
     public String toString() {
+
         return value;
     }
 }

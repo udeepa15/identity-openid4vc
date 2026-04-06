@@ -27,38 +27,42 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Utility class for generating QR codes for OpenID4VP authorization requests.
- * 
- * QR codes can encode:
- * 1. A full authorization request URL (by-value)
- * 2. A request_uri reference (by-reference)
- * 3. An OpenID4VP deep link for mobile wallets
+ * Utility class for generating QR codes for OpenID for Verifiable Presentations (OpenID4VP) authorization requests.
+ *
+ * <p>QR codes can encode:
+ * 1. A full authorization request URL (by-value).
+ * 2. A request_uri reference (by-reference).
+ * 3. An OpenID4VP deep link for mobile wallets.</p>
  */
 public class QRCodeUtil {
 
+    /**
+     * Private constructor to prevent instantiation of utility class.
+     */
     private QRCodeUtil() {
-        // Prevent instantiation
+
     }
 
     /**
-     * Generate QR code content for a VP request using request_uri flow.
-     * 
-     * @param requestUri The URI where the full request can be fetched
-     * @param clientId   The client ID to include in the authorization request
-     * @return QR code content string (OpenID4VP deep link)
+     * Generate QR code content for a verifiable presentation (VP) request using the request_uri flow.
+     *
+     * @param requestUri The URI where the full request can be fetched.
+     * @param clientId   The client ID to include in the authorization request.
+     * @return QR code content string (OpenID4VP deep link).
      */
-    public static String generateRequestUriQRContent(String requestUri, String clientId) {
+    public static String generateRequestUriQRContent(final String requestUri, final String clientId) {
+
         if (StringUtils.isBlank(requestUri)) {
-            throw new IllegalArgumentException("Request URI cannot be blank");
+            throw new IllegalArgumentException("Request URI cannot be blank.");
         }
 
-        // OpenID4VP scheme with request_uri
+        // OpenID4VP scheme with request_uri.
         StringBuilder content = new StringBuilder();
         content.append(OpenID4VPConstants.Protocol.OPENID4VP_SCHEME);
-        content.append("authorize"); // Add authorize path as requested
+        content.append("authorize"); // Add authorize path as requested.
         content.append("?");
 
-        // Add client_id if present (as requested by user)
+        // Add client_id if present.
         if (StringUtils.isNotBlank(clientId)) {
             content.append(OpenID4VPConstants.RequestParams.CLIENT_ID);
             content.append("=");
@@ -74,50 +78,51 @@ public class QRCodeUtil {
     }
 
     /**
-     * Generate QR code content for a VP request using by-value flow.
-     * 
-     * @param authorizationDetails The full authorization details
-     * @return QR code content string (OpenID4VP deep link with full request)
+     * Generate QR code content for a verifiable presentation (VP) request using the by-value flow.
+     *
+     * @param authorizationDetails The full authorization details.
+     * @return QR code content string (OpenID4VP deep link with full request).
      */
-    public static String generateByValueQRContent(VPRequest.AuthorizationDetails authorizationDetails) {
+    public static String generateByValueQRContent(final VPRequest.AuthorizationDetails authorizationDetails) {
+
         if (authorizationDetails == null) {
-            throw new IllegalArgumentException("Authorization details cannot be null");
+            throw new IllegalArgumentException("Authorization details cannot be null.");
         }
 
         StringBuilder content = new StringBuilder();
         content.append(OpenID4VPConstants.Protocol.OPENID4VP_SCHEME);
         content.append("?");
 
-        // Client ID
+        // Client ID.
         content.append(OpenID4VPConstants.RequestParams.CLIENT_ID);
         content.append("=");
         content.append(urlEncode(authorizationDetails.getClientId()));
 
-        // Response type
+        // Response type.
         content.append("&");
         content.append(OpenID4VPConstants.RequestParams.RESPONSE_TYPE);
         content.append("=");
         content.append(OpenID4VPConstants.Protocol.RESPONSE_TYPE_VP_TOKEN);
 
-        // Response mode
+        // Response mode.
         content.append("&");
         content.append(OpenID4VPConstants.RequestParams.RESPONSE_MODE);
         content.append("=");
         content.append(urlEncode(authorizationDetails.getResponseMode()));
 
-        // Response URI
+        // Response URI.
         content.append("&");
         content.append(OpenID4VPConstants.RequestParams.RESPONSE_URI);
         content.append("=");
         content.append(urlEncode(authorizationDetails.getResponseUri()));
 
-        // Nonce
+        // Nonce.
         content.append("&");
         content.append(OpenID4VPConstants.RequestParams.NONCE);
         content.append("=");
         content.append(urlEncode(authorizationDetails.getNonce()));
 
-        // State (request ID)
+        // State (request ID).
         if (StringUtils.isNotBlank(authorizationDetails.getState())) {
             content.append("&");
             content.append(OpenID4VPConstants.RequestParams.STATE);
@@ -125,7 +130,7 @@ public class QRCodeUtil {
             content.append(urlEncode(authorizationDetails.getState()));
         }
 
-        // Presentation definition
+        // Presentation definition.
         if (authorizationDetails.getPresentationDefinition() != null) {
             content.append("&");
             content.append(OpenID4VPConstants.Protocol.PRESENTATION_DEFINITION);
@@ -136,14 +141,21 @@ public class QRCodeUtil {
         return content.toString();
     }
 
-    private static String urlEncode(String value) {
+    /**
+     * URL-encode the given value using UTF-8 encoding.
+     *
+     * @param value The string to encode.
+     * @return URL-encoded string.
+     */
+    private static String urlEncode(final String value) {
+
         if (value == null) {
             return "";
         }
         try {
             return URLEncoder.encode(value, StandardCharsets.UTF_8.name());
         } catch (UnsupportedEncodingException e) {
-            // UTF-8 is always supported
+            // UTF-8 is always supported.
             return value;
         }
     }

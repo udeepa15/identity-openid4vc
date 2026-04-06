@@ -39,106 +39,163 @@ import java.util.Hashtable;
 
 /**
  * OSGi component for OpenID4VP service registration.
- * 
- * This component:
- * 1. Creates and registers service implementations as OSGi services
- * 2. Registers the OpenID4VP authenticator with the authentication framework
- * 3. Initializes the VPServiceDataHolder with required services
+ *
+ * <p>This component:
+ * 1. Creates and registers service implementations as OSGi services.
+ * 2. Registers the OpenID4VP authenticator with the authentication framework.
+ * 3. Initializes the VPServiceDataHolder with required services.</p>
  */
 @Component(name = "org.wso2.carbon.identity.openid4vc.presentation.service.component", immediate = true)
 public class VPServiceRegistrationComponent {
 
+    /**
+     * Logger for VPServiceRegistrationComponent.
+     */
     private static final Logger LOG = LoggerFactory.getLogger(VPServiceRegistrationComponent.class);
 
+    /**
+     * Flag to indicate if the authenticator is already registered.
+     */
     private boolean authenticatorRegistered = false;
 
+    /**
+     * Activate the OSGi component.
+     *
+     * @param context The component context.
+     */
     @Activate
     protected void activate(ComponentContext context) {
+
         try {
-            // Only register once to avoid duplicates
+            // Only register once to avoid duplicates.
             if (authenticatorRegistered) {
                 return;
             }
 
             BundleContext bundleContext = context.getBundleContext();
 
-            // Initialize services using default constructors (which create their own DAOs)
+            // Initialize services using default constructors (which create their own DAOs).
             VPRequestServiceImpl vpRequestService = new VPRequestServiceImpl();
 
-
-            // Register services with OSGi
-                bundleContext.registerService(VPRequestServiceImpl.class.getName(),
+            // Register services with OSGi.
+            bundleContext.registerService(VPRequestServiceImpl.class.getName(),
                     vpRequestService, new Hashtable<>());
 
-
-            // Set services in data holder
+            // Set services in data holder.
             VPServiceDataHolder.setVPRequestService(vpRequestService);
 
-
-            // Register OpenID4VP Authenticator
+            // Register OpenID4VP Authenticator.
             OpenID4VPAuthenticator authenticator = new OpenID4VPAuthenticator();
             bundleContext.registerService(ApplicationAuthenticator.class.getName(),
                     authenticator, new Hashtable<>());
 
             authenticatorRegistered = true;
-
         } catch (Throwable e) {
             LOG.error("Error while activating OpenID4VP service registration component.", e);
         }
     }
 
+    /**
+     * Deactivate the OSGi component.
+     *
+     * @param context The component context.
+     */
     protected void deactivate(ComponentContext context) {
-        // Services are automatically unregistered by OSGi
+
+        // Services are automatically unregistered by OSGi.
         VPServiceDataHolder.setVPRequestService(null);
-
         authenticatorRegistered = false;
-
     }
 
+    /**
+     * Set the PresentationDefinitionService.
+     *
+     * @param service The PresentationDefinitionService instance.
+     */
     @Reference(name = "presentation.management.service", service = PresentationDefinitionService.class,
             cardinality = ReferenceCardinality.MANDATORY, policy = ReferencePolicy.DYNAMIC,
             unbind = "unsetPresentationDefinitionService")
     protected void setPresentationDefinitionService(PresentationDefinitionService service) {
+
         VPServiceDataHolder.setPresentationDefinitionService(service);
     }
 
+    /**
+     * Unset the PresentationDefinitionService.
+     *
+     * @param service The PresentationDefinitionService instance.
+     */
     protected void unsetPresentationDefinitionService(PresentationDefinitionService service) {
+
         VPServiceDataHolder.setPresentationDefinitionService(null);
     }
 
+    /**
+     * Set the VerificationService.
+     *
+     * @param service The VerificationService instance.
+     */
     @Reference(name = "openid4vc.presentation.verification.service", service = VerificationService.class,
             cardinality = ReferenceCardinality.MANDATORY, policy = ReferencePolicy.DYNAMIC,
             unbind = "unsetVerificationService")
     protected void setVerificationService(VerificationService service) {
+
         VPServiceDataHolder.setVerificationService(service);
     }
 
+    /**
+     * Unset the VerificationService.
+     *
+     * @param service The VerificationService instance.
+     */
     protected void unsetVerificationService(VerificationService service) {
+
         VPServiceDataHolder.setVerificationService(null);
     }
 
-    @Reference(name = "user.realm.service", service = RealmService.class, cardinality = 
-    ReferenceCardinality.MANDATORY, policy = ReferencePolicy.DYNAMIC, unbind = "unsetRealmService")
+    /**
+     * Set the RealmService.
+     *
+     * @param realmService The RealmService instance.
+     */
+    @Reference(name = "user.realm.service", service = RealmService.class, cardinality =
+            ReferenceCardinality.MANDATORY, policy = ReferencePolicy.DYNAMIC, unbind = "unsetRealmService")
     protected void setRealmService(RealmService realmService) {
+
         VPServiceDataHolder.setRealmService(realmService);
-
     }
 
+    /**
+     * Unset the RealmService.
+     *
+     * @param realmService The RealmService instance.
+     */
     protected void unsetRealmService(RealmService realmService) {
-        VPServiceDataHolder.setRealmService(null);
 
+        VPServiceDataHolder.setRealmService(null);
     }
 
-    @Reference(name = "org.wso2.carbon.identity.application.mgt.ApplicationManagementService", service = 
-    org.wso2.carbon.identity.application.mgt.ApplicationManagementService.class, cardinality = 
-    ReferenceCardinality.MANDATORY, policy = 
-    ReferencePolicy.DYNAMIC, unbind = "unsetApplicationManagementService")
+    /**
+     * Set the ApplicationManagementService.
+     *
+     * @param applicationManagementService The ApplicationManagementService instance.
+     */
+    @Reference(name = "org.wso2.carbon.identity.application.mgt.ApplicationManagementService", service =
+            org.wso2.carbon.identity.application.mgt.ApplicationManagementService.class, cardinality =
+            ReferenceCardinality.MANDATORY, policy =
+            ReferencePolicy.DYNAMIC, unbind = "unsetApplicationManagementService")
     protected void setApplicationManagementService(ApplicationManagementService applicationManagementService) {
+
         VPServiceDataHolder.setApplicationManagementService(applicationManagementService);
     }
 
+    /**
+     * Unset the ApplicationManagementService.
+     *
+     * @param applicationManagementService The ApplicationManagementService instance.
+     */
     protected void unsetApplicationManagementService(ApplicationManagementService applicationManagementService) {
-        VPServiceDataHolder.setApplicationManagementService(null);
 
+        VPServiceDataHolder.setApplicationManagementService(null);
     }
 }

@@ -89,17 +89,17 @@ import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.WALLET_LOGIN_PAGE;
 
 /**
- * OpenID4VP Wallet Authenticator for WSO2 Identity Server.
- * 
- * This authenticator implements the OpenID for Verifiable Presentations
- * (OpenID4VP) protocol
- * to authenticate users by verifying their verifiable credentials from a
- * digital wallet.
+ * OpenID for Verifiable Presentations (OpenID4VP) authenticator for WSO2 Identity Server.
+ *
+ * <p>This authenticator implements the OpenID for Verifiable Presentations (OpenID4VP) protocol
+ * to authenticate users by verifying their verifiable credentials from a digital wallet.</p>
  */
 public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
-    implements FederatedApplicationAuthenticator {
+        implements FederatedApplicationAuthenticator {
 
-    // Use @Serial annotation for serialVersionUID
+    /**
+     * Serial version UID.
+     */
     @java.io.Serial
     private static final long serialVersionUID = 1L;
 
@@ -107,14 +107,24 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
 
     @Override
     public String getName() {
+
         return AUTHENTICATOR_NAME;
     }
 
     @Override
     public String getFriendlyName() {
+
         return AUTHENTICATOR_FRIENDLY_NAME;
     }
 
+    /**
+     * Initiate the authentication request to the wallet.
+     *
+     * @param request  HTTP request.
+     * @param response HTTP response.
+     * @param context  Authentication context.
+     * @throws AuthenticationFailedException If request initiation fails.
+     */
     @Override
     protected void initiateAuthenticationRequest(final HttpServletRequest request,
             final HttpServletResponse response,
@@ -158,16 +168,24 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         }
     }
 
+    /**
+     * Process the authentication response from the wallet.
+     *
+     * @param request  HTTP request.
+     * @param response HTTP response.
+     * @param context  Authentication context.
+     * @throws AuthenticationFailedException If authentication fails.
+     */
     @Override
     protected void processAuthenticationResponse(final HttpServletRequest request,
             final HttpServletResponse response,
             final AuthenticationContext context) throws AuthenticationFailedException {
 
-        // Retrieve Session Info first to get requestId
+        // Retrieve Session Info first to get requestId.
         String requestId = (String) context.getProperty(SESSION_VP_REQUEST_ID);
 
         VPSubmission submission = null;
-        // Try to get submission from Cache (polling/redirect)
+        // Try to get submission from Cache (polling/redirect).
         if (StringUtils.isNotBlank(requestId)) {
             int tenantId = org.wso2.carbon.identity.core.util.IdentityTenantUtil.getTenantId(context.getTenantDomain());
             VPSubmissionCacheEntry cacheEntry = VPSubmissionCacheByRequestId.getInstance()
@@ -176,7 +194,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         }
 
         if (submission == null) {
-            throw new AuthenticationFailedException("No VP submission received");
+            throw new AuthenticationFailedException("No VP submission received.");
         }
 
         try {
@@ -185,7 +203,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             VerificationResult verificationResult;
 
             try {
-                // Parse the presentation_submission string into the DTO
+                // Parse the presentation_submission string into the DTO.
                 Gson gson = new GsonBuilder()
                         .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
                         .create();
@@ -207,7 +225,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             }
 
             if (!VerificationResult.VerificationStatus.VERIFIED.equals(verificationResult.getStatus())) {
-                throw new AuthenticationFailedException("VP verification status is not VERIFIED");
+                throw new AuthenticationFailedException("VP verification status is not VERIFIED.");
             }
 
             Map<String, Object> verifiedClaims = new HashMap<>(verificationResult.getVerifiedClaims());
@@ -220,13 +238,13 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             boolean isSubjectClaimConfigured = StringUtils.isNotBlank(resolveConfiguredSubjectClaimUri(context));
 
             // If IDP subject claim is configured, enforce it.
-                // Otherwise, use a transient random UUID as the subject identifier.
+            // Otherwise, use a transient random UUID as the subject identifier.
             String username = isSubjectClaimConfigured
                     ? extractUsername(verifiedClaims, subjectRemoteClaim)
                     : UUID.randomUUID().toString();
 
             if (isSubjectClaimConfigured && StringUtils.isBlank(username)) {
-                throw new AuthenticationFailedException("No user identifier found in verified credentials");
+                throw new AuthenticationFailedException("No user identifier found in verified credentials.");
             }
 
             AuthenticatedUser authenticatedUser = AuthenticatedUser
@@ -253,13 +271,13 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      * Extract the username from verified claims using only the IDP-configured subject claim.
      *
      * <p>The remote claim name to use as subject is resolved from the IDP's {@code userIdClaim}
-        * remote URI. If that cannot be determined (IDP not configured, or no matching mapping), this
+     * remote URI. If that cannot be determined (IDP not configured, or no matching mapping), this
      * method returns {@code null}, which causes authentication to fail with a clear error rather
      * than silently picking the wrong field.</p>
      *
-     * @param verifiedClaims     Claims extracted and verified from the VC
-     * @param subjectRemoteClaim The remote (VC-side) claim name that corresponds to the IDP subject
-     * @return Username string, or null if not determinable
+     * @param verifiedClaims     Claims extracted and verified from the VC.
+     * @param subjectRemoteClaim The remote (VC-side) claim name that corresponds to the IDP subject.
+     * @return Username string, or null if not determinable.
      */
     private String extractUsername(final Map<String, Object> verifiedClaims,
                                    final String subjectRemoteClaim) {
@@ -271,11 +289,10 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         return (val != null && StringUtils.isNotBlank(val.toString())) ? val.toString() : null;
     }
 
-
     /**
      * Generate a transient random subject identifier when no subject claim is configured.
      *
-     * @return Random UUID string
+     * @return Random UUID string.
      */
     private String generateTransientSubjectIdentifier() {
 
@@ -286,9 +303,14 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      * Map verified claims to WSO2 ClaimMappings using IDP-configured mappings.
      *
      * <p>If no mappings are configured, an empty map is returned and no claim mapping is applied.</p>
+     *
+     * @param verifiedClaims   Claims extracted and verified from the VC.
+     * @param idpClaimMappings Mappings configured for the Identity Provider.
+     * @return Map of local claim mappings to values.
      */
     private Map<ClaimMapping, String> mapVerifiedClaimsToLocal(Map<String, Object> verifiedClaims,
                                                                ClaimMapping[] idpClaimMappings) {
+
         Map<ClaimMapping, String> mappedClaims = new HashMap<>();
         if (idpClaimMappings == null) {
             // No IDP mappings configured.
@@ -302,11 +324,11 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             }
 
             String remoteClaim = mapping.getRemoteClaim().getClaimUri();
-            // Direct top-level match
+            // Direct top-level match.
             if (verifiedClaims.containsKey(remoteClaim)) {
                 mappedClaims.put(mapping, verifiedClaims.get(remoteClaim).toString());
             } else {
-                // Try credentialSubject nested map (for non-SD-JWT paths)
+                // Try credentialSubject nested map (for non-SD-JWT paths).
                 Object cs = verifiedClaims.get("credentialSubject");
                 if (cs instanceof Map) {
                     Object val = ((Map<?, ?>) cs).get(remoteClaim);
@@ -315,7 +337,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
                         continue;
                     }
                 }
-                // Try vc.credentialSubject (nested JWT VC)
+                // Try vc.credentialSubject (nested JWT VC).
                 Object vcObj = verifiedClaims.get("vc");
                 if (vcObj instanceof Map) {
                     Object csObj = ((Map<?, ?>) vcObj).get("credentialSubject");
@@ -326,7 +348,6 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
                         }
                     }
                 }
-                // Claim not present in VC — skip silently (Fix 4 applies here too via extractClaimsFromVP)
             }
         }
         return mappedClaims;
@@ -336,19 +357,29 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
 
 
 
+    /**
+     * Process the authentication request and status/response callbacks.
+     *
+     * @param request  HTTP request.
+     * @param response HTTP response.
+     * @param context  Authentication context.
+     * @return Status of the authentication flow.
+     * @throws AuthenticationFailedException If authentication fails.
+     * @throws LogoutFailedException         If logout fails.
+     */
     @Override
     public AuthenticatorFlowStatus process(final HttpServletRequest request,
                                            final HttpServletResponse response,
                                            final AuthenticationContext context)
             throws AuthenticationFailedException, LogoutFailedException {
 
-        // Check if this is a polling request
+        // Check if this is a polling request.
         String poll = getValidatedParameter(request, PARAM_POLL);
         if ("true".equals(poll)) {
             return handlePollRequest(response, context);
         }
 
-        // Check if status is being reported
+        // Check if status is being reported.
         String status = getValidatedParameter(request, PARAM_STATUS);
         if (StringUtils.isNotBlank(status)) {
             return handleStatusCallback(request, response, context, status);
@@ -359,13 +390,19 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
 
     /**
      * Handle polling request from the login page.
+     *
+     * @param response HTTP response.
+     * @param context  Authentication context.
+     * @return Status of the authentication flow.
+     * @throws AuthenticationFailedException If polling fails.
      */
     private AuthenticatorFlowStatus handlePollRequest(final HttpServletResponse response,
-                                                  final AuthenticationContext context)
+                                                      final AuthenticationContext context)
             throws AuthenticationFailedException {
+
         String requestId = (String) context.getProperty(SESSION_VP_REQUEST_ID);
         if (StringUtils.isBlank(requestId)) {
-            throw new AuthenticationFailedException("VP request ID not found in session");
+            throw new AuthenticationFailedException("VP request ID not found in session.");
         }
 
         try {
@@ -374,7 +411,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             VPRequest vpRequest = requestService.getVPRequestById(requestId, tenantId);
 
             if (vpRequest == null) {
-                sendPollResponse(response, "error", "Request not found");
+                sendPollResponse(response, "error", "Request not found.");
                 return AuthenticatorFlowStatus.INCOMPLETE;
             }
 
@@ -389,11 +426,11 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
                     return AuthenticatorFlowStatus.SUCCESS_COMPLETED;
                 }
             } else if (VPRequestStatus.EXPIRED.equals(status)) {
-                sendPollResponse(response, "expired", "Request expired");
-                throw new AuthenticationFailedException("VP request has expired");
+                sendPollResponse(response, "expired", "Request expired.");
+                throw new AuthenticationFailedException("VP request has expired.");
             } else if (VPRequestStatus.CANCELLED.equals(status)) {
-                sendPollResponse(response, "cancelled", "Request was cancelled");
-                throw new AuthenticationFailedException("VP request was cancelled");
+                sendPollResponse(response, "cancelled", "Request was cancelled.");
+                throw new AuthenticationFailedException("VP request was cancelled.");
             } else {
                 sendPollResponse(response, "pending", null);
             }
@@ -408,11 +445,18 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
 
     /**
      * Handle status callback from the frontend.
+     *
+     * @param request  HTTP request.
+     * @param response HTTP response.
+     * @param context  Authentication context.
+     * @param status   Status reported by the frontend.
+     * @return Status of the authentication flow.
+     * @throws AuthenticationFailedException If callback processing fails.
      */
     private AuthenticatorFlowStatus handleStatusCallback(final HttpServletRequest request,
-                                                     final HttpServletResponse response,
-                                                     final AuthenticationContext context,
-                                                     final String status)
+                                                         final HttpServletResponse response,
+                                                         final AuthenticationContext context,
+                                                         final String status)
             throws AuthenticationFailedException {
 
         if ("success".equals(status)) {
@@ -420,10 +464,10 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             return AuthenticatorFlowStatus.SUCCESS_COMPLETED;
         } else if ("failed".equals(status)) {
             context.setRetrying(true);
-            throw new AuthenticationFailedException("VP verification failed");
+            throw new AuthenticationFailedException("VP verification failed.");
         } else if ("expired".equals(status)) {
             context.setRetrying(true);
-            throw new AuthenticationFailedException("VP request expired");
+            throw new AuthenticationFailedException("VP request expired.");
         }
 
         return AuthenticatorFlowStatus.INCOMPLETE;
@@ -431,8 +475,13 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
 
     /**
      * Send polling response to the client.
+     *
+     * @param response HTTP response.
+     * @param status   Status to report.
+     * @param error    Error message to report.
      */
     private void sendPollResponse(HttpServletResponse response, String status, String error) {
+
         try {
             response.setContentType("application/json;charset=UTF-8");
 
@@ -442,11 +491,11 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
                 json.addProperty("error", error);
             }
 
-            // Write using Gson directly to the writer to avoid SpotBugs XSS string detection
+            // Write using Gson directly to the writer to avoid SpotBugs XSS string detection.
             new com.google.gson.Gson().toJson(json, response.getWriter());
             response.getWriter().flush();
         } catch (IOException e) {
-            // ignore
+            // ignore.
         }
     }
 
@@ -459,8 +508,8 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      * This method falls back to resolving the IDP by name via {@link IdentityProviderManager} if
      * the direct accessor returns null, ensuring IDP claim mappings are always available.</p>
      *
-     * @param context Authentication context
-     * @return IDP claim mappings, never null (empty array if none configured)
+     * @param context Authentication context.
+     * @return IDP claim mappings, never null (empty array if none configured).
      */
     private ClaimMapping[] resolveIdpClaimMappings(AuthenticationContext context) {
 
@@ -493,16 +542,17 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      * Resolve the remote (VC-side) claim name that corresponds to the IDP's configured subject
      * claim URI ({@code userIdClaim}).
      *
-        * <p>The IDP's {@code userIdClaim} is expected to be the <em>external IdP claim</em>
-        * (remote claim) such as {@code email}. This method finds the ClaimMapping whose remote
-        * claim URI matches that value and returns the same remote claim name, which is the field
-        * name we must look for inside the Verifiable Credential.</p>
+     * <p>The IDP's {@code userIdClaim} is expected to be the <em>external IdP claim</em>
+     * (remote claim) such as {@code email}. This method finds the ClaimMapping whose remote
+     * claim URI matches that value and returns the same remote claim name, which is the field
+     * name we must look for inside the Verifiable Credential.</p>
      *
-     * @param context          Authentication context
-     * @param idpClaimMappings Resolved IDP claim mappings
-     * @return Remote claim name for the subject, or null if not determinable
+     * @param context          Authentication context.
+     * @param idpClaimMappings Resolved IDP claim mappings.
+     * @return Remote claim name for the subject, or null if not determinable.
      */
     private String resolveSubjectRemoteClaim(AuthenticationContext context, ClaimMapping[] idpClaimMappings) {
+
         try {
             String userIdClaimUri = resolveConfiguredSubjectClaimUri(context);
 
@@ -538,8 +588,8 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
     /**
      * Resolve the configured subject claim URI ({@code userIdClaim}) from the IDP.
      *
-     * @param context Authentication context
-     * @return Configured subject claim URI, or null
+     * @param context Authentication context.
+     * @return Configured subject claim URI, or null.
      */
     private String resolveConfiguredSubjectClaimUri(AuthenticationContext context) {
 
@@ -574,8 +624,12 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
     /**
      * Extract the IDP name from the SequenceConfig StepMap when {@code getExternalIdP()} is null.
      * Shared by {@link #resolveIdpClaimMappings} and {@link #resolveSubjectRemoteClaim}.
+     *
+     * @param context Authentication context.
+     * @return IDP name or null.
      */
     private String resolveIdpNameFromSequenceConfig(AuthenticationContext context) {
+
         if (context.getSequenceConfig() == null) {
             return null;
         }
@@ -601,11 +655,12 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
     /**
      * Get tenant ID from authentication context.
      *
-     * @param context Authentication context
-     * @return Tenant ID
+     * @param context Authentication context.
+     * @return Tenant ID.
      */
     private int getTenantId(final AuthenticationContext context) {
-        // Default to super tenant
+
+        // Default to super tenant.
         int tenantId = SUPER_TENANT_ID_PLACEHOLDER;
 
         String tenantDomain = context.getTenantDomain();
@@ -613,7 +668,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             try {
                 tenantId = org.wso2.carbon.identity.core.util.IdentityTenantUtil.getTenantId(tenantDomain);
             } catch (Exception e) {
-                // Ignored: Failed to resolve tenant ID, using default
+                // Ignored: Failed to resolve tenant ID, using default.
                 if (log.isDebugEnabled()) {
                     log.debug("Failed to resolve tenant ID. Using default super tenant ID.", e);
                 }
@@ -625,26 +680,30 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
 
     /**
      * Get VPRequestService instance.
+     *
+     * @return VPRequestService instance.
      */
     private VPRequestServiceImpl getVPRequestService() {
+
         return VPServiceDataHolder.getVPRequestService();
     }
 
     /**
      * Check if retry authentication is enabled.
      *
-     * @return True
+     * @return True.
      */
     @Override
     protected boolean retryAuthenticationEnabled() {
+
         return true;
     }
 
     /**
      * Get the context identifier.
      *
-     * @param request HTTP request
-     * @return Context identifier
+     * @param request HTTP request.
+     * @return Context identifier.
      */
     @Override
     public String getContextIdentifier(final HttpServletRequest request) {
@@ -655,8 +714,8 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
     /**
      * Check if the authenticator can handle the request.
      *
-     * @param request HTTP request
-     * @return True if can handle
+     * @param request HTTP request.
+     * @return True if can handle.
      */
     @Override
     public boolean canHandle(final HttpServletRequest request) {
@@ -670,19 +729,19 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         String status = StringUtils.trimToNull(
             getValidatedParameter(request, PARAM_STATUS));
 
-        // Handle polling requests from login page
+        // Handle polling requests from login page.
         if (StringUtils.isNotBlank(poll)
                 && StringUtils.isNotBlank(sessionDataKey)) {
             return true;
         }
 
-        // Handle status callbacks
+        // Handle status callbacks.
         if (StringUtils.isNotBlank(status)
                 && StringUtils.isNotBlank(sessionDataKey)) {
             return true;
         }
 
-        // Handle VP request callbacks
+        // Handle VP request callbacks.
         if (!StringUtils.isBlank(vpRequestId) && !StringUtils.isBlank(sessionDataKey)) {
             return true;
         }
@@ -691,12 +750,13 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
     }
 
     /**
-     * Get configuration properties.
+     * Get configuration properties for the authenticator.
      *
-     * @return List of properties
+     * @return List of configuration properties.
      */
     @Override
     public List<Property> getConfigurationProperties() {
+
         List<Property> configProperties = new ArrayList<>();
 
         Property presentationDefId = new Property();
@@ -770,6 +830,5 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         }
 
         return Encode.forJava(value);
-
     }
 }

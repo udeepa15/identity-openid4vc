@@ -40,15 +40,14 @@ import javax.servlet.http.HttpServletResponse;
 
 /**
  * Servlet handling the /.well-known/did.json endpoint.
- * Serves the DID Document for WSO2 Identity Server using did:web method.
- * 
- * Endpoint:
- * - GET /.well-known/did.json - Returns the DID Document
- * 
+ *
+ * <p>Serves the DID Document for WSO2 Identity Server using did:web method.
  * The DID will be: did:web:{domain} where domain is extracted from the request.
- * For example:
- * - https://example.com/.well-known/did.json → did:web:example.com
- * - https://localhost:9443/.well-known/did.json → did:web:localhost%3A9443
+ * For example:</p>
+ * <ul>
+ *     <li>https://example.com/.well-known/did.json → did:web:example.com</li>
+ *     <li>https://localhost:9443/.well-known/did.json → did:web:localhost%3A9443</li>
+ * </ul>
  */
 @Component(
     service = Servlet.class,
@@ -61,35 +60,59 @@ import javax.servlet.http.HttpServletResponse;
 )
 public class WellKnownDIDServlet extends HttpServlet {
 
+    /**
+     * Serial version UID.
+     */
     private static final long serialVersionUID = 1L;
-    private static final Log LOG = LogFactory.getLog(WellKnownDIDServlet.class);
-    private static final int DEFAULT_TENANT_ID = -1234; // Super tenant
 
+    /**
+     * Logger for the WellKnownDIDServlet class.
+     */
+    private static final Log LOG = LogFactory.getLog(WellKnownDIDServlet.class);
+
+    /**
+     * Default tenant ID to use when tenant domain cannot be resolved.
+     */
+    private static final int DEFAULT_TENANT_ID = -1234;
+
+    /**
+     * Service instance for DID document operations.
+     */
     private transient DIDDocumentService didDocumentService;
 
+    /**
+     * Initialize the servlet and the DID document service.
+     *
+     * @throws ServletException If an error occurs during initialization.
+     */
     @Override
     public void init() throws ServletException {
+
         super.init();
         this.didDocumentService = new DIDDocumentServiceImpl();
     }
 
     /**
-     * Handle GET requests - Return DID Document.
+     * Handle GET requests to retrieve the DID document.
+     *
+     * @param request  HTTP request.
+     * @param response HTTP response.
+     * @throws ServletException If an error occurs in the servlet.
+     * @throws IOException      If an I/O error occurs.
      */
-
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
         try {
-            // Get tenant domain and ID from context
+            // Get tenant domain and ID from context.
             String tenantDomain = org.wso2.carbon.identity.core.util.IdentityTenantUtil.getTenantDomainFromContext();
             if (org.apache.commons.lang.StringUtils.isBlank(tenantDomain)) {
                 tenantDomain = org.wso2.carbon.utils.multitenancy.MultitenantConstants.SUPER_TENANT_DOMAIN_NAME;
             }
             int tenantId = org.wso2.carbon.identity.core.util.IdentityTenantUtil.getTenantId(tenantDomain);
 
-            // Dynamically construct domain with path for this tenant
+            // Dynamically construct domain with path for this tenant.
             String baseUrl = org.wso2.carbon.identity.openid4vc.presentation.common.util.OpenID4VPUtil
                     .getTenantAwareBaseUrl(tenantDomain);
             String domain = baseUrl.replace("https://", "").replace("http://", "");
@@ -97,14 +120,14 @@ public class WellKnownDIDServlet extends HttpServlet {
                 domain = domain.substring(0, domain.length() - 1);
             }
 
-            // Generate DID document
+            // Generate DID document.
             String didDocument = didDocumentService.getDIDDocument(domain, tenantId);
 
-            // Send response
+            // Send response.
             response.setContentType("application/did+json;charset=UTF-8");
             response.setStatus(HttpServletResponse.SC_OK);
 
-            // Add CORS headers
+            // Add CORS headers.
             addCORSHeaders(request, response);
 
             writeResponse(response, didDocument);
@@ -122,14 +145,18 @@ public class WellKnownDIDServlet extends HttpServlet {
         }
     }
 
-
-
     /**
-     * Send error response.
+     * Send error response formatted as JSON.
+     *
+     * @param response   HTTP response.
+     * @param statusCode HTTP status code.
+     * @param exception  Exception containing error information.
+     * @throws IOException If an I/O error occurs.
      */
     private void sendErrorResponse(HttpServletResponse response, int statusCode,
                                    VPAuthenticatorException exception)
             throws IOException {
+
         response.setContentType("application/json;charset=UTF-8");
         response.setStatus(statusCode);
 
@@ -141,13 +168,27 @@ public class WellKnownDIDServlet extends HttpServlet {
         writeResponse(response, errorJson.toString());
     }
 
+    /**
+     * Add CORS headers to the response.
+     *
+     * @param request  HTTP request.
+     * @param response HTTP response.
+     */
     private void addCORSHeaders(HttpServletRequest request, HttpServletResponse response) {
 
         // Deny by default: do not add CORS allow headers unless an explicit, reviewed
         // endpoint-specific policy is implemented by the caller.
     }
 
+    /**
+     * Write string content to the response output stream.
+     *
+     * @param response HTTP response.
+     * @param content  Content to write.
+     * @throws IOException If an I/O error occurs.
+     */
     private void writeResponse(HttpServletResponse response, String content) throws IOException {
+
         byte[] payload = content.getBytes(StandardCharsets.UTF_8);
         response.setContentLength(payload.length);
         response.getOutputStream().write(payload);
