@@ -81,6 +81,37 @@ public class SignatureVerifierTest {
         assertThrows(VerificationException.class, () -> HttpClientUtil.fetchJson("invalid-url"));
     }
 
+    @Test
+    public void testVerifySignature_IssuerSpoofingProtection() throws Exception {
+        // Create a JWT with an HTTPS issuer but a DID in the kid header
+        JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
+                .subject("user-1")
+                .issuer("https://trusted.issuer.example")
+                .expirationTime(new Date(System.currentTimeMillis() + 3600000))
+                .build();
+
+        SignedJWT signedJWT = new SignedJWT(
+                new JWSHeader.Builder(JWSAlgorithm.RS256)
+                        .type(JOSEObjectType.JWT)
+                        .keyID("did:key:attacker#key")
+                        .build(),
+                claimsSet);
+
+        signedJWT.sign(new com.nimbusds.jose.crypto.RSASSASigner(rsaPrivateKey));
+
+        // Before the fix, this would have attempted DID resolution (did:key:attacker).
+        // After the fix, it remains an HTTPS issuer and attempts JWKS resolution
+        // (which will fail in this test environment).
+        // We expect it to fail with JWKS resolution error or similar, NOT DID resolution error.
+        try {
+            SignatureVerifier.verifySignature(signedJWT);
+        } catch (VerificationException e) {
+            assertTrue(!e.getErrorCode().name().contains("DID"), 
+                    "Should not attempt DID resolution for HTTPS issuer: "
+                            + e.getMessage());
+        }
+    }
+
     private String buildSignedJwt(PrivateKey privateKey, JWSAlgorithm algorithm, String subject)
             throws JOSEException {
 

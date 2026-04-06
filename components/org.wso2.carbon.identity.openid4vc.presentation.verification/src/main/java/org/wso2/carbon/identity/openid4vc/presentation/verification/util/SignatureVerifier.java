@@ -33,6 +33,7 @@ import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.SignedJWT;
 import com.nimbusds.jwt.proc.ConfigurableJWTProcessor;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.identity.openid4vc.presentation.did.exception.DIDResolutionException;
@@ -91,7 +92,7 @@ public class SignatureVerifier {
             JwtVerifier.populateJwtModel(payload, jwt);
             String issuer = payload.getIss();
 
-            if (issuer == null || !issuer.startsWith(VerificationConstants.DID_PREFIX)) {
+            if (StringUtils.isBlank(issuer)) {
                 if (kid != null && kid.startsWith(VerificationConstants.DID_PREFIX)) {
                     issuer = kid.split("#")[0];
                 }
