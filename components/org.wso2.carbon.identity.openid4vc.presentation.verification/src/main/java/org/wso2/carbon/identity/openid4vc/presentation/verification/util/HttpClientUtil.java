@@ -86,10 +86,10 @@ public final class HttpClientUtil {
 
         URI uri;
         try {
-            uri = new URI(urlString);
-        } catch (URISyntaxException e) {
-            throw new VerificationClientException(VerificationErrorCode.INVALID_CREDENTIAL, 
-                    "Invalid URL: " + urlString, e);
+            uri = new java.net.URL(urlString).toURI();
+        } catch (java.net.MalformedURLException | URISyntaxException e) {
+            throw new VerificationClientException(VerificationErrorCode.INVALID_CREDENTIAL,
+                    "Invalid URL syntax or unhandled protocol: " + urlString, e);
         }
 
         if (!VerificationConstants.HTTP_PREFIX.equalsIgnoreCase(uri.getScheme()) &&
