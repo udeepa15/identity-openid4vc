@@ -18,7 +18,6 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.verification.service.impl;
 
-import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -240,8 +239,9 @@ public class VerificationServiceImpl implements VerificationService {
         boolean isSupportedFormat = VerificationConstants.FORMAT_JWT.equals(format)
                 || VerificationConstants.FORMAT_SD_JWT.equals(format);
         if (!isSupportedFormat) {
-            throw new NotImplementedException("Unsupported VP format: " + format + ". Supported formats: "
-                    + VerificationConstants.FORMAT_JWT + ", " + VerificationConstants.FORMAT_SD_JWT);
+            throw new VerificationClientException(VerificationErrorCode.INVALID_VP_FORMAT,
+                    "Unsupported VP format: " + format + ". Supported formats: "
+                            + VerificationConstants.FORMAT_JWT + ", " + VerificationConstants.FORMAT_SD_JWT);
         }
     }
 

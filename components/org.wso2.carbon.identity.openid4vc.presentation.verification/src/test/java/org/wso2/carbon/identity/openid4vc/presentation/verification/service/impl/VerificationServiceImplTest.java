@@ -23,7 +23,6 @@ import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
-import org.apache.commons.lang3.NotImplementedException;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
@@ -216,13 +215,14 @@ public class VerificationServiceImplTest {
         }
     }
 
-    @Test(description = "validateRequest: unknown format throws NotImplementedException")
-    public void testValidateRequest_unknownFormat_throwsNotImplemented() throws Exception {
+    @Test(description = "validateRequest: unknown format throws INVALID_VP_FORMAT")
+    public void testValidateRequest_unknownFormat_throwsInvalidFormat() throws Exception {
         PresentationSubmission sub = buildSubmission("ldp_vc");
         try {
             service.verify(sub, 1, validJwtToken);
-            fail("Expected NotImplementedException");
-        } catch (NotImplementedException e) {
+            fail("Expected VerificationClientException");
+        } catch (VerificationClientException e) {
+            assertEquals(e.getErrorCode(), VerificationErrorCode.INVALID_VP_FORMAT);
             assertTrue(e.getMessage().contains("Unsupported VP format"));
         }
     }
