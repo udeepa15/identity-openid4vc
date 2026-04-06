@@ -24,10 +24,22 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.wso2.carbon.identity.openid4vc.presentation.management.service.PresentationDefinitionService;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.PresentationSubmission;
-import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VerificationException;
+import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VerificationErrorCode;
+import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VerificationServerException;
+import org.wso2.carbon.identity.openid4vc.presentation.verification.handler.Verifier;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.util.VerificationConstants;
 
-import static org.testng.Assert.assertThrows;
+import java.lang.reflect.Field;
+import java.util.Collections;
+import java.util.List;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.fail;
 
 public class VerificationServiceTest {
 
@@ -44,15 +56,34 @@ public class VerificationServiceTest {
 
     @Test
     public void testVerifyWithMissingServiceThrows() throws Exception {
+
+        // Use a stubbed verifier so handle(..) succeeds, allowing the logic to reach the service null check.
+        Verifier stubVerifier = mock(Verifier.class);
+        when(stubVerifier.canHandle(VerificationConstants.FORMAT_JWT)).thenReturn(true);
+        when(stubVerifier.handle(any(PresentationSubmission.class), anyInt(), anyString()))
+                .thenReturn(Collections.singletonMap("iss", "test-issuer"));
+
+        Field verifiersField = VerificationServiceImpl.class.getDeclaredField("verifiers");
+        verifiersField.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        List<Verifier> verifierList = (List<Verifier>) verifiersField.get(verificationService);
+        verifierList.clear();
+        verifierList.add(stubVerifier);
+
         PresentationSubmission submission = new PresentationSubmission();
         submission.setDefinitionId("def-1");
 
         PresentationSubmission.DescriptorMap descriptor = new PresentationSubmission.DescriptorMap();
         descriptor.setFormat(VerificationConstants.FORMAT_JWT);
-        submission.setDescriptorMap(java.util.Collections.singletonList(descriptor));
+        submission.setDescriptorMap(Collections.singletonList(descriptor));
 
         // This will throw VerificationServerException because presentationDefinitionService is null
-        assertThrows(VerificationException.class,
-            () -> verificationService.verify(submission, 1, "jwt"));
+        try {
+            verificationService.verify(submission, 1, "any-token");
+            fail("Expected VerificationServerException due to missing presentationDefinitionService");
+        } catch (VerificationServerException e) {
+            assertEquals(e.getErrorCode(), VerificationErrorCode.INTERNAL_SERVER_ERROR);
+            assertEquals(e.getMessage(), "Presentation definition service is not available");
+        }
     }
 }

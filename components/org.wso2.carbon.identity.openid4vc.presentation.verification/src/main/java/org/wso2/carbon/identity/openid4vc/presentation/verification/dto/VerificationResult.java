@@ -18,7 +18,7 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.verification.dto;
 
-import java.io.Serializable;
+
 import java.util.Map;
 
 /**
