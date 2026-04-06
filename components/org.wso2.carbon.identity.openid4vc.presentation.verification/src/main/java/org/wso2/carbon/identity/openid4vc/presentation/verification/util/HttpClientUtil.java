@@ -193,9 +193,6 @@ public final class HttpClientUtil {
         } catch (UnknownHostException e) {
             throw new VerificationClientException(VerificationErrorCode.INVALID_CREDENTIAL,
                     "SSRF Validation Failed: Unknown host.", e);
-        } catch (IOException e) {
-            throw new VerificationServerException(VerificationErrorCode.INTERNAL_SERVER_ERROR,
-                    "Error resolving IP address for host: " + host, e);
         }
     }
 }
