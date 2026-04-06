@@ -92,8 +92,8 @@ public final class HttpClientUtil {
                     "Invalid URL: " + urlString, e);
         }
 
-        if (!"http".equalsIgnoreCase(uri.getScheme()) &&
-                !"https".equalsIgnoreCase(uri.getScheme())) {
+        if (!VerificationConstants.HTTP_PREFIX.equalsIgnoreCase(uri.getScheme()) &&
+                !VerificationConstants.HTTPS_PREFIX.equalsIgnoreCase(uri.getScheme())) {
             throw new VerificationClientException(VerificationErrorCode.INVALID_CREDENTIAL, 
                     "Unsupported protocol: " + uri.getScheme());
         }

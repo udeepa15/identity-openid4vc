@@ -69,6 +69,7 @@ public class VerificationConstants {
      * Protocol prefixes.
      */
     public static final String HTTP_PREFIX = "http";
+    public static final String HTTPS_PREFIX = "https";
 
     /**
      * Error message templates and constraints.
