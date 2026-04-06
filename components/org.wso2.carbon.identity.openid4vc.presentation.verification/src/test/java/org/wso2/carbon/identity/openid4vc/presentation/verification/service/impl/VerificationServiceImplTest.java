@@ -34,7 +34,6 @@ import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.Presenta
 import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VerificationResult;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VerificationClientException;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VerificationErrorCode;
-import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VerificationException;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VerificationServerException;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.handler.Verifier;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.util.VerificationConstants;
@@ -238,15 +237,21 @@ public class VerificationServiceImplTest {
     public void testValidateRequest_sdJwtFormat_passesFormatCheck() throws Exception {
         when(pdService.getPresentationDefinitionById(anyString(), anyInt()))
                 .thenThrow(new RuntimeException("downstream"));
+
+        // Use stub service with a verifier that handles SD-JWT.
+        VerificationServiceImpl stub = buildStubService(VerificationConstants.FORMAT_SD_JWT,
+                Collections.singletonMap("iss", (Object) validJwtIssuer));
+        stub.setPresentationDefinitionService(pdService);
+
         PresentationSubmission sub = buildSubmission(VerificationConstants.FORMAT_SD_JWT);
-        // An SD-JWT token has the form <jwt>~<disclosures>; use validJwtToken as the JWT part.
         String sdJwtToken = validJwtToken + "~";
+
         try {
-            service.verify(sub, 1, sdJwtToken);
-        } catch (VerificationException e) {
-            // Any downstream exception is acceptable — we just must NOT get INVALID_VP_FORMAT.
-            assertTrue(e.getErrorCode() != VerificationErrorCode.INVALID_VP_FORMAT,
-                    "Should not fail with INVALID_VP_FORMAT for a known sd-jwt format");
+            stub.verify(sub, 1, sdJwtToken);
+            fail("Expected downstream exception");
+        } catch (VerificationServerException e) {
+            // We got past validateRequest AND the Verifier handle call.
+            assertEquals(e.getErrorCode(), VerificationErrorCode.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -670,8 +675,22 @@ public class VerificationServiceImplTest {
     private VerificationServiceImpl buildStubService(final Map<String, Object> stubbedClaims)
             throws Exception {
 
+        return buildStubService(VerificationConstants.FORMAT_JWT, stubbedClaims);
+    }
+
+    /**
+     * Build a {@link VerificationServiceImpl} whose Verifier list is replaced with a single
+     * stub that accepts the specified {@code format} and returns {@code stubbedClaims} without
+     * performing any real cryptographic verification.
+     *
+     * @param format        The format the stub verifier reports it can handle.
+     * @param stubbedClaims The claims map the stub verifier returns.
+     */
+    private VerificationServiceImpl buildStubService(final String format, final Map<String, Object> stubbedClaims)
+            throws Exception {
+
         Verifier stubVerifier = mock(Verifier.class);
-        when(stubVerifier.canHandle(VerificationConstants.FORMAT_JWT)).thenReturn(true);
+        when(stubVerifier.canHandle(format)).thenReturn(true);
         when(stubVerifier.handle(any(PresentationSubmission.class), anyInt(), anyString())).thenReturn(stubbedClaims);
 
         VerificationServiceImpl stub = new VerificationServiceImpl();
