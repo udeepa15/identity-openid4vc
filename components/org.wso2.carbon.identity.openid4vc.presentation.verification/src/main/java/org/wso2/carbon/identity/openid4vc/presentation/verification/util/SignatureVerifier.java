@@ -24,8 +24,10 @@ import com.nimbusds.jose.JOSEObjectType;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSVerifier;
 import com.nimbusds.jose.crypto.factories.DefaultJWSVerifierFactory;
+import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
-import com.nimbusds.jose.jwk.source.RemoteJWKSet;
+import com.nimbusds.jose.proc.BadJOSEException;
 import com.nimbusds.jose.proc.DefaultJOSEObjectTypeVerifier;
 import com.nimbusds.jose.proc.JWSKeySelector;
 import com.nimbusds.jose.proc.JWSVerificationKeySelector;
@@ -173,8 +175,17 @@ public class SignatureVerifier {
      */
     public static boolean validateSignatureUsingJwks(String jwtString, String jwksUri, String algorithm)
             throws VerificationException {
-
+ 
         try {
+            // 1. Fetch the JWKS securely using the hardened utility.
+            String jwksJson = HttpClientUtil.fetchContent(jwksUri, null);
+ 
+            // 2. Parse it into a Nimbus JWKSet.
+            JWKSet jwkSet = JWKSet.parse(jwksJson);
+ 
+            // 3. Use ImmutableJWKSet instead of RemoteJWKSet.
+            JWKSource<SecurityContext> keySource = new ImmutableJWKSet<>(jwkSet);
+ 
             ConfigurableJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
             jwtProcessor.setJWSTypeVerifier(
                     new DefaultJOSEObjectTypeVerifier<>(
@@ -183,20 +194,24 @@ public class SignatureVerifier {
                             null
                     )
             );
-
-            JWKSource<SecurityContext> keySource = new RemoteJWKSet<>(new java.net.URI(jwksUri).toURL());
-
+ 
             JWSAlgorithm expectedJWSAlg = JWSAlgorithm.parse(algorithm);
             JWSKeySelector<SecurityContext> keySelector =
                     new JWSVerificationKeySelector<>(expectedJWSAlg, keySource);
             jwtProcessor.setJWSKeySelector(keySelector);
-
+ 
             jwtProcessor.process(jwtString, null);
             return true;
-
-        } catch (Exception e) {
+ 
+        } catch (java.text.ParseException e) {
+            throw new VerificationServerException(VerificationErrorCode.PARSE_ERROR,
+                    "Failed to parse JWKS JSON from URI", e);
+        } catch (BadJOSEException | JOSEException e) {
             throw new VerificationClientException(VerificationErrorCode.INVALID_SIGNATURE,
                     "Signature verification failed: " + e.getMessage(), e);
+        } catch (Exception e) {
+            throw new VerificationServerException(VerificationErrorCode.JWKS_RESOLUTION_ERROR,
+                    "Network or unexpected error while fetching/validating JWKS: " + e.getMessage(), e);
         }
     }
 
