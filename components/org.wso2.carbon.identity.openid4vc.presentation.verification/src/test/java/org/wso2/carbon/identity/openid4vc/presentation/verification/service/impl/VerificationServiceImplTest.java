@@ -540,6 +540,106 @@ public class VerificationServiceImplTest {
         }
     }
 
+    @Test(description = "verifyAgainstDefinition: http scheme matches http token — passes")
+    public void testVerifyAgainstDefinition_httpSchemeMatchesHttp_passes() throws Exception {
+        PresentationDefinition pd = buildPd("http://example.com/oid4vci", null);
+        when(pdService.getPresentationDefinitionById(anyString(), anyInt())).thenReturn(pd);
+
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("iss", "http://example.com/oid4vci");
+        VerificationServiceImpl stub = buildStubService(claims);
+        stub.setPresentationDefinitionService(pdService);
+
+        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        assertEquals(result.getStatus(), VerificationResult.VerificationStatus.VERIFIED);
+    }
+
+    @Test(description = "verifyAgainstDefinition: http PD mismatch https token — throws INVALID_CREDENTIAL")
+    public void testVerifyAgainstDefinition_httpMismatchHttps_throws() throws Exception {
+        PresentationDefinition pd = buildPd("http://example.com", null);
+        when(pdService.getPresentationDefinitionById(anyString(), anyInt())).thenReturn(pd);
+
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("iss", "https://example.com"); // Normalizes to "example.com"
+        VerificationServiceImpl stub = buildStubService(claims);
+        stub.setPresentationDefinitionService(pdService);
+
+        try {
+            stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+            fail("Expected VerificationClientException");
+        } catch (VerificationClientException e) {
+            assertEquals(e.getErrorCode(), VerificationErrorCode.INVALID_CREDENTIAL);
+        }
+    }
+
+    @Test(description = "verifyAgainstDefinition: https PD mismatch http token — throws INVALID_CREDENTIAL")
+    public void testVerifyAgainstDefinition_httpsMismatchHttp_throws() throws Exception {
+        PresentationDefinition pd = buildPd("https://example.com", null);
+        when(pdService.getPresentationDefinitionById(anyString(), anyInt())).thenReturn(pd);
+
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("iss", "http://example.com"); // Normalizes to "http://example.com"
+        VerificationServiceImpl stub = buildStubService(claims);
+        stub.setPresentationDefinitionService(pdService);
+
+        try {
+            stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+            fail("Expected VerificationClientException");
+        } catch (VerificationClientException e) {
+            assertEquals(e.getErrorCode(), VerificationErrorCode.INVALID_CREDENTIAL);
+        }
+    }
+
+    @Test(description = "verifyAgainstDefinition: port 80 is stripped for http — passes")
+    public void testVerifyAgainstDefinition_httpPort80Stripped_passes() throws Exception {
+        PresentationDefinition pd = buildPd("http://example.com", null);
+        when(pdService.getPresentationDefinitionById(anyString(), anyInt())).thenReturn(pd);
+
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("iss", "http://example.com:80");
+        VerificationServiceImpl stub = buildStubService(claims);
+        stub.setPresentationDefinitionService(pdService);
+
+        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        assertEquals(result.getStatus(), VerificationResult.VerificationStatus.VERIFIED);
+    }
+
+    @Test(description = "verifyAgainstDefinition: port 80 is preserved for https — throws mismatch")
+    public void testVerifyAgainstDefinition_httpsPort80Preserved_throws() throws Exception {
+        PresentationDefinition pd = buildPd("https://example.com", null);
+        when(pdService.getPresentationDefinitionById(anyString(), anyInt())).thenReturn(pd);
+
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("iss", "https://example.com:80"); // Normalizes to "example.com:80" vs "example.com"
+        VerificationServiceImpl stub = buildStubService(claims);
+        stub.setPresentationDefinitionService(pdService);
+
+        try {
+            stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+            fail("Expected VerificationClientException");
+        } catch (VerificationClientException e) {
+            assertEquals(e.getErrorCode(), VerificationErrorCode.INVALID_CREDENTIAL);
+        }
+    }
+
+    @Test(description = "verifyAgainstDefinition: unsupported scheme (ftp) — throws INVALID_CREDENTIAL")
+    public void testVerifyAgainstDefinition_unsupportedScheme_throws() throws Exception {
+        PresentationDefinition pd = buildPd("https://example.com", null);
+        when(pdService.getPresentationDefinitionById(anyString(), anyInt())).thenReturn(pd);
+
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("iss", "ftp://example.com"); // Returns null normalization
+        VerificationServiceImpl stub = buildStubService(claims);
+        stub.setPresentationDefinitionService(pdService);
+
+        try {
+            stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+            fail("Expected VerificationClientException");
+        } catch (VerificationClientException e) {
+            assertEquals(e.getErrorCode(), VerificationErrorCode.INVALID_CREDENTIAL);
+        }
+    }
+
     // --- Claim presence validation ---
 
     @Test(description = "verifyAgainstDefinition: all required claims present — passes, claims returned")

@@ -255,94 +255,102 @@ public class VerificationServiceImpl implements VerificationService {
         * @return The normalized issuer value, or {@code null} when normalization is not possible
      */
     private String normalizeIssuer(String issuer) {
-
-        if (StringUtils.isBlank(issuer)) {
-            return null;
-        }
-
-        issuer = issuer.trim();
-
-        if (issuer.startsWith(VerificationConstants.DID_WEB_PREFIX)) {
-            String afterPrefix = issuer.substring(VerificationConstants.DID_WEB_PREFIX.length());
-            if (StringUtils.isBlank(afterPrefix)) {
-                return null;
-            }
-
-            String[] segments = afterPrefix.split(":");
-            StringBuilder normalized = new StringBuilder(segments[0].toLowerCase(Locale.ROOT));
-
-            for (int i = 1; i < segments.length; i++) {
-                normalized.append("/").append(segments[i]);
-            }
-            String result = normalized.toString();
-            return result.endsWith("/") ? result.substring(0, result.length() - 1) : result;
-        }
-
-        try {
-            URI uri = new URI(issuer);
-            String host = uri.getHost();
-            if (host == null) {
-                return null;
-            }
-
-            StringBuilder normalized = new StringBuilder(host.toLowerCase(Locale.ROOT));
-            int port = uri.getPort();
-            if (port != -1 && port != 443 && port != 80) {
-                normalized.append(":").append(port);
-            }
-
-            String path = uri.getPath();
-            if (StringUtils.isNotBlank(path)) {
-                if (!path.startsWith("/")) {
-                    normalized.append("/");
-                }
-                normalized.append(path);
-            }
-
-            String result = normalized.toString();
-            return result.endsWith("/") ? result.substring(0, result.length() - 1) : result;
-
-        } catch (URISyntaxException e) {
-            return null;
-        }
-    }
-
-        /**
-         * OSGi dynamic bind method for the {@link PresentationDefinitionService}.
-         *
-         * <p>Called by the OSGi runtime when the referenced service becomes available.
-         * The implementation stores the service for subsequent verification requests.</p>
-         *
-         * @param service The bound {@link PresentationDefinitionService} instance
-         */
-        @Reference(
-            name = "presentation.definition.service",
-            service = PresentationDefinitionService.class,
-            cardinality = ReferenceCardinality.MANDATORY,
-            policy = ReferencePolicy.DYNAMIC,
-            unbind = "unsetPresentationDefinitionService"
-    )
-            /**
-             * OSGi bind callback that receives the active
-             * {@link PresentationDefinitionService} reference.
-             *
-             * @param service The bound service instance
-             */
-    protected void setPresentationDefinitionService(PresentationDefinitionService service) {
-
-        this.presentationDefinitionService = service;
-    }
-
-    /**
-     * OSGi dynamic unbind method for the {@link PresentationDefinitionService}.
-     *
-     * <p>Called by the OSGi runtime when the referenced service is withdrawn.
-     * The implementation clears the cached reference to prevent stale usage.</p>
-     *
-     * @param service The unbound {@link PresentationDefinitionService} instance
-     */
-    protected void unsetPresentationDefinitionService(PresentationDefinitionService service) {
-
-        this.presentationDefinitionService = null;
-    }
-}
+ 
+         if (StringUtils.isBlank(issuer)) {
+             return null;
+         }
+ 
+         issuer = issuer.trim();
+ 
+         if (issuer.startsWith(VerificationConstants.DID_WEB_PREFIX)) {
+             String afterPrefix = issuer.substring(VerificationConstants.DID_WEB_PREFIX.length());
+             if (StringUtils.isBlank(afterPrefix)) {
+                 return null;
+             }
+ 
+             String[] segments = afterPrefix.split(":");
+             StringBuilder normalized = new StringBuilder(segments[0].toLowerCase(Locale.ROOT));
+ 
+             for (int i = 1; i < segments.length; i++) {
+                 normalized.append("/").append(segments[i]);
+             }
+             String result = normalized.toString();
+             return result.endsWith("/") ? result.substring(0, result.length() - 1) : result;
+         }
+ 
+         try {
+             URI uri = new URI(issuer);
+             String host = uri.getHost();
+             String scheme = uri.getScheme();
+             
+             if (host == null || scheme == null) {
+                 return null;
+             }
+ 
+             StringBuilder normalized = new StringBuilder();
+ 
+             if ("http".equalsIgnoreCase(scheme)) {
+                 normalized.append("http://");
+             } else if (!"https".equalsIgnoreCase(scheme)) {
+                 return null; 
+             }
+             
+             normalized.append(host.toLowerCase(Locale.ROOT));
+ 
+             int port = uri.getPort();
+             if (port != -1) {
+                 boolean isDefaultHttps = "https".equalsIgnoreCase(scheme) && port == 443;
+                 boolean isDefaultHttp = "http".equalsIgnoreCase(scheme) && port == 80;
+                 
+                 if (!isDefaultHttps && !isDefaultHttp) {
+                     normalized.append(":").append(port);
+                 }
+             }
+ 
+             String path = uri.getPath();
+             if (StringUtils.isNotBlank(path)) {
+                 if (!path.startsWith("/")) {
+                     normalized.append("/");
+                 }
+                 normalized.append(path);
+             }
+ 
+             String result = normalized.toString();
+             return result.endsWith("/") ? result.substring(0, result.length() - 1) : result;
+ 
+         } catch (URISyntaxException e) {
+             return null;
+         }
+     }
+ 
+     /**
+      * OSGi bind callback that receives the active
+      * {@link PresentationDefinitionService} reference.
+      *
+      * @param service The bound service instance
+      */
+     @Reference(
+             name = "presentation.definition.service",
+             service = PresentationDefinitionService.class,
+             cardinality = ReferenceCardinality.MANDATORY,
+             policy = ReferencePolicy.DYNAMIC,
+             unbind = "unsetPresentationDefinitionService"
+     )
+     protected void setPresentationDefinitionService(PresentationDefinitionService service) {
+ 
+         this.presentationDefinitionService = service;
+     }
+ 
+     /**
+      * OSGi dynamic unbind method for the {@link PresentationDefinitionService}.
+      *
+      * <p>Called by the OSGi runtime when the referenced service is withdrawn.
+      * The implementation clears the cached reference to prevent stale usage.</p>
+      *
+      * @param service The unbound {@link PresentationDefinitionService} instance
+      */
+     protected void unsetPresentationDefinitionService(PresentationDefinitionService service) {
+ 
+         this.presentationDefinitionService = null;
+     }
+ }
