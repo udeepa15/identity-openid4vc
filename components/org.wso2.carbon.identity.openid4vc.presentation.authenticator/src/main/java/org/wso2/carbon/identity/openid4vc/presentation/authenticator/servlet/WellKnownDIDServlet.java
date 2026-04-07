@@ -25,7 +25,7 @@ import org.osgi.service.component.annotations.Component;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorErrorCode;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorServerException;
-import org.wso2.carbon.identity.openid4vc.presentation.did.exception.DIDDocumentException;
+import org.wso2.carbon.identity.openid4vc.presentation.did.exception.DIDServerException;
 import org.wso2.carbon.identity.openid4vc.presentation.did.service.DIDDocumentService;
 import org.wso2.carbon.identity.openid4vc.presentation.did.service.impl.DIDDocumentServiceImpl;
 
@@ -132,7 +132,7 @@ public class WellKnownDIDServlet extends HttpServlet {
 
             writeResponse(response, didDocument);
 
-        } catch (DIDDocumentException e) {
+        } catch (DIDServerException e) {
             LOG.error("Failed to generate DID document.", e);
             sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
                     new VPAuthenticatorServerException(VPAuthenticatorErrorCode.DID_RESOLUTION_FAILED,

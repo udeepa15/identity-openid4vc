@@ -18,7 +18,6 @@
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.service;
 
 import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorClientException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 
@@ -37,15 +36,4 @@ public abstract class VPRequestService {
     public abstract VPRequest createVPRequest(AuthenticationContext context)
             throws VPAuthenticatorException;
 
-    /**
-     * Get the request JWT for a given request ID.
-     *
-     * @param requestId Request ID.
-     * @param tenantId  Tenant ID.
-     * @return Signed request JWT string.
-     * @throws VPAuthenticatorClientException If the request is not found or has expired.
-     * @throws VPAuthenticatorException       If a server error occurs during retrieval.
-     */
-    public abstract String getRequestJwt(String requestId, int tenantId)
-            throws VPAuthenticatorClientException, VPAuthenticatorException;
 }

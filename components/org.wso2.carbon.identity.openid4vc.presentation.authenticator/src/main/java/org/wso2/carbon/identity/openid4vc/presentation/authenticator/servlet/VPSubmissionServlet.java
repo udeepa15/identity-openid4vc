@@ -26,9 +26,8 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.osgi.service.component.annotations.Component;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPSubmissionCacheByRequestId;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPSubmissionCacheEntry;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPSubmissionRequestIdCacheKey;
+import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
+import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkUtils;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorClientException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorErrorCode;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
@@ -93,10 +92,6 @@ public class VPSubmissionServlet extends HttpServlet {
      */
     private transient StatusNotificationService statusNotificationService;
 
-    /**
-     * Cache instance for storing VP submissions.
-     */
-    private transient VPSubmissionCacheByRequestId vpSubmissionCache;
 
     /**
      * Initialize the servlet and its dependencies.
@@ -109,7 +104,6 @@ public class VPSubmissionServlet extends HttpServlet {
         super.init();
         this.statusNotificationService =
                 StatusNotificationService.getInstance();
-        this.vpSubmissionCache = VPSubmissionCacheByRequestId.getInstance();
     }
 
     /**
@@ -327,12 +321,15 @@ public class VPSubmissionServlet extends HttpServlet {
             return;
         }
 
-        // Store submission in wallet data cache for status checks.
-        if (vpSubmissionCache != null) {
-            vpSubmissionCache.addToCache(new VPSubmissionRequestIdCacheKey(requestId),
-                    new VPSubmissionCacheEntry(submission), submission.getTenantId());
+        AuthenticationContext context =
+                FrameworkUtils.getAuthenticationContextFromCache(requestId);
+        if (context != null) {
+            context.setProperty("VP_SUBMISSION", submission);
+            context.setProperty("VP_REQUEST_STATUS", org.wso2.carbon.identity.openid4vc
+                    .presentation.authenticator.model.VPRequestStatus.VP_SUBMITTED);
+            FrameworkUtils.addAuthenticationContextToCache(requestId, context);
         } else {
-            LOG.warn("VPSubmissionCache is null; submission will not be persisted.");
+            LOG.warn("AuthenticationContext not found for state ID; submission will not be correlated.");
         }
 
         // Use the centralized notification service.

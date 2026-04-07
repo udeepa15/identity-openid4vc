@@ -33,7 +33,6 @@ import org.apache.commons.lang.StringUtils;
 import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.dao.VPRequestDAO;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorClientException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorErrorCode;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
@@ -76,11 +75,6 @@ public class VPRequestServiceImpl extends VPRequestService {
     private static final long DEFAULT_EXPIRY_MS = 600000;
 
     /**
-     * Holder for the VPRequestDAO reference.
-     */
-    private final AtomicReference<VPRequestDAO> vpRequestDAORef;
-
-    /**
      * Holder for the PresentationDefinitionService reference.
      */
     private final AtomicReference<PresentationDefinitionService> presentationDefinitionServiceRef;
@@ -90,15 +84,8 @@ public class VPRequestServiceImpl extends VPRequestService {
      */
     private volatile String baseUrl;
 
-    /**
-     * Default constructor for VPRequestServiceImpl.
-     *
-     * <p>Initializes the internal DAO and fetches the PresentationDefinitionService
-     * from the service data holder. The base URL is lazily loaded on first use.</p>
-     */
     public VPRequestServiceImpl() {
 
-        this.vpRequestDAORef = new AtomicReference<>(new VPRequestDAO());
         this.presentationDefinitionServiceRef =
                 new AtomicReference<>(VPServiceDataHolder.getPresentationDefinitionService());
     }
@@ -106,33 +93,16 @@ public class VPRequestServiceImpl extends VPRequestService {
     /**
      * Constructor for dependency injection.
      *
-     * @param vpRequestDAO                  The VP request DAO.
      * @param presentationDefinitionService The presentation definition service.
      * @param baseUrl                       The base URL for the server.
      */
-    public VPRequestServiceImpl(VPRequestDAO vpRequestDAO, PresentationDefinitionService presentationDefinitionService,
+    public VPRequestServiceImpl(PresentationDefinitionService presentationDefinitionService,
             String baseUrl) {
 
-        this.vpRequestDAORef = new AtomicReference<>(vpRequestDAO);
         this.presentationDefinitionServiceRef = new AtomicReference<>(presentationDefinitionService);
         this.baseUrl = baseUrl;
     }
 
-    /**
-     * Get the VP request DAO with initialization check.
-     *
-     * @return VPRequestDAO instance.
-     * @throws VPAuthenticatorException If the DAO is not initialized.
-     */
-    private VPRequestDAO getVPRequestDAO() throws VPAuthenticatorException {
-
-        VPRequestDAO dao = vpRequestDAORef.get();
-        if (dao == null) {
-            throw new VPAuthenticatorServerException(VPAuthenticatorErrorCode.INTERNAL_SERVER_ERROR,
-                    "VP request DAO is not initialized.");
-        }
-        return dao;
-    }
 
     /**
      * Get the presentation definition service with initialization check.
@@ -207,8 +177,7 @@ public class VPRequestServiceImpl extends VPRequestService {
         }
 
         // 2. Resolve identifiers and timestamps.
-        String requestId = generateRequestId();
-        String transactionId = context.getContextIdentifier();
+        String requestId = context.getContextIdentifier();
         String nonce = generateNonce();
         long createdAt = System.currentTimeMillis();
         long expiresAt = calculateExpiryTime(createdAt, timeoutMs);
@@ -221,7 +190,6 @@ public class VPRequestServiceImpl extends VPRequestService {
 
         VPRequest vpRequest = new VPRequest.Builder()
                 .requestId(requestId)
-                .transactionId(transactionId)
                 .clientId(clientId)
                 .nonce(nonce)
                 .presentationDefinitionId(presentationDefinitionId)
@@ -239,185 +207,12 @@ public class VPRequestServiceImpl extends VPRequestService {
         String requestJwt = buildRequestObjectJwt(vpRequest, didMethod, signingAlgorithm);
         vpRequest.setRequestJwt(requestJwt);
 
-        // Store in cache.
-        getVPRequestDAO().createVPRequest(vpRequest);
 
         vpRequest.setRequestUri(buildRequestUri(getBaseUrl(), requestId));
 
         return vpRequest;
     }
 
-    /**
-     * Get VP request by request ID.
-     *
-     * @param requestId Request ID.
-     * @param tenantId  Tenant ID.
-     * @return VPRequest object.
-     * @throws VPAuthenticatorClientException If the request is not found.
-     * @throws VPAuthenticatorException       If a server error occurs.
-     */
-    public VPRequest getVPRequestById(String requestId, int tenantId)
-            throws VPAuthenticatorClientException, VPAuthenticatorException {
-
-        // Retrieve from DAO (Cache).
-        VPRequest vpRequest = getVPRequestDAO().getVPRequestById(requestId, tenantId);
-
-        if (vpRequest == null) {
-            throw new VPAuthenticatorClientException(VPAuthenticatorErrorCode.VP_REQUEST_NOT_FOUND,
-                    "VP request not found: " + requestId);
-        }
-
-        // Populate presentation definition if missing.
-        if (StringUtils.isBlank(vpRequest.getPresentationDefinition()) &&
-                StringUtils.isNotBlank(vpRequest.getPresentationDefinitionId())) {
-                PresentationDefinition pd = null;
-                try {
-                    pd = getPresentationDefinitionService().getPresentationDefinitionById(
-                        vpRequest.getPresentationDefinitionId(), tenantId);
-                } catch (Exception e) {
-                    throw new VPAuthenticatorServerException(VPAuthenticatorErrorCode.INTERNAL_SERVER_ERROR,
-                            "Error fetching presentation definition.", e);
-                }
-            if (pd != null) {
-                vpRequest.setPresentationDefinition(
-                        PresentationDefinitionUtil.buildDefinitionJson(pd));
-            }
-        }
-
-        return vpRequest;
-    }
-
-    /**
-     * Get VP request by transaction ID.
-     *
-     * @param transactionId Transaction ID.
-     * @param tenantId      Tenant ID.
-     * @return VPRequest object.
-     * @throws VPAuthenticatorClientException If the transaction is not found.
-     * @throws VPAuthenticatorException       If a server error occurs.
-     */
-    public VPRequest getVPRequestByTransactionId(String transactionId, int tenantId)
-            throws VPAuthenticatorClientException, VPAuthenticatorException {
-
-        // Retrieve from DAO (Cache).
-        VPRequest vpRequest = getVPRequestDAO().getVPRequestByTransactionId(transactionId, tenantId);
-
-        if (vpRequest == null) {
-            throw new VPAuthenticatorClientException(VPAuthenticatorErrorCode.VP_REQUEST_NOT_FOUND,
-                    "Transaction not found: " + transactionId);
-        }
-
-        // Populate presentation definition if missing.
-        if (StringUtils.isBlank(vpRequest.getPresentationDefinition()) &&
-               StringUtils.isNotBlank(vpRequest.getPresentationDefinitionId())) {
-           PresentationDefinition pd = null;
-           try {
-               pd = getPresentationDefinitionService().getPresentationDefinitionById(
-                       vpRequest.getPresentationDefinitionId(), tenantId);
-           } catch (Exception e) {
-               throw new VPAuthenticatorServerException(VPAuthenticatorErrorCode.INTERNAL_SERVER_ERROR,
-                       "Error fetching presentation definition.", e);
-           }
-           if (pd != null) {
-               vpRequest.setPresentationDefinition(
-                       PresentationDefinitionUtil.buildDefinitionJson(pd));
-           }
-       }
-
-        return vpRequest;
-    }
-
-    /**
-     * Get VP request status by transaction ID.
-     *
-     * @param transactionId Transaction ID.
-     * @param tenantId      Tenant ID.
-     * @return VPRequest object with request URI.
-     * @throws VPAuthenticatorClientException If the transaction is not found.
-     * @throws VPAuthenticatorException       If a server error occurs.
-     */
-    public VPRequest getVPRequestStatus(String transactionId, int tenantId)
-            throws VPAuthenticatorClientException, VPAuthenticatorException {
-
-        VPRequest vpRequest = getVPRequestByTransactionId(transactionId, tenantId);
-
-        // Populate request URI if enabled.
-        vpRequest.setRequestUri(buildRequestUri(getBaseUrl(), vpRequest.getRequestId()));
-
-        return vpRequest;
-    }
-
-    /**
-     * Update VP request status.
-     *
-     * @param requestId Request ID.
-     * @param status    New status.
-     * @param tenantId  Tenant ID.
-     * @throws VPAuthenticatorClientException If the request is not found or has expired.
-     * @throws VPAuthenticatorException       If a server error occurs.
-     */
-    public void updateVPRequestStatus(String requestId, VPRequestStatus status, int tenantId)
-            throws VPAuthenticatorClientException, VPAuthenticatorException {
-
-        VPRequest vpRequest = getVPRequestById(requestId, tenantId);
-
-        // Check if expired.
-        if (isExpired(vpRequest.getExpiresAt())) {
-            throw new VPAuthenticatorClientException(VPAuthenticatorErrorCode.VP_REQUEST_EXPIRED,
-                    "VP request has expired: " + requestId);
-        }
-
-        // Update in DAO (Cache).
-        getVPRequestDAO().updateVPRequestStatus(requestId, status, tenantId);
-    }
-
-    /**
-     * Get request URI for a specific request ID.
-     *
-     * @param requestId Request ID.
-     * @param tenantId  Tenant ID.
-     * @return Request URI string.
-     * @throws VPAuthenticatorClientException If the request is not found.
-     * @throws VPAuthenticatorException       If a server error occurs.
-     */
-    public String getRequestUri(String requestId, int tenantId)
-            throws VPAuthenticatorClientException, VPAuthenticatorException {
-
-        // Validate request exists.
-        getVPRequestById(requestId, tenantId);
-
-        return buildRequestUri(getBaseUrl(), requestId);
-    }
-
-    @Override
-    public String getRequestJwt(final String requestId, final int tenantId)
-            throws VPAuthenticatorClientException, VPAuthenticatorException {
-
-        VPRequest vpRequest = getVPRequestById(requestId, tenantId);
-
-        // Check if expired.
-        if (isExpired(vpRequest.getExpiresAt())) {
-            throw new VPAuthenticatorClientException(
-                    VPAuthenticatorErrorCode.VP_REQUEST_EXPIRED,
-                    "VP request has expired: " + requestId);
-        }
-
-        // Check if request is still active.
-        if (vpRequest.getStatus() != VPRequestStatus.ACTIVE) {
-            throw new VPAuthenticatorClientException(
-                    VPAuthenticatorErrorCode.INVALID_REQUEST,
-                    "Request is no longer active: " + requestId);
-        }
-
-        // Return existing JWT.
-        if (StringUtils.isNotBlank(vpRequest.getRequestJwt())) {
-            return vpRequest.getRequestJwt();
-        }
-
-        throw new VPAuthenticatorServerException(
-            VPAuthenticatorErrorCode.INTERNAL_SERVER_ERROR,
-            "Request JWT is missing for request: " + requestId);
-    }
 
     /**
      * Resolve the presentation definition from ID or inline value.
@@ -616,15 +411,6 @@ public class VPRequestServiceImpl extends VPRequestService {
         }
     }
 
-    /**
-     * Generate a unique request ID.
-     *
-     * @return A unique request identifier.
-     */
-    private String generateRequestId() {
-
-        return UUID.randomUUID().toString();
-    }
 
     /**
      * Generate a unique nonce.

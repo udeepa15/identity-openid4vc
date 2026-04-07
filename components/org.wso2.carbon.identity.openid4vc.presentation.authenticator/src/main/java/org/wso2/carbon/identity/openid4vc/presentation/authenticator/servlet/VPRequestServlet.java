@@ -24,15 +24,13 @@ import com.google.gson.JsonObject;
 import org.apache.commons.lang.StringUtils;
 import org.osgi.service.component.annotations.Component;
 import org.owasp.encoder.Encode;
+import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
+import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkUtils;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorClientException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorErrorCode;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorServerException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling.PollingManager;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.polling.PollingResult;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.impl.VPRequestServiceImpl;
 import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
 
 import java.io.IOException;
@@ -87,12 +85,7 @@ public class VPRequestServlet extends HttpServlet {
     private static final String TENANT_DOMAIN_PATTERN = "^[a-zA-Z0-9._-]+$";
 
     /**
-     * Service instance for VP request operations.
-     */
-    private transient VPRequestService vpRequestService;
-
-    /**
-     * Initialize the servlet and the VP request service.
+     * Initialize the servlet.
      *
      * @throws ServletException If an error occurs during initialization.
      */
@@ -100,7 +93,6 @@ public class VPRequestServlet extends HttpServlet {
     public void init() throws ServletException {
 
         super.init();
-        this.vpRequestService = new VPRequestServiceImpl();
     }
 
     /**
@@ -171,7 +163,19 @@ public class VPRequestServlet extends HttpServlet {
     private void handleRequestJwtRequest(HttpServletResponse response, String requestId,
             int tenantId) throws VPAuthenticatorException, IOException {
 
-        String requestJwt = vpRequestService.getRequestJwt(requestId, tenantId);
+        AuthenticationContext context = FrameworkUtils.getAuthenticationContextFromCache(requestId);
+        if (context == null) {
+            throw new VPAuthenticatorClientException(VPAuthenticatorErrorCode.VP_REQUEST_NOT_FOUND,
+                    "VP request not found: " + requestId);
+        }
+
+        String requestJwt = (String) context.getProperty("VP_REQUEST_JWT");
+
+        if (StringUtils.isBlank(requestJwt)) {
+            throw new VPAuthenticatorServerException(
+                VPAuthenticatorErrorCode.INTERNAL_SERVER_ERROR,
+                "Request JWT is missing for request: " + requestId);
+        }
 
         response.setContentType("application/oauth-authz-req+jwt");
         response.setStatus(HttpServletResponse.SC_OK);
@@ -220,26 +224,29 @@ public class VPRequestServlet extends HttpServlet {
                                      final int tenantId)
             throws VPAuthenticatorException {
 
-        PollingManager pollingManager = PollingManager.getInstance();
-        PollingResult result = pollingManager.checkCurrentStatus(requestId, tenantId);
-
         JsonObject statusResponse = new JsonObject();
         statusResponse.addProperty("requestId", requestId);
 
-        PollingResult.ResultStatus status = result.getResultStatus();
-        statusResponse.addProperty("pollingStatus", status.name());
+        AuthenticationContext context = FrameworkUtils.getAuthenticationContextFromCache(requestId);
+        if (context == null) {
+            statusResponse.addProperty("pollingStatus", "NOT_FOUND");
+            statusResponse.addProperty("status", "NOT_FOUND");
+            return statusResponse;
+        }
 
-        if (status == PollingResult.ResultStatus.SUBMITTED) {
+        VPRequestStatus status = (VPRequestStatus) context.getProperty("VP_REQUEST_STATUS");
+        if (status == null) {
+            status = VPRequestStatus.ACTIVE;
+        }
+
+        if (status == VPRequestStatus.VP_SUBMITTED || status == VPRequestStatus.COMPLETED) {
+            statusResponse.addProperty("pollingStatus", "SUBMITTED");
             statusResponse.addProperty("status", VPRequestStatus.VP_SUBMITTED.name());
-        } else if (status == PollingResult.ResultStatus.EXPIRED) {
+        } else if (status == VPRequestStatus.EXPIRED) {
+            statusResponse.addProperty("pollingStatus", "EXPIRED");
             statusResponse.addProperty("status", VPRequestStatus.EXPIRED.name());
-        } else if (status == PollingResult.ResultStatus.NOT_FOUND) {
-            statusResponse.addProperty("status", PollingResult.ResultStatus.NOT_FOUND.name());
-        } else if (status == PollingResult.ResultStatus.ERROR) {
-            statusResponse.addProperty("status", PollingResult.ResultStatus.ERROR.name());
-            statusResponse.addProperty("message",
-                    StringUtils.defaultString(result.getErrorMessage(), "Polling error."));
         } else {
+            statusResponse.addProperty("pollingStatus", "WAITING");
             statusResponse.addProperty("status", VPRequestStatus.ACTIVE.name());
         }
 

@@ -10,8 +10,6 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.wso2.carbon.identity.application.authentication.framework.ApplicationAuthenticator;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPRequestCacheById;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPRequestCacheByTransactionId;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.impl.VPRequestServiceImpl;
 import org.wso2.carbon.identity.openid4vc.presentation.management.service.PresentationDefinitionService;
 
@@ -38,15 +36,11 @@ public class VPServiceRegistrationComponentTest {
 
     private MockedStatic<VPServiceDataHolder> mockedDataHolder;
 
-    private MockedStatic<VPRequestCacheById> mockedRequestCacheById;
-    private MockedStatic<VPRequestCacheByTransactionId> mockedRequestCacheByTransactionId;
 
     @BeforeMethod
     public void setUp() {
         System.setProperty("carbon.home", ".");
         MockitoAnnotations.openMocks(this);
-        mockedRequestCacheById = Mockito.mockStatic(VPRequestCacheById.class);
-        mockedRequestCacheByTransactionId = Mockito.mockStatic(VPRequestCacheByTransactionId.class);
         
         component = new VPServiceRegistrationComponent();
         when(componentContext.getBundleContext()).thenReturn(bundleContext);
@@ -57,12 +51,6 @@ public class VPServiceRegistrationComponentTest {
     public void tearDown() {
         if (mockedDataHolder != null) {
             mockedDataHolder.close();
-        }
-        if (mockedRequestCacheById != null) {
-            mockedRequestCacheById.close();
-        }
-        if (mockedRequestCacheByTransactionId != null) {
-            mockedRequestCacheByTransactionId.close();
         }
     }
 

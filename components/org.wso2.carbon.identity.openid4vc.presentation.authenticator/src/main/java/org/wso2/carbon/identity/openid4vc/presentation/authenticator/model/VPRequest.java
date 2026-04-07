@@ -40,11 +40,6 @@ public class VPRequest implements Serializable {
     @SerializedName("requestId")
     private String requestId;
 
-    /**
-     * Transaction ID associated with the authentication session.
-     */
-    @SerializedName("transactionId")
-    private String transactionId;
 
     /**
      * Client ID of the relying party making the request.
@@ -135,7 +130,6 @@ public class VPRequest implements Serializable {
     private VPRequest(Builder builder) {
 
         this.requestId = builder.requestId;
-        this.transactionId = builder.transactionId;
         this.clientId = builder.clientId;
         this.nonce = builder.nonce;
         this.presentationDefinitionId = builder.presentationDefinitionId;
@@ -174,27 +168,6 @@ public class VPRequest implements Serializable {
         this.requestId = requestId;
     }
 
-    /**
-     * Get the transaction identifier.
-     *
-     * @return The transaction ID string.
-     */
-    public String getTransactionId() {
-
-        return transactionId;
-    }
-
-    /**
-     * Set the transaction identifier.
-     *
-     * <p>Note: This setter exists for DAO/cache updates. New instances should use Builder.</p>
-     *
-     * @param transactionId The transaction identifier string.
-     */
-    public void setTransactionId(String transactionId) {
-
-        this.transactionId = transactionId;
-    }
 
     /**
      * Get the client identifier.
@@ -511,7 +484,6 @@ public class VPRequest implements Serializable {
 
         return "VPRequest{" +
                 "requestId='" + requestId + '\'' +
-                ", transactionId='" + transactionId + '\'' +
                 ", clientId='" + clientId + '\'' +
                 ", status=" + status +
                 ", expiresAt=" + expiresAt +
@@ -527,7 +499,6 @@ public class VPRequest implements Serializable {
     public static class Builder {
 
         private String requestId;
-        private String transactionId;
         private String clientId;
         private String nonce;
         private String presentationDefinitionId;
@@ -555,17 +526,6 @@ public class VPRequest implements Serializable {
             return this;
         }
 
-        /**
-         * Set the transaction ID.
-         *
-         * @param transactionId The transaction identifier.
-         * @return The builder instance.
-         */
-        public Builder transactionId(String transactionId) {
-
-            this.transactionId = transactionId;
-            return this;
-        }
 
         /**
          * Set the client ID.

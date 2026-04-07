@@ -37,9 +37,6 @@ import org.wso2.carbon.identity.application.authentication.framework.model.Authe
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 import org.wso2.carbon.identity.application.common.model.IdentityProvider;
 import org.wso2.carbon.identity.application.common.model.Property;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPSubmissionCacheByRequestId;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPSubmissionCacheEntry;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.cache.VPSubmissionRequestIdCacheKey;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
@@ -78,14 +75,10 @@ import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.PROP_RESPONSE_MODE;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.PROP_SUBJECT_CLAIM;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.PROP_TIMEOUT_SECONDS;
-import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.SESSION_TRANSACTION_ID;
-import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.SESSION_VP_REQUEST_ID;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.SUPER_TENANT_ID_PLACEHOLDER;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.UI_QR_CONTENT;
-import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.UI_REQUEST_ID;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.UI_REQUEST_URI;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.UI_SESSION_DATA_KEY;
-import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.UI_TRANSACTION_ID;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.WALLET_LOGIN_PAGE;
 
 /**
@@ -135,9 +128,8 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             // Create VP request using the service
             VPRequest vpRequestResponse = getVPRequestService().createVPRequest(context);
 
-            // Store request ID in session
-            context.setProperty(SESSION_VP_REQUEST_ID, vpRequestResponse.getRequestId());
-            context.setProperty(SESSION_TRANSACTION_ID, vpRequestResponse.getTransactionId());
+            context.setProperty("VP_REQUEST_JWT", vpRequestResponse.getRequestJwt());
+            context.setProperty("VP_REQUEST_STATUS", VPRequestStatus.ACTIVE);
 
             // Generate QR code content
             String qrContent = QRCodeUtil.generateRequestUriQRContent(
@@ -145,17 +137,12 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
                     vpRequestResponse.getClientId());
 
             request.setAttribute(UI_SESSION_DATA_KEY, context.getContextIdentifier());
-            request.setAttribute(UI_REQUEST_ID, vpRequestResponse.getRequestId());
-            request.setAttribute(UI_TRANSACTION_ID, vpRequestResponse.getTransactionId());
             request.setAttribute(UI_REQUEST_URI, vpRequestResponse.getRequestUri());
             request.setAttribute(UI_QR_CONTENT, qrContent);
 
             // Redirect the browser to authenticationendpoint UI with required parameters.
             String redirectUrl = WALLET_LOGIN_PAGE
                     + "?sessionDataKey=" + URLEncoder.encode(context.getContextIdentifier(), StandardCharsets.UTF_8)
-                    + "&requestId=" + URLEncoder.encode(vpRequestResponse.getRequestId(), StandardCharsets.UTF_8)
-                    + "&transactionId=" + URLEncoder.
-                    encode(vpRequestResponse.getTransactionId(), StandardCharsets.UTF_8)
                     + "&requestUri=" + URLEncoder.encode(vpRequestResponse.getRequestUri(), StandardCharsets.UTF_8)
                     + "&qrContent=" + URLEncoder.encode(qrContent, StandardCharsets.UTF_8);
 
@@ -181,21 +168,16 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             final HttpServletResponse response,
             final AuthenticationContext context) throws AuthenticationFailedException {
 
-        // Retrieve Session Info first to get requestId.
-        String requestId = (String) context.getProperty(SESSION_VP_REQUEST_ID);
-
-        VPSubmission submission = null;
-        // Try to get submission from Cache (polling/redirect).
-        if (StringUtils.isNotBlank(requestId)) {
-            int tenantId = org.wso2.carbon.identity.core.util.IdentityTenantUtil.getTenantId(context.getTenantDomain());
-            VPSubmissionCacheEntry cacheEntry = VPSubmissionCacheByRequestId.getInstance()
-                    .getValueFromCache(new VPSubmissionRequestIdCacheKey(requestId), tenantId);
-            submission = cacheEntry != null ? cacheEntry.getVPSubmission() : null;
-        }
+        VPSubmission submission = (VPSubmission) context.getProperty("VP_SUBMISSION");
 
         if (submission == null) {
             throw new AuthenticationFailedException("No VP submission received.");
         }
+
+        // Clear properties
+        context.removeProperty("VP_REQUEST_JWT");
+        context.removeProperty("VP_SUBMISSION");
+        context.removeProperty("VP_REQUEST_STATUS");
 
         try {
             int tenantId = getTenantId(context);
@@ -400,47 +382,30 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
                                                       final AuthenticationContext context)
             throws AuthenticationFailedException {
 
-        String requestId = (String) context.getProperty(SESSION_VP_REQUEST_ID);
-        if (StringUtils.isBlank(requestId)) {
-            throw new AuthenticationFailedException("VP request ID not found in session.");
+        VPRequestStatus status = (VPRequestStatus) context.getProperty("VP_REQUEST_STATUS");
+        if (status == null) {
+            status = VPRequestStatus.ACTIVE;
         }
 
-        try {
-            VPRequestServiceImpl requestService = getVPRequestService();
-            int tenantId = getTenantId(context);
-            VPRequest vpRequest = requestService.getVPRequestById(requestId, tenantId);
+        if (VPRequestStatus.VP_SUBMITTED.equals(status) ||
+                VPRequestStatus.COMPLETED.equals(status)) {
 
-            if (vpRequest == null) {
-                sendPollResponse(response, "error", "Request not found.");
-                return AuthenticatorFlowStatus.INCOMPLETE;
+            sendPollResponse(response, status.getValue().toLowerCase(Locale.ENGLISH), null);
+
+            if (VPRequestStatus.COMPLETED.equals(status)) {
+                return AuthenticatorFlowStatus.SUCCESS_COMPLETED;
             }
-
-            VPRequestStatus status = vpRequest.getStatus();
-
-            if (VPRequestStatus.VP_SUBMITTED.equals(status) ||
-                    VPRequestStatus.COMPLETED.equals(status)) {
-
-                sendPollResponse(response, status.getValue().toLowerCase(Locale.ENGLISH), null);
-
-                if (VPRequestStatus.COMPLETED.equals(status)) {
-                    return AuthenticatorFlowStatus.SUCCESS_COMPLETED;
-                }
-            } else if (VPRequestStatus.EXPIRED.equals(status)) {
-                sendPollResponse(response, "expired", "Request expired.");
-                throw new AuthenticationFailedException("VP request has expired.");
-            } else if (VPRequestStatus.CANCELLED.equals(status)) {
-                sendPollResponse(response, "cancelled", "Request was cancelled.");
-                throw new AuthenticationFailedException("VP request was cancelled.");
-            } else {
-                sendPollResponse(response, "pending", null);
-            }
-
-            return AuthenticatorFlowStatus.INCOMPLETE;
-
-        } catch (VPAuthenticatorException e) {
-            sendPollResponse(response, "error", e.getMessage());
-            return AuthenticatorFlowStatus.INCOMPLETE;
+        } else if (VPRequestStatus.EXPIRED.equals(status)) {
+            sendPollResponse(response, "expired", "Request expired.");
+            throw new AuthenticationFailedException("VP request has expired.");
+        } else if (VPRequestStatus.CANCELLED.equals(status)) {
+            sendPollResponse(response, "cancelled", "Request was cancelled.");
+            throw new AuthenticationFailedException("VP request was cancelled.");
+        } else {
+            sendPollResponse(response, "pending", null);
         }
+
+        return AuthenticatorFlowStatus.INCOMPLETE;
     }
 
     /**
