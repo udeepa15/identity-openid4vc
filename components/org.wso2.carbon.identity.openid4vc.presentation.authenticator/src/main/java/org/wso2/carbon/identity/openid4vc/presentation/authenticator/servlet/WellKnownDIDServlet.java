@@ -50,13 +50,13 @@ import javax.servlet.http.HttpServletResponse;
  * </ul>
  */
 @Component(
-    service = Servlet.class,
-    immediate = true,
-    property = {
-        "osgi.http.whiteboard.servlet.pattern=/.well-known/did.json",
-        "osgi.http.whiteboard.servlet.name=OpenID4VPWellKnownDID",
-        "osgi.http.whiteboard.servlet.asyncSupported=true"
-    }
+        service = Servlet.class,
+        immediate = true,
+        property = {
+                "osgi.http.whiteboard.servlet.pattern=/.well-known/did.json",
+                "osgi.http.whiteboard.servlet.name=OpenID4VPWellKnownDID",
+                "osgi.http.whiteboard.servlet.asyncSupported=true"
+        }
 )
 public class WellKnownDIDServlet extends HttpServlet {
 
@@ -133,7 +133,13 @@ public class WellKnownDIDServlet extends HttpServlet {
             writeResponse(response, didDocument);
 
         } catch (DIDServerException e) {
-            LOG.error("Failed to generate DID document.", e);
+            // Extract the newly added DIDErrorCode details for better logging
+            String errorCode = e.getCode() != null ? e.getCode() : "UNKNOWN_DID_ERROR";
+            String errorDesc = e.getDescription() != null ? e.getDescription() : "No description available";
+
+            LOG.error(String.format("Failed to generate DID document. [ErrorCode: %s, Description: %s]",
+                    errorCode, errorDesc), e);
+
             sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
                     new VPAuthenticatorServerException(VPAuthenticatorErrorCode.DID_RESOLUTION_FAILED,
                             "Failed to generate DID document: " + e.getMessage(), e));
