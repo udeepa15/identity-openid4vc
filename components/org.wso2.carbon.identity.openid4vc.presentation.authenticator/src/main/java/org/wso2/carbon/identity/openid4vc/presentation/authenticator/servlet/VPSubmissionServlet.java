@@ -325,11 +325,19 @@ public class VPSubmissionServlet extends HttpServlet {
                 FrameworkUtils.getAuthenticationContextFromCache(requestId);
         if (context != null) {
             context.setProperty("VP_SUBMISSION", submission);
-            context.setProperty("VP_REQUEST_STATUS", org.wso2.carbon.identity.openid4vc
-                    .presentation.authenticator.model.VPRequestStatus.VP_SUBMITTED);
+            context.setProperty("VP_REQUEST_STATUS",
+                    org.wso2.carbon.identity.openid4vc.presentation.authenticator
+                            .model.VPRequestStatus.VP_SUBMITTED);
             FrameworkUtils.addAuthenticationContextToCache(requestId, context);
+
+            // Update the context in the cache using the masked requestId (alias).
+            String maskedId = (String) context.getProperty("VP_REQUEST_ID");
+            if (StringUtils.isNotBlank(maskedId) && !maskedId.equals(requestId)) {
+                FrameworkUtils.addAuthenticationContextToCache(maskedId, context);
+            }
         } else {
-            LOG.warn("AuthenticationContext not found for state ID; submission will not be correlated.");
+            LOG.warn("AuthenticationContext not found for state ID; "
+                    + "submission will not be correlated.");
         }
 
         // Use the centralized notification service.

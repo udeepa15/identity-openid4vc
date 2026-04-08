@@ -29,11 +29,13 @@ import org.owasp.encoder.Encode;
 import org.wso2.carbon.identity.application.authentication.framework.AbstractApplicationAuthenticator;
 import org.wso2.carbon.identity.application.authentication.framework.AuthenticatorFlowStatus;
 import org.wso2.carbon.identity.application.authentication.framework.FederatedApplicationAuthenticator;
+import org.wso2.carbon.identity.application.authentication.framework.config.model.AuthenticatorConfig;
 import org.wso2.carbon.identity.application.authentication.framework.config.model.StepConfig;
 import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
 import org.wso2.carbon.identity.application.authentication.framework.exception.AuthenticationFailedException;
 import org.wso2.carbon.identity.application.authentication.framework.exception.LogoutFailedException;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
+import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkUtils;
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 import org.wso2.carbon.identity.application.common.model.IdentityProvider;
 import org.wso2.carbon.identity.application.common.model.Property;
@@ -128,23 +130,30 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             // Create VP request using the service
             VPRequest vpRequestResponse = getVPRequestService().createVPRequest(context);
 
-            context.setProperty("VP_REQUEST_JWT", vpRequestResponse.getRequestJwt());
-            context.setProperty("VP_REQUEST_STATUS", VPRequestStatus.ACTIVE);
-
             // Generate QR code content
             String qrContent = QRCodeUtil.generateRequestUriQRContent(
                     vpRequestResponse.getRequestUri(),
                     vpRequestResponse.getClientId());
 
+            context.setProperty("VP_REQUEST_JWT", vpRequestResponse.getRequestJwt());
+            context.setProperty("VP_REQUEST_STATUS", VPRequestStatus.ACTIVE);
+            context.setProperty("VP_REQUEST_URI", vpRequestResponse.getRequestUri());
+            context.setProperty("VP_QR_CONTENT", qrContent);
+
             request.setAttribute(UI_SESSION_DATA_KEY, context.getContextIdentifier());
             request.setAttribute(UI_REQUEST_URI, vpRequestResponse.getRequestUri());
             request.setAttribute(UI_QR_CONTENT, qrContent);
 
-            // Redirect the browser to authenticationendpoint UI with required parameters.
-            String redirectUrl = WALLET_LOGIN_PAGE
-                    + "?sessionDataKey=" + URLEncoder.encode(context.getContextIdentifier(), StandardCharsets.UTF_8)
-                    + "&requestUri=" + URLEncoder.encode(vpRequestResponse.getRequestUri(), StandardCharsets.UTF_8)
-                    + "&qrContent=" + URLEncoder.encode(qrContent, StandardCharsets.UTF_8);
+            // Generate a masked requestId (UUID) to avoid exposing internal sessionDataKey.
+            String requestId = UUID.randomUUID().toString();
+            context.setProperty("VP_REQUEST_ID", requestId);
+
+            // Alias the context in the cache with the masked requestId.
+            FrameworkUtils.addAuthenticationContextToCache(requestId, context);
+
+            // Redirect to login page with only the masked sessionDataKey.
+            String encodedId = URLEncoder.encode(requestId, StandardCharsets.UTF_8);
+            String redirectUrl = WALLET_LOGIN_PAGE + "?sessionDataKey=" + encodedId;
 
             response.sendRedirect(redirectUrl);
 
@@ -272,16 +281,6 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
     }
 
     /**
-     * Generate a transient random subject identifier when no subject claim is configured.
-     *
-     * @return Random UUID string.
-     */
-    private String generateTransientSubjectIdentifier() {
-
-        return UUID.randomUUID().toString();
-    }
-
-    /**
      * Map verified claims to WSO2 ClaimMappings using IDP-configured mappings.
      *
      * <p>If no mappings are configured, an empty map is returned and no claim mapping is applied.</p>
@@ -334,10 +333,6 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         }
         return mappedClaims;
     }
-
-    // --- SD-JWT Verification Methods ---
-
-
 
     /**
      * Process the authentication request and status/response callbacks.
@@ -529,9 +524,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             for (ClaimMapping mapping : idpClaimMappings) {
                 if (mapping.getRemoteClaim() != null
                         && userIdClaimUri.equals(mapping.getRemoteClaim().getClaimUri())) {
-                    return mapping.getRemoteClaim() != null
-                            ? mapping.getRemoteClaim().getClaimUri()
-                            : null;
+                    return mapping.getRemoteClaim().getClaimUri();
                 }
 
                 // Backward compatibility: allow old configurations where userIdClaim was local.
@@ -593,7 +586,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      * @param context Authentication context.
      * @return IDP name or null.
      */
-    private String resolveIdpNameFromSequenceConfig(AuthenticationContext context) {
+    private String resolveIdpNameFromSequenceConfig(final AuthenticationContext context) {
 
         if (context.getSequenceConfig() == null) {
             return null;
@@ -606,8 +599,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         if (stepConfig == null) {
             return null;
         }
-        for (org.wso2.carbon.identity.application.authentication.framework.config.model.AuthenticatorConfig
-                authConfig : stepConfig.getAuthenticatorList()) {
+        for (AuthenticatorConfig authConfig : stepConfig.getAuthenticatorList()) {
             if (getName().equals(authConfig.getName())
                     && authConfig.getIdpNames() != null
                     && !authConfig.getIdpNames().isEmpty()) {
@@ -631,11 +623,13 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         String tenantDomain = context.getTenantDomain();
         if (StringUtils.isNotBlank(tenantDomain)) {
             try {
-                tenantId = org.wso2.carbon.identity.core.util.IdentityTenantUtil.getTenantId(tenantDomain);
+                tenantId = org.wso2.carbon.identity.core.util.IdentityTenantUtil
+                        .getTenantId(tenantDomain);
             } catch (Exception e) {
                 // Ignored: Failed to resolve tenant ID, using default.
                 if (log.isDebugEnabled()) {
-                    log.debug("Failed to resolve tenant ID. Using default super tenant ID.", e);
+                    log.debug("Failed to resolve tenant ID. "
+                            + "Using default super tenant ID.", e);
                 }
             }
         }
@@ -673,7 +667,8 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
     @Override
     public String getContextIdentifier(final HttpServletRequest request) {
 
-        return StringUtils.trimToNull(getValidatedParameter(request, "sessionDataKey"));
+        return StringUtils.trimToNull(
+                getValidatedParameter(request, "sessionDataKey"));
     }
 
     /**
@@ -707,7 +702,8 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         }
 
         // Handle VP request callbacks.
-        if (!StringUtils.isBlank(vpRequestId) && !StringUtils.isBlank(sessionDataKey)) {
+        if (!StringUtils.isBlank(vpRequestId)
+                && !StringUtils.isBlank(sessionDataKey)) {
             return true;
         }
 
@@ -783,17 +779,9 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      * @param name    Parameter name.
      * @return Validated parameter value, or null.
      */
-    private String getValidatedParameter(final HttpServletRequest request, final String name) {
-
-        if (request == null || StringUtils.isBlank(name)) {
-            return null;
-        }
+    private String getValidatedParameter(HttpServletRequest request, String name) {
 
         String value = request.getParameter(name);
-        if (StringUtils.isBlank(value)) {
-            return null;
-        }
-
-        return Encode.forJava(value);
+        return StringUtils.isNotBlank(value) ? Encode.forHtml(value) : null;
     }
 }

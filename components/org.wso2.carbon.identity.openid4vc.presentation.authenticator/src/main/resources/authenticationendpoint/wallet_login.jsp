@@ -30,59 +30,15 @@
 
 <%
     String sessionDataKey = request.getParameter("sessionDataKey");
-    String requestId = request.getParameter("requestId");
-    String transactionId = request.getParameter("transactionId");
-    String requestUri = request.getParameter("requestUri");
-    String qrContent = request.getParameter("qrContent");
 
     if (sessionDataKey == null) {
         Object v = request.getAttribute("openid4vp_ui_session_data_key");
         sessionDataKey = v instanceof String ? (String) v : null;
     }
-    if (requestId == null) {
-        Object v = request.getAttribute("openid4vp_ui_request_id");
-        requestId = v instanceof String ? (String) v : null;
-    }
-    if (transactionId == null) {
-        Object v = request.getAttribute("openid4vp_ui_transaction_id");
-        transactionId = v instanceof String ? (String) v : null;
-    }
-    if (requestUri == null) {
-        Object v = request.getAttribute("openid4vp_ui_request_uri");
-        requestUri = v instanceof String ? (String) v : null;
-    }
-    if (qrContent == null) {
-        Object v = request.getAttribute("openid4vp_ui_qr_content");
-        qrContent = v instanceof String ? (String) v : null;
-    }
 
     if (sessionDataKey == null) {
         Object v = request.getSession().getAttribute("openid4vp_ui_session_data_key");
         sessionDataKey = v instanceof String ? (String) v : null;
-    }
-    if (requestId == null) {
-        Object v = request.getSession().getAttribute("openid4vp_ui_request_id");
-        requestId = v instanceof String ? (String) v : null;
-    }
-    if (transactionId == null) {
-        Object v = request.getSession().getAttribute("openid4vp_ui_transaction_id");
-        transactionId = v instanceof String ? (String) v : null;
-    }
-    if (requestUri == null) {
-        Object v = request.getSession().getAttribute("openid4vp_ui_request_uri");
-        requestUri = v instanceof String ? (String) v : null;
-    }
-    if (qrContent == null) {
-        Object v = request.getSession().getAttribute("openid4vp_ui_qr_content");
-        qrContent = v instanceof String ? (String) v : null;
-    }
-
-    // Decode URL-encoded parameters
-    if (requestUri != null) {
-        requestUri = URLDecoder.decode(requestUri, "UTF-8");
-    }
-    if (qrContent != null) {
-        qrContent = URLDecoder.decode(qrContent, "UTF-8");
     }
 %>
 
@@ -289,10 +245,6 @@
         <form id="authForm" style="display: none;" method="POST" action="<%=commonauthURL%>">
             <input type="hidden" name="sessionDataKey"
                 value='<%=Encode.forHtmlAttribute(sessionDataKey != null ? sessionDataKey : "")%>'>
-            <input type="hidden" name="vp_request_id"
-                value='<%=Encode.forHtmlAttribute(requestId != null ? requestId : "")%>'>
-            <input type="hidden" name="transaction_id"
-                value='<%=Encode.forHtmlAttribute(transactionId != null ? transactionId : "")%>'>
             <input type="hidden" name="status" id="authStatus" value="">
         </form>
 
@@ -300,13 +252,9 @@
             // Configuration
             var CONFIG = {
                 sessionDataKey: '<%=sessionDataKey != null ? Encode.forJavaScript(sessionDataKey) : ""%>',
-                requestId: '<%=requestId != null ? Encode.forJavaScript(requestId) : ""%>',
-                transactionId: '<%=transactionId != null ? Encode.forJavaScript(transactionId) : ""%>',
-                requestUri: '<%=requestUri != null ? Encode.forJavaScript(requestUri) : ""%>',
-                qrContent: '<%=qrContent != null ? Encode.forJavaScript(qrContent) : ""%>',
                 pollInterval: 5000,
-                timeout: 40,
-                pollEndpoint: '/oid4vp/v1/vp-request/<%=Encode.forUriComponent(requestId != null ? requestId : "")%>/status'
+                timeout: 300,
+                pollEndpoint: '/oid4vp/v1/vp-request/<%=Encode.forUriComponent(sessionDataKey != null ? sessionDataKey : "")%>/status'
             };
 
             var timeRemaining = CONFIG.timeout;
@@ -463,8 +411,17 @@
 
             // Initialize
             document.addEventListener('DOMContentLoaded', function() {
-                initQRCode();
-                initDeepLink();
+                // Initial poll or fetch initialization data
+                fetch(CONFIG.pollEndpoint)
+                    .then(function(res) { return res.json(); })
+                    .then(function(data) {
+                        if (data.qrContent) {
+                            CONFIG.qrContent = data.qrContent;
+                            CONFIG.requestUri = data.requestUri;
+                            initQRCode();
+                            initDeepLink();
+                        }
+                    });
 
                 // Start countdown
                 countdownTimer = setInterval(updateTimer, 1000);
@@ -472,9 +429,6 @@
 
                 // Start polling
                 pollTimer = setInterval(pollStatus, CONFIG.pollInterval);
-
-                // Initial poll
-                setTimeout(pollStatus, 1000);
             });
         </script>
     </body>
