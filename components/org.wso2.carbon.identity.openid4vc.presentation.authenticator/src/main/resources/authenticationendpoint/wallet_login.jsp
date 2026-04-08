@@ -30,6 +30,8 @@
 
 <%
     String sessionDataKey = request.getParameter("sessionDataKey");
+    String clientId = request.getParameter("clientId");
+    String requestUri = request.getParameter("requestUri");
 
     if (sessionDataKey == null) {
         Object v = request.getAttribute("openid4vp_ui_session_data_key");
@@ -252,6 +254,8 @@
             // Configuration
             var CONFIG = {
                 sessionDataKey: '<%=sessionDataKey != null ? Encode.forJavaScript(sessionDataKey) : ""%>',
+                clientId: '<%=clientId != null ? Encode.forJavaScript(clientId) : ""%>',
+                requestUri: '<%=requestUri != null ? Encode.forJavaScript(requestUri) : ""%>',
                 pollInterval: 5000,
                 timeout: 300,
                 pollEndpoint: '/oid4vp/v1/vp-request/<%=Encode.forUriComponent(sessionDataKey != null ? sessionDataKey : "")%>/status'
@@ -261,6 +265,20 @@
             var pollTimer = null;
             var countdownTimer = null;
             var submitted = false;
+
+            // Keep JS QR bootstrap aligned with QRCodeUtil.generateRequestUriQRContent.
+            function buildRequestUriQRContent(requestUri, clientId) {
+                if (!requestUri) {
+                    return '';
+                }
+
+                var content = 'openid4vp://authorize?';
+                if (clientId) {
+                    content += 'client_id=' + encodeURIComponent(clientId) + '&';
+                }
+                content += 'request_uri=' + encodeURIComponent(requestUri);
+                return content;
+            }
 
             // Initialize QR code
             function initQRCode() {
@@ -411,17 +429,14 @@
 
             // Initialize
             document.addEventListener('DOMContentLoaded', function() {
-                // Initial poll or fetch initialization data
-                fetch(CONFIG.pollEndpoint)
-                    .then(function(res) { return res.json(); })
-                    .then(function(data) {
-                        if (data.qrContent) {
-                            CONFIG.qrContent = data.qrContent;
-                            CONFIG.requestUri = data.requestUri;
-                            initQRCode();
-                            initDeepLink();
-                        }
-                    });
+                CONFIG.qrContent = buildRequestUriQRContent(CONFIG.requestUri, CONFIG.clientId);
+
+                if (CONFIG.qrContent) {
+                    initQRCode();
+                    initDeepLink();
+                } else {
+                    handleError('Missing request details for wallet QR generation.');
+                }
 
                 // Start countdown
                 countdownTimer = setInterval(updateTimer, 1000);

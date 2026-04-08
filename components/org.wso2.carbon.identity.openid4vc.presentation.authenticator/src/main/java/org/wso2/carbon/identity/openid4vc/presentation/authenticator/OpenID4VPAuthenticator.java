@@ -78,9 +78,6 @@ import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.PROP_SUBJECT_CLAIM;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.PROP_TIMEOUT_SECONDS;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.SUPER_TENANT_ID_PLACEHOLDER;
-import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.UI_QR_CONTENT;
-import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.UI_REQUEST_URI;
-import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.UI_SESSION_DATA_KEY;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.WALLET_LOGIN_PAGE;
 
 /**
@@ -130,19 +127,9 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             // Create VP request using the service
             VPRequest vpRequestResponse = getVPRequestService().createVPRequest(context);
 
-            // Generate QR code content
-            String qrContent = QRCodeUtil.generateRequestUriQRContent(
-                    vpRequestResponse.getRequestUri(),
-                    vpRequestResponse.getClientId());
-
             context.setProperty("VP_REQUEST_JWT", vpRequestResponse.getRequestJwt());
             context.setProperty("VP_REQUEST_STATUS", VPRequestStatus.ACTIVE);
             context.setProperty("VP_REQUEST_URI", vpRequestResponse.getRequestUri());
-            context.setProperty("VP_QR_CONTENT", qrContent);
-
-            request.setAttribute(UI_SESSION_DATA_KEY, context.getContextIdentifier());
-            request.setAttribute(UI_REQUEST_URI, vpRequestResponse.getRequestUri());
-            request.setAttribute(UI_QR_CONTENT, qrContent);
 
             // Generate a masked requestId (UUID) to avoid exposing internal sessionDataKey.
             String requestId = UUID.randomUUID().toString();
@@ -151,9 +138,11 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             // Alias the context in the cache with the masked requestId.
             FrameworkUtils.addAuthenticationContextToCache(requestId, context);
 
-            // Redirect to login page with only the masked sessionDataKey.
-            String encodedId = URLEncoder.encode(requestId, StandardCharsets.UTF_8);
-            String redirectUrl = WALLET_LOGIN_PAGE + "?sessionDataKey=" + encodedId;
+            String redirectUrl = createRedirectURI(
+                    WALLET_LOGIN_PAGE,
+                    requestId,
+                    vpRequestResponse.getClientId(),
+                    vpRequestResponse.getRequestUri());
 
             response.sendRedirect(redirectUrl);
 
@@ -162,6 +151,28 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         } catch (IOException e) {
             throw new AuthenticationFailedException("Failed to redirect to login page", e);
         }
+    }
+
+    /**
+     * Build wallet login redirect URI with required bootstrap parameters for QR rendering.
+     *
+     * @param walletPath Wallet login page path.
+     * @param sessionId  Masked session data key.
+     * @param clientId   Client ID used in the VP request.
+     * @param requestUri Request URI for by-reference OpenID4VP flow.
+     * @return Redirect URI with encoded query parameters.
+     */
+    private String createRedirectURI(final String walletPath,
+                                     final String sessionId,
+                                     final String clientId,
+                                     final String requestUri) {
+
+        String separator = walletPath.contains("?") ? "&" : "?";
+
+        return walletPath + separator
+                + "sessionDataKey=" + URLEncoder.encode(sessionId, StandardCharsets.UTF_8)
+                + "&clientId=" + URLEncoder.encode(StringUtils.defaultString(clientId), StandardCharsets.UTF_8)
+                + "&requestUri=" + URLEncoder.encode(StringUtils.defaultString(requestUri), StandardCharsets.UTF_8);
     }
 
     /**
