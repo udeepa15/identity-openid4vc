@@ -133,6 +133,10 @@ public class VPRequestServiceImpl extends VPRequestService {
 
         String baseUrl = resolveTenantAwareBaseUrl();
 
+        String clientId = Constraints.DID_WEB_PREFIX + baseUrl
+                .replaceFirst(Constraints.URL_SCHEME_REGEX, "")
+                .replaceAll(Constraints.TRAILING_SLASH_REGEX, "");
+
         if (StringUtils.isBlank(baseUrl)) {
             throw new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
                     "Client ID (hostname) cannot be null or empty.");
@@ -162,7 +166,7 @@ public class VPRequestServiceImpl extends VPRequestService {
 
         VPRequest vpRequest = new VPRequest.Builder()
                 .requestId(requestId)
-                .clientId(baseUrl)
+                .clientId(clientId)
                 .nonce(nonce)
                 .presentationDefinitionId(presentationDefinitionId)
                 .presentationDefinition(presentationDefinition)

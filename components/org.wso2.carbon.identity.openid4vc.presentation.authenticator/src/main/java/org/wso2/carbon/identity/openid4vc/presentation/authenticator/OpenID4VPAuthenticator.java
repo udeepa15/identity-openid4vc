@@ -35,7 +35,6 @@ import org.wso2.carbon.identity.application.authentication.framework.context.Aut
 import org.wso2.carbon.identity.application.authentication.framework.exception.AuthenticationFailedException;
 import org.wso2.carbon.identity.application.authentication.framework.exception.LogoutFailedException;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
-import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkUtils;
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 import org.wso2.carbon.identity.application.common.model.IdentityProvider;
 import org.wso2.carbon.identity.application.common.model.Property;
@@ -131,16 +130,9 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             context.setProperty(CONTEXT_VP_REQUEST,
                     new VPRequestContext(vpRequestResponse.getRequestJwt(), VPRequestStatus.ACTIVE));
 
-            // Generate a masked requestId (UUID) to avoid exposing internal sessionDataKey.
-            String requestId = UUID.randomUUID().toString();
-            context.setProperty("VP_REQUEST_ID", requestId);
-
-            // Alias the context in the cache with the masked requestId.
-            FrameworkUtils.addAuthenticationContextToCache(requestId, context);
-
             String redirectUrl = createRedirectURI(
                     WALLET_LOGIN_PAGE,
-                    requestId,
+                    vpRequestResponse.getRequestId(),
                     vpRequestResponse.getClientId(),
                     vpRequestResponse.getRequestUri());
 
