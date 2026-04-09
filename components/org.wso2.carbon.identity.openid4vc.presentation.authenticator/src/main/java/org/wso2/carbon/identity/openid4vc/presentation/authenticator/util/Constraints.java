@@ -46,6 +46,7 @@ public class Constraints {
     public static final String UI_TRANSACTION_ID = "openid4vp_ui_transaction_id";
     public static final String UI_REQUEST_URI = "openid4vp_ui_request_uri";
     public static final String UI_QR_CONTENT = "openid4vp_ui_qr_content";
+    public static final String CONTEXT_VP_REQUEST = "VPrequest";
 
     /**
      * Configuration property names and defaults.
@@ -55,7 +56,6 @@ public class Constraints {
     public static final String PROP_TIMEOUT_SECONDS = "TimeoutSeconds";
     public static final String PROP_CLIENT_ID = "ClientId";
     public static final String PROP_SUBJECT_CLAIM = "SubjectClaim";
-    public static final String PROP_DID_METHOD = "DIDMethod";
     public static final String DEFAULT_DID_METHOD_WEB = "web";
 
     /**

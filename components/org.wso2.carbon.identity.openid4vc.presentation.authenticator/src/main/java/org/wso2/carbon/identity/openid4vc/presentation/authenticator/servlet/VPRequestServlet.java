@@ -30,6 +30,7 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.V
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorErrorCode;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorServerException;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestContext;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
 
@@ -41,6 +42,8 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.CONTEXT_VP_REQUEST;
 
 /**
  * Servlet handling VP (Verifiable Presentation) authorization request operations.
@@ -61,6 +64,8 @@ import javax.servlet.http.HttpServletResponse;
     }
 )
 public class VPRequestServlet extends HttpServlet {
+
+    private static final String OID4VP_REQUEST_ID_SUFFIX = ",OID4VP";
 
     /**
      * Serial version UID.
@@ -126,7 +131,7 @@ public class VPRequestServlet extends HttpServlet {
             return;
         }
 
-        String requestId = pathParts[1];
+        String requestId = removeOid4vpSuffix(pathParts[1]);
         int tenantId = getTenantId(request);
 
         try {
@@ -169,7 +174,11 @@ public class VPRequestServlet extends HttpServlet {
                     "VP request not found: " + requestId);
         }
 
-        String requestJwt = (String) context.getProperty("VP_REQUEST_JWT");
+        String requestJwt = null;
+        Object vpRequestContextObj = context.getProperty(CONTEXT_VP_REQUEST);
+        if (vpRequestContextObj instanceof VPRequestContext) {
+            requestJwt = ((VPRequestContext) vpRequestContextObj).getRequestJwt();
+        }
 
         if (StringUtils.isBlank(requestJwt)) {
             throw new VPAuthenticatorServerException(
@@ -234,7 +243,11 @@ public class VPRequestServlet extends HttpServlet {
             return statusResponse;
         }
 
-        VPRequestStatus status = (VPRequestStatus) context.getProperty("VP_REQUEST_STATUS");
+        VPRequestStatus status = null;
+        Object vpRequestContextObj = context.getProperty(CONTEXT_VP_REQUEST);
+        if (vpRequestContextObj instanceof VPRequestContext) {
+            status = ((VPRequestContext) vpRequestContextObj).getRequestStatus();
+        }
         if (status == null) {
             status = VPRequestStatus.ACTIVE;
         }
@@ -323,6 +336,23 @@ public class VPRequestServlet extends HttpServlet {
         }
 
         return DEFAULT_TENANT_ID;
+    }
+
+    /**
+     * Remove the OID4VP request-id suffix used in wallet request URIs before cache lookup.
+     *
+     * @param requestId Raw request ID from request path.
+     * @return Normalized request ID without OID4VP suffix.
+     */
+    private String removeOid4vpSuffix(String requestId) {
+
+        if (StringUtils.isBlank(requestId)) {
+            return requestId;
+        }
+        if (requestId.endsWith(OID4VP_REQUEST_ID_SUFFIX)) {
+            return requestId.substring(0, requestId.length() - OID4VP_REQUEST_ID_SUFFIX.length());
+        }
+        return requestId;
     }
 
 }

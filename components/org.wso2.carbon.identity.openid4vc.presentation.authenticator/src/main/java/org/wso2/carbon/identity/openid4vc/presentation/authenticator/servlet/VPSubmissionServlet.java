@@ -32,6 +32,8 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.V
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorErrorCode;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorServerException;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestContext;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPSubmission;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.status.StatusNotificationService;
 import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
@@ -46,6 +48,8 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.CONTEXT_VP_REQUEST;
 
 /*/**
  * Servlet handling VP (Verifiable Presentation) submissions from wallets.
@@ -325,9 +329,15 @@ public class VPSubmissionServlet extends HttpServlet {
                 FrameworkUtils.getAuthenticationContextFromCache(requestId);
         if (context != null) {
             context.setProperty("VP_SUBMISSION", submission);
-            context.setProperty("VP_REQUEST_STATUS",
-                    org.wso2.carbon.identity.openid4vc.presentation.authenticator
-                            .model.VPRequestStatus.VP_SUBMITTED);
+
+            Object vpRequestContextObj = context.getProperty(CONTEXT_VP_REQUEST);
+            if (vpRequestContextObj instanceof VPRequestContext) {
+                ((VPRequestContext) vpRequestContextObj).setRequestStatus(VPRequestStatus.VP_SUBMITTED);
+            } else {
+                context.setProperty(CONTEXT_VP_REQUEST,
+                        new VPRequestContext(null, VPRequestStatus.VP_SUBMITTED));
+            }
+
             FrameworkUtils.addAuthenticationContextToCache(requestId, context);
 
             // Update the context in the cache using the masked requestId (alias).

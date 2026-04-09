@@ -31,8 +31,9 @@ import com.nimbusds.jose.Payload;
 import com.nimbusds.jwt.JWTClaimsSet;
 import org.apache.commons.lang.StringUtils;
 import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
+import org.wso2.carbon.identity.core.ServiceURLBuilder;
+import org.wso2.carbon.identity.core.URLBuilderException;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
-import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorClientException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorErrorCode;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
@@ -70,9 +71,11 @@ public class VPRequestServiceImpl extends VPRequestService {
     private static final String PROP_PRESENTATION_DEFINITION_ID = Constraints.PROP_PRESENTATION_DEFINITION_ID;
 
     /**
-     * Default expiry time for VP requests in milliseconds (10 minutes).
+     * Default expiry time for VP requests in milliseconds (1 minutes).
      */
-    private static final long DEFAULT_EXPIRY_MS = 600000;
+    private static final long DEFAULT_EXPIRY_MS = 60000;
+
+    private static final String LOGIN_TYPE_OID4VP = "OID4VP";
 
     /**
      * Holder for the PresentationDefinitionService reference.
@@ -120,38 +123,17 @@ public class VPRequestServiceImpl extends VPRequestService {
         return service;
     }
 
-    /**
-     * Get the base URL, lazily loading from configuration on first access.
-     *
-     * @return The server's configured base URL.
-     */
-    private String getBaseUrl() {
-
-        if (baseUrl == null) {
-            baseUrl = getConfiguredBaseUrl();
-        }
-        return baseUrl;
-    }
-
     @Override
     public VPRequest createVPRequest(AuthenticationContext context) throws VPAuthenticatorException {
 
-        Map<String, String> authenticatorProperties = context.getAuthenticatorProperties();
-
         // 1. Resolve basic configuration.
-        String didMethod = authenticatorProperties.get(Constraints.PROP_DID_METHOD);
-        if (StringUtils.isBlank(didMethod)) {
-            didMethod = Constraints.DEFAULT_DID_METHOD_WEB;
-        }
+        String didMethod = Constraints.DEFAULT_DID_METHOD_WEB;
 
         String signingAlgorithm = OpenID4VPConstants.Verification.ALG_EDDSA;
 
-        String clientId = authenticatorProperties.get(Constraints.PROP_CLIENT_ID);
-        if (StringUtils.isBlank(clientId)) {
-            clientId = IdentityUtil.getHostName();
-        }
+        String baseUrl = resolveTenantAwareBaseUrl();
 
-        if (StringUtils.isBlank(clientId)) {
+        if (StringUtils.isBlank(baseUrl)) {
             throw new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
                     "Client ID (hostname) cannot be null or empty.");
         }
@@ -166,31 +148,21 @@ public class VPRequestServiceImpl extends VPRequestService {
 
         int tenantId = IdentityTenantUtil.getTenantId(context.getTenantDomain());
 
-        String timeoutStr = authenticatorProperties.get(Constraints.PROP_TIMEOUT_SECONDS);
-        long timeoutMs = DEFAULT_EXPIRY_MS;
-        if (StringUtils.isNotBlank(timeoutStr)) {
-            try {
-                timeoutMs = Long.parseLong(timeoutStr) * 1000;
-            } catch (NumberFormatException e) {
-                // Ignore and use default.
-            }
-        }
-
         // 2. Resolve identifiers and timestamps.
-        String requestId = context.getContextIdentifier();
+        String requestId = context.getContextIdentifier() + "," + LOGIN_TYPE_OID4VP;
         String nonce = generateNonce();
         long createdAt = System.currentTimeMillis();
-        long expiresAt = calculateExpiryTime(createdAt, timeoutMs);
+        long expiresAt = calculateExpiryTime(createdAt, DEFAULT_EXPIRY_MS);
 
         // 3. Resolve and process presentation definition.
         String presentationDefinition = resolvePresentationDefinition(presentationDefinitionId, null, tenantId);
 
         // 4. Build the final request object.
-        String responseUri = buildResponseUri(getBaseUrl());
+        String responseUri = buildResponseUri(baseUrl);
 
         VPRequest vpRequest = new VPRequest.Builder()
                 .requestId(requestId)
-                .clientId(clientId)
+                .clientId(baseUrl)
                 .nonce(nonce)
                 .presentationDefinitionId(presentationDefinitionId)
                 .presentationDefinition(presentationDefinition)
@@ -208,7 +180,7 @@ public class VPRequestServiceImpl extends VPRequestService {
         vpRequest.setRequestJwt(requestJwt);
 
 
-        vpRequest.setRequestUri(buildRequestUri(getBaseUrl(), requestId));
+        vpRequest.setRequestUri(buildRequestUri(baseUrl, requestId));
 
         return vpRequest;
     }
@@ -278,7 +250,7 @@ public class VPRequestServiceImpl extends VPRequestService {
         try {
             DIDProvider provider = DIDProviderFactory.getProvider(didMethod);
             int tenantId = vpRequest.getTenantId();
-            String activeBaseUrl = getBaseUrl();
+            String activeBaseUrl = resolveTenantAwareBaseUrl();
 
             String did = provider.getDID(tenantId, activeBaseUrl);
             String keyId = provider.getSigningKeyId(tenantId, activeBaseUrl);
@@ -481,12 +453,18 @@ public class VPRequestServiceImpl extends VPRequestService {
     }
 
     /**
-     * Get configured base URL for building URIs.
+     * Resolve tenant-aware base URL from framework utilities.
      *
-     * @return The configured base URL.
+     * @return Tenant-aware base URL.
+     * @throws VPAuthenticatorException If URL resolution fails.
      */
-    private String getConfiguredBaseUrl() {
+    private String resolveTenantAwareBaseUrl() throws VPAuthenticatorException {
 
-        return IdentityUtil.getServerURL("", true, true);
+        try {
+            return ServiceURLBuilder.create().build().getAbsolutePublicUrlWithoutPath();
+        } catch (URLBuilderException e) {
+            throw new VPAuthenticatorServerException(VPAuthenticatorErrorCode.INTERNAL_SERVER_ERROR,
+                    "Error while resolving tenant-aware base URL.", e);
+        }
     }
 }

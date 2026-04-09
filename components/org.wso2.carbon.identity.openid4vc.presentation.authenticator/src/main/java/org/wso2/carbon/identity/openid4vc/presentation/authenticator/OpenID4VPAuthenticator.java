@@ -42,6 +42,7 @@ import org.wso2.carbon.identity.application.common.model.Property;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestContext;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPSubmission;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.impl.VPRequestServiceImpl;
@@ -65,6 +66,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.AUTHENTICATOR_FRIENDLY_NAME;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.AUTHENTICATOR_NAME;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.CONTEXT_VP_REQUEST;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DISPLAY_ORDER_3;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DISPLAY_ORDER_4;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DISPLAY_ORDER_5;
@@ -126,9 +128,8 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             // Create VP request using the service
             VPRequest vpRequestResponse = getVPRequestService().createVPRequest(context);
 
-            context.setProperty("VP_REQUEST_JWT", vpRequestResponse.getRequestJwt());
-            context.setProperty("VP_REQUEST_STATUS", VPRequestStatus.ACTIVE);
-            context.setProperty("VP_REQUEST_URI", vpRequestResponse.getRequestUri());
+            context.setProperty(CONTEXT_VP_REQUEST,
+                    new VPRequestContext(vpRequestResponse.getRequestJwt(), VPRequestStatus.ACTIVE));
 
             // Generate a masked requestId (UUID) to avoid exposing internal sessionDataKey.
             String requestId = UUID.randomUUID().toString();
@@ -194,9 +195,8 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         }
 
         // Clear properties
-        context.removeProperty("VP_REQUEST_JWT");
         context.removeProperty("VP_SUBMISSION");
-        context.removeProperty("VP_REQUEST_STATUS");
+        context.removeProperty(CONTEXT_VP_REQUEST);
 
         try {
             int tenantId = getTenantId(context);
@@ -387,7 +387,11 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
                                                       final AuthenticationContext context)
             throws AuthenticationFailedException {
 
-        VPRequestStatus status = (VPRequestStatus) context.getProperty("VP_REQUEST_STATUS");
+        VPRequestStatus status = null;
+        Object vpRequestContextObj = context.getProperty(CONTEXT_VP_REQUEST);
+        if (vpRequestContextObj instanceof VPRequestContext) {
+            status = ((VPRequestContext) vpRequestContextObj).getRequestStatus();
+        }
         if (status == null) {
             status = VPRequestStatus.ACTIVE;
         }
