@@ -19,8 +19,6 @@
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.impl;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.nimbusds.jose.JOSEObjectType;
@@ -50,12 +48,9 @@ import org.wso2.carbon.identity.openid4vc.presentation.management.model.Presenta
 import org.wso2.carbon.identity.openid4vc.presentation.management.service.PresentationDefinitionService;
 import org.wso2.carbon.identity.openid4vc.presentation.management.util.PresentationDefinitionUtil;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
@@ -268,58 +263,10 @@ public class VPRequestServiceImpl extends VPRequestService {
             // Add presentation definition JSON object.
             JsonObject storedPdJson = JsonParser.parseString(
                     vpRequest.getPresentationDefinition()).getAsJsonObject();
-            JsonObject pdJsonToEmbed;
-            if (storedPdJson.has("requested_credentials")) {
-                // Simple format, generate the full PE format dynamically.
-                List<String> inputDescriptors = new ArrayList<>();
-                int descIndex = 1;
-                JsonArray reqCreds = storedPdJson
-                        .getAsJsonArray("requested_credentials");
-                for (JsonElement credElem : reqCreds) {
-                    if (credElem.isJsonObject()) {
-                        JsonObject credObj = credElem.getAsJsonObject();
-                        String type = credObj.has("type")
-                                ? credObj.get("type").getAsString() : null;
-                        String purpose = credObj.has("purpose")
-                                ? credObj.get("purpose").getAsString() : null;
-                        String issuer = credObj.has("issuer")
-                                ? credObj.get("issuer").getAsString() : null;
-                        List<String> claims = new ArrayList<>();
-                        if (credObj.has("requested_claims")) {
-                            JsonArray reqClaims = credObj
-                                    .getAsJsonArray("requested_claims");
-                            for (JsonElement claim : reqClaims) {
-                                claims.add(claim.getAsString());
-                            }
-                        }
-
-                        String descId = type != null ? type.toLowerCase(
-                                Locale.ENGLISH) + "_descriptor" + descIndex
-                                : "descriptor_" + descIndex;
-                        inputDescriptors.add(PresentationDefinitionUtil
-                                .buildInputDescriptorFromRequestedCredential(
-                                         descId, type, purpose, claims, issuer));
-                        descIndex++;
-                    }
-                }
-
-                String fullPdString = PresentationDefinitionUtil
-                        .buildPresentationDefinition(
-                        UUID.randomUUID().toString(),
-                        "Dynamic Presentation Definition",
-                        "Dynamically generated from requested credentials",
-                        inputDescriptors.toArray(new String[0]));
-                pdJsonToEmbed = JsonParser.parseString(fullPdString)
-                        .getAsJsonObject();
-            } else {
-                // Fallback if it's already a full PE definition.
-                pdJsonToEmbed = storedPdJson;
-            }
-
             // Convert to Map for Nimbus.
             @SuppressWarnings("unchecked")
             Map<String, Object> pdMap = new Gson()
-                    .fromJson(pdJsonToEmbed, Map.class);
+                    .fromJson(storedPdJson, Map.class);
             claimsBuilder.claim("presentation_definition", pdMap);
 
             // Add client_metadata.
@@ -327,12 +274,6 @@ public class VPRequestServiceImpl extends VPRequestService {
             clientMetadata.put("client_name", did);
 
             Map<String, Object> vpFormats = new HashMap<>();
-
-            Map<String, Object> ldpVp = new HashMap<>();
-            ldpVp.put("proof_type",
-                    Arrays.asList("Ed25519Signature2018",
-                            "Ed25519Signature2020", "RsaSignature2018"));
-            vpFormats.put("ldp_vp", ldpVp);
 
             Map<String, Object> vcSdJwt = new HashMap<>();
             vcSdJwt.put("sd-jwt_alg_values", Arrays.asList("RS256", "EdDSA"));
