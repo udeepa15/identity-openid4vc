@@ -41,7 +41,7 @@ public enum VPRequestStatus {
     /**
      * Verification process has been completed successfully.
      */
-    COMPLETED("COMPLETED"),
+    VERIFIED("VERIFIED"),
 
     /**
      * Request was invalidated.

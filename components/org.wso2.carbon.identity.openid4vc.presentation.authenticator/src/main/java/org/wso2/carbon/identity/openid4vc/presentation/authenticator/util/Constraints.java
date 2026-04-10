@@ -92,6 +92,11 @@ public class Constraints {
     public static final int SUPER_TENANT_ID_PLACEHOLDER = -1234;
 
     /**
+     * Expiry time for VP requests.
+     */
+    public static final long DEFAULT_VP_REQUEST_EXPIRY_MS = 60000;
+
+    /**
      * Private constructor to prevent instantiation of utility class.
      */
     private Constraints() {

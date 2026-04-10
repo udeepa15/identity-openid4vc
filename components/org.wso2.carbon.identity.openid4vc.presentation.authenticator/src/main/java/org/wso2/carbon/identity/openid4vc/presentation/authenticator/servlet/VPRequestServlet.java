@@ -209,15 +209,14 @@ public class VPRequestServlet extends HttpServlet {
      *
      * @param response  HTTP response.
      * @param requestId Request ID.
-     * @param tenantId  Tenant ID.
      * @throws VPAuthenticatorException If a VP authenticator error occurs.
      * @throws IOException              If an I/O error occurs.
      */
     private void handleStatusRequest(HttpServletResponse response,
-                                     String requestId, int tenantId)
+                                     String requestId)
             throws VPAuthenticatorException, IOException {
 
-        JsonObject statusResponse = pollForStatus(requestId, tenantId);
+        JsonObject statusResponse = pollForStatus(requestId);
         sendJsonResponse(response, HttpServletResponse.SC_OK, statusResponse);
     }
 
@@ -238,7 +237,6 @@ public class VPRequestServlet extends HttpServlet {
 
         AuthenticationContext context = FrameworkUtils.getAuthenticationContextFromCache(requestId);
         if (context == null) {
-            statusResponse.addProperty("pollingStatus", "NOT_FOUND");
             statusResponse.addProperty("status", "NOT_FOUND");
             return statusResponse;
         }
@@ -252,14 +250,11 @@ public class VPRequestServlet extends HttpServlet {
             status = VPRequestStatus.ACTIVE;
         }
 
-        if (status == VPRequestStatus.VP_SUBMITTED || status == VPRequestStatus.COMPLETED) {
-            statusResponse.addProperty("pollingStatus", "SUBMITTED");
+        if (status == VPRequestStatus.VP_SUBMITTED || status == VPRequestStatus.VERIFIED) {
             statusResponse.addProperty("status", VPRequestStatus.VP_SUBMITTED.name());
         } else if (status == VPRequestStatus.EXPIRED) {
-            statusResponse.addProperty("pollingStatus", "EXPIRED");
             statusResponse.addProperty("status", VPRequestStatus.EXPIRED.name());
         } else {
-            statusResponse.addProperty("pollingStatus", "WAITING");
             statusResponse.addProperty("status", VPRequestStatus.ACTIVE.name());
         }
 

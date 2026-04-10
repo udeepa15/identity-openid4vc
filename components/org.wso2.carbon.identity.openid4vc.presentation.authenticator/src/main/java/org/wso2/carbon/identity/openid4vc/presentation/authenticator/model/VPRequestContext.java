@@ -29,6 +29,7 @@ public class VPRequestContext implements Serializable {
 
     private String requestJwt;
     private VPRequestStatus requestStatus;
+    private final long createdAt;
 
     /**
      * Create a request context.
@@ -37,9 +38,21 @@ public class VPRequestContext implements Serializable {
      * @param requestStatus Current VP request status.
      */
     public VPRequestContext(String requestJwt, VPRequestStatus requestStatus) {
+        this(requestJwt, requestStatus, System.currentTimeMillis());
+    }
+
+    /**
+     * Create a request context.
+     *
+     * @param requestJwt    Request JWT string.
+     * @param requestStatus Current VP request status.
+     * @param createdAt     Creation timestamp.
+     */
+    public VPRequestContext(String requestJwt, VPRequestStatus requestStatus, long createdAt) {
 
         this.requestJwt = requestJwt;
         this.requestStatus = requestStatus;
+        this.createdAt = createdAt;
     }
 
     /**
@@ -80,6 +93,16 @@ public class VPRequestContext implements Serializable {
     public void setRequestStatus(VPRequestStatus requestStatus) {
 
         this.requestStatus = requestStatus;
+    }
+
+    /**
+     * Returns the creation timestamp.
+     *
+     * @return Creation timestamp.
+     */
+    public long getCreatedAt() {
+
+        return createdAt;
     }
 }
 

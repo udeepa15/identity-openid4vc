@@ -66,6 +66,7 @@ import javax.servlet.http.HttpServletResponse;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.AUTHENTICATOR_FRIENDLY_NAME;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.AUTHENTICATOR_NAME;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.CONTEXT_VP_REQUEST;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DEFAULT_VP_REQUEST_EXPIRY_MS;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DISPLAY_ORDER_3;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DISPLAY_ORDER_4;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DISPLAY_ORDER_5;
@@ -382,18 +383,25 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         VPRequestStatus status = null;
         Object vpRequestContextObj = context.getProperty(CONTEXT_VP_REQUEST);
         if (vpRequestContextObj instanceof VPRequestContext) {
-            status = ((VPRequestContext) vpRequestContextObj).getRequestStatus();
+            VPRequestContext vpRequestContext = (VPRequestContext) vpRequestContextObj;
+            status = vpRequestContext.getRequestStatus();
+
+            // Check if the request has expired based on the 60-second window.
+            if (VPRequestStatus.ACTIVE.equals(status) && isRequestExpired(vpRequestContext)) {
+                status = VPRequestStatus.EXPIRED;
+                vpRequestContext.setRequestStatus(status);
+            }
         }
         if (status == null) {
             status = VPRequestStatus.ACTIVE;
         }
 
         if (VPRequestStatus.VP_SUBMITTED.equals(status) ||
-                VPRequestStatus.COMPLETED.equals(status)) {
+                VPRequestStatus.VERIFIED.equals(status)) {
 
             sendPollResponse(response, status.getValue().toLowerCase(Locale.ENGLISH), null);
 
-            if (VPRequestStatus.COMPLETED.equals(status)) {
+            if (VPRequestStatus.VERIFIED.equals(status)) {
                 return AuthenticatorFlowStatus.SUCCESS_COMPLETED;
             }
         } else if (VPRequestStatus.EXPIRED.equals(status)) {
@@ -789,5 +797,20 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
 
         String value = request.getParameter(name);
         return StringUtils.isNotBlank(value) ? Encode.forHtml(value) : null;
+    }
+
+    /**
+     * Check if the VP request has expired based on the configured active window.
+     *
+     * @param vpRequestContext VP request context.
+     * @return True if expired, false otherwise.
+     */
+    private boolean isRequestExpired(VPRequestContext vpRequestContext) {
+
+        if (vpRequestContext == null) {
+            return false;
+        }
+        long currentTime = System.currentTimeMillis();
+        return (currentTime - vpRequestContext.getCreatedAt()) > DEFAULT_VP_REQUEST_EXPIRY_MS;
     }
 }
