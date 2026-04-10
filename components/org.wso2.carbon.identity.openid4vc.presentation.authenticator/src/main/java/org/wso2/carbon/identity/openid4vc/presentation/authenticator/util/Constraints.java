@@ -65,9 +65,8 @@ public class Constraints {
      * Endpoint and pattern constants.
      */
     public static final String WALLET_LOGIN_PAGE = "/authenticationendpoint/wallet_login.jsp";
-    public static final String ALPHANUM_PATTERN = "^[a-zA-Z0-9_.-]+$";
-    public static final int DEFAULT_TENANT_ID = -1234;
-    public static final String TENANT_DOMAIN_PATTERN = "^[a-zA-Z0-9._-]+$";
+    public static final String REQUEST_URI_ENDPOINT = "/oid4vp/v1/vp-request/";
+    public static final String RESPONSE_URI_ENDPOINT = "/oid4vp/v1/response";
 
     /**
      * Display order and boundary constants.
