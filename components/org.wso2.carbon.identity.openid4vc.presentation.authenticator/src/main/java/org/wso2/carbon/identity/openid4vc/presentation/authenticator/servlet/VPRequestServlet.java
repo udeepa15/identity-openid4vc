@@ -263,16 +263,6 @@ public class VPRequestServlet extends HttpServlet {
             statusResponse.addProperty("status", VPRequestStatus.ACTIVE.name());
         }
 
-        // Include UI data for initial load.
-        String requestUri = (String) context.getProperty("VP_REQUEST_URI");
-        String qrContent = (String) context.getProperty("VP_QR_CONTENT");
-        if (StringUtils.isNotBlank(requestUri)) {
-            statusResponse.addProperty("requestUri", requestUri);
-        }
-        if (StringUtils.isNotBlank(qrContent)) {
-            statusResponse.addProperty("qrContent", qrContent);
-        }
-
         return statusResponse;
     }
 

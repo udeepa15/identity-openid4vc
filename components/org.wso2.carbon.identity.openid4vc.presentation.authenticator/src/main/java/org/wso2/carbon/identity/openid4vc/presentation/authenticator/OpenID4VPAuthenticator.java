@@ -399,7 +399,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         } else if (VPRequestStatus.EXPIRED.equals(status)) {
             sendPollResponse(response, "expired", "Request expired.");
             throw new AuthenticationFailedException("VP request has expired.");
-        } else if (VPRequestStatus.CANCELLED.equals(status)) {
+        } else if (VPRequestStatus.FAILED.equals(status)) {
             sendPollResponse(response, "cancelled", "Request was cancelled.");
             throw new AuthenticationFailedException("VP request was cancelled.");
         } else {

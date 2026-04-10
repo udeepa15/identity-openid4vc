@@ -44,9 +44,9 @@ public enum VPRequestStatus {
     COMPLETED("COMPLETED"),
 
     /**
-     * Request was cancelled or invalidated.
+     * Request was invalidated.
      */
-    CANCELLED("CANCELLED");
+    FAILED("FAILED");
 
     /**
      * String value of the status.
