@@ -49,6 +49,7 @@ import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.Presenta
 import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VerificationResult;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VerificationException;
 import org.wso2.carbon.idp.mgt.IdentityProviderManager;
+import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
 
 import java.io.IOException;
 import java.net.URLEncoder;
@@ -181,14 +182,21 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             final HttpServletResponse response,
             final AuthenticationContext context) throws AuthenticationFailedException {
 
-        VPSubmission submission = (VPSubmission) context.getProperty("VP_SUBMISSION");
+        String vpToken = request.getParameter(OpenID4VPConstants.ResponseParams.VP_TOKEN);
+        String presentationSubmissionJson = request.getParameter(OpenID4VPConstants.ResponseParams.PRESENTATION_SUBMISSION);
+        String state = request.getParameter(OpenID4VPConstants.ResponseParams.STATE);
 
-        if (submission == null) {
-            throw new AuthenticationFailedException("No VP submission received.");
+        if (StringUtils.isBlank(vpToken) || StringUtils.isBlank(state)) {
+            throw new AuthenticationFailedException("No VP submission data received in request.");
         }
 
+        VPSubmission submission = new VPSubmission.Builder()
+                .vpToken(vpToken)
+                .presentationSubmission(presentationSubmissionJson)
+                .requestId(state)
+                .build();
+
         // Clear properties
-        context.removeProperty("VP_SUBMISSION");
         context.removeProperty(CONTEXT_VP_REQUEST);
 
         try {
@@ -396,22 +404,33 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             status = VPRequestStatus.ACTIVE;
         }
 
-        if (VPRequestStatus.VP_SUBMITTED.equals(status) ||
-                VPRequestStatus.VERIFIED.equals(status)) {
+        if (VPRequestStatus.VP_SUBMITTED.equals(status)) {
 
-            sendPollResponse(response, status.getValue().toLowerCase(Locale.ENGLISH), null);
-
-            if (VPRequestStatus.VERIFIED.equals(status)) {
-                return AuthenticatorFlowStatus.SUCCESS_COMPLETED;
+            VPSubmission submission = VPSubmission.consume(context.getContextIdentifier());
+            Map<String, String> submissionData = null;
+            if (submission != null) {
+                submissionData = new HashMap<>();
+                submissionData.put(OpenID4VPConstants.ResponseParams.VP_TOKEN, submission.getVpToken());
+                submissionData.put(OpenID4VPConstants.ResponseParams.PRESENTATION_SUBMISSION,
+                        submission.getPresentationSubmission());
+                submissionData.put(OpenID4VPConstants.ResponseParams.STATE, submission.getRequestId());
             }
+            sendPollResponse(response, status.getValue().toLowerCase(Locale.ENGLISH), null, submissionData);
+            return AuthenticatorFlowStatus.INCOMPLETE;
+        }
+
+        if (VPRequestStatus.VERIFIED.equals(status)) {
+
+            sendPollResponse(response, status.getValue().toLowerCase(Locale.ENGLISH), null, null);
+            return AuthenticatorFlowStatus.SUCCESS_COMPLETED;
         } else if (VPRequestStatus.EXPIRED.equals(status)) {
-            sendPollResponse(response, "expired", "Request expired.");
+            sendPollResponse(response, "expired", "Request expired.", null);
             throw new AuthenticationFailedException("VP request has expired.");
         } else if (VPRequestStatus.FAILED.equals(status)) {
-            sendPollResponse(response, "cancelled", "Request was cancelled.");
+            sendPollResponse(response, "cancelled", "Request was cancelled.", null);
             throw new AuthenticationFailedException("VP request was cancelled.");
         } else {
-            sendPollResponse(response, "pending", null);
+            sendPollResponse(response, "pending", null, null);
         }
 
         return AuthenticatorFlowStatus.INCOMPLETE;
@@ -453,8 +472,9 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      * @param response HTTP response.
      * @param status   Status to report.
      * @param error    Error message to report.
+     * @param data     Additional submission data to include (can be null).
      */
-    private void sendPollResponse(HttpServletResponse response, String status, String error) {
+    private void sendPollResponse(HttpServletResponse response, String status, String error, Map<String, String> data) {
 
         try {
             response.setContentType("application/json;charset=UTF-8");
@@ -463,6 +483,12 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             json.addProperty("status", status);
             if (error != null) {
                 json.addProperty("error", error);
+            }
+
+            if (data != null) {
+                for (Map.Entry<String, String> entry : data.entrySet()) {
+                    json.addProperty(entry.getKey(), entry.getValue());
+                }
             }
 
             // Write using Gson directly to the writer to avoid SpotBugs XSS string detection.

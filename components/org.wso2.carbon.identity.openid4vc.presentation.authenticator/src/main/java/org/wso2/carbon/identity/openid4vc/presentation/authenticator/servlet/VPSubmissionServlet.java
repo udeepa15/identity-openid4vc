@@ -128,11 +128,6 @@ public class VPSubmissionServlet extends HttpServlet {
             VPSubmission.Builder submissionBuilder = parseSubmission(request);
 
             // Get tenant ID and other context.
-            int tenantId = getTenantId(request);
-            submissionBuilder.submissionId(OpenID4VPUtil.generateSubmissionId())
-                    .submittedAt(System.currentTimeMillis())
-                    .tenantId(tenantId);
-
             VPSubmission submission = submissionBuilder.build();
 
             // Basic validation.
@@ -143,10 +138,29 @@ public class VPSubmissionServlet extends HttpServlet {
                 return;
             }
 
-            if (StringUtils.isBlank(submission.getVpToken()) && StringUtils.isBlank(submission.getError())) {
+            // Retrieve AuthenticationContext to check status.
+            AuthenticationContext context =
+                    FrameworkUtils.getAuthenticationContextFromCache(submission.getRequestId());
+            if (context == null) {
                 sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
                         new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
-                                "Missing vp_token or error."));
+                                "Invalid state parameter."));
+                return;
+            }
+
+            Object vpRequestContextObj = context.getProperty(CONTEXT_VP_REQUEST);
+            if (!(vpRequestContextObj instanceof VPRequestContext) ||
+                    !VPRequestStatus.ACTIVE.equals(((VPRequestContext) vpRequestContextObj).getRequestStatus())) {
+                sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
+                        new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
+                                "Request is not in ACTIVE status."));
+                return;
+            }
+
+            if (StringUtils.isBlank(submission.getVpToken())) {
+                sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
+                        new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
+                                "Missing vp_token."));
                 return;
             }
 
@@ -154,7 +168,7 @@ public class VPSubmissionServlet extends HttpServlet {
             notifyStatusListeners(submission.getRequestId(), submission);
 
             // Send success response.
-            sendSuccessResponse(response, submission);
+            sendSuccessResponse(response);
 
         } catch (RuntimeException e) {
             LOG.error("Unexpected error processing VP submission.", e);
@@ -204,10 +218,7 @@ public class VPSubmissionServlet extends HttpServlet {
         builder.vpToken(getDecodedFormParameter(formBody, OpenID4VPConstants.ResponseParams.VP_TOKEN))
                .presentationSubmission(getDecodedFormParameter(formBody,
                        OpenID4VPConstants.ResponseParams.PRESENTATION_SUBMISSION))
-               .requestId(getDecodedFormParameter(formBody, OpenID4VPConstants.ResponseParams.STATE))
-               .error(getDecodedFormParameter(formBody, OpenID4VPConstants.ResponseParams.ERROR))
-               .errorDescription(getDecodedFormParameter(formBody,
-                       OpenID4VPConstants.ResponseParams.ERROR_DESCRIPTION));
+               .requestId(getDecodedFormParameter(formBody, OpenID4VPConstants.ResponseParams.STATE));
     }
 
     /**
@@ -325,11 +336,12 @@ public class VPSubmissionServlet extends HttpServlet {
             return;
         }
 
+        // Store the submission in the transient model store for handoff.
+        VPSubmission.store(submission);
+
         AuthenticationContext context =
                 FrameworkUtils.getAuthenticationContextFromCache(requestId);
         if (context != null) {
-            context.setProperty("VP_SUBMISSION", submission);
-
             Object vpRequestContextObj = context.getProperty(CONTEXT_VP_REQUEST);
             if (vpRequestContextObj instanceof VPRequestContext) {
                 ((VPRequestContext) vpRequestContextObj).setRequestStatus(VPRequestStatus.VP_SUBMITTED);
@@ -347,19 +359,12 @@ public class VPSubmissionServlet extends HttpServlet {
             }
         } else {
             LOG.warn("AuthenticationContext not found for state ID; "
-                    + "submission will not be correlated.");
+                    + "submission status will not be updated.");
         }
 
         // Use the centralized notification service.
         if (statusNotificationService != null) {
-            if (StringUtils.isNotBlank(submission.getError())) {
-                statusNotificationService.notifySubmissionError(
-                        requestId,
-                        submission.getError(),
-                        submission.getErrorDescription());
-            } else {
-                statusNotificationService.notifyVPSubmitted(requestId);
-            }
+            statusNotificationService.notifyVPSubmitted(requestId);
         }
     }
 
@@ -367,11 +372,9 @@ public class VPSubmissionServlet extends HttpServlet {
      * Send success response to wallet.
      *
      * @param response   HTTP response.
-     * @param submission The processed submission.
      * @throws IOException If writing fails.
      */
-    private void sendSuccessResponse(final HttpServletResponse response,
-            final VPSubmission submission)
+    private void sendSuccessResponse(final HttpServletResponse response)
             throws IOException {
 
         response.setStatus(HttpServletResponse.SC_OK);
@@ -381,16 +384,8 @@ public class VPSubmissionServlet extends HttpServlet {
         response.setHeader("X-Content-Type-Options", "nosniff");
 
         // Build response object per OpenID4VP spec.
-        // Values are server-generated (submission IDs), not reflected user input.
         JsonObject responseObj = new JsonObject();
         responseObj.addProperty("status", "received");
-        responseObj.addProperty("submission_id", submission.getSubmissionId());
-
-        // Add transaction ID if present for tracking.
-        if (submission.getTransactionId() != null) {
-            responseObj.addProperty("transaction_id",
-                    submission.getTransactionId());
-        }
 
         String responseJson = GSON.toJson(responseObj);
 
