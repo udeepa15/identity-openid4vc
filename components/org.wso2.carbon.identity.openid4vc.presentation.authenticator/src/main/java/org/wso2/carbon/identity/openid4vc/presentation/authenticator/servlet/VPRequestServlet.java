@@ -316,32 +316,6 @@ public class VPRequestServlet extends HttpServlet {
     }
 
     /**
-     * Resolve the tenant ID from the request context or attributes.
-     *
-     * @param request HTTP request.
-     * @return Tenant ID.
-     */
-    private int getTenantId(HttpServletRequest request) {
-
-        String tenantDomain = org.wso2.carbon.identity.core.util.IdentityTenantUtil.getTenantDomainFromContext();
-        if (StringUtils.isBlank(tenantDomain)) {
-            Object tenantDomainAttribute = request.getAttribute("tenantDomain");
-            tenantDomain = tenantDomainAttribute instanceof String ? (String) tenantDomainAttribute : null;
-        }
-
-        if (StringUtils.isNotBlank(tenantDomain)
-                && tenantDomain.matches(TENANT_DOMAIN_PATTERN)) {
-            try {
-                return org.wso2.carbon.identity.core.util.IdentityTenantUtil.getTenantId(tenantDomain);
-            } catch (Exception e) {
-                // Ignore.
-            }
-        }
-
-        return DEFAULT_TENANT_ID;
-    }
-
-    /**
      * Remove the OID4VP request-id suffix used in wallet request URIs before cache lookup.
      *
      * @param requestId Raw request ID from request path.
