@@ -168,13 +168,6 @@ public class VPSubmissionServlet extends HttpServlet {
             // Check if the request has expired.
             if (isRequestExpired(vpRequestContext)) {
                 vpRequestContext.setRequestStatus(VPRequestStatus.EXPIRED);
-                FrameworkUtils.addAuthenticationContextToCache(submission.getRequestId(), context);
-                // Update the context in the cache using the masked requestId (alias).
-                String maskedId = (String) context.getProperty("VP_REQUEST_ID");
-                if (StringUtils.isNotBlank(maskedId) && !maskedId.equals(submission.getRequestId())) {
-                    FrameworkUtils.addAuthenticationContextToCache(maskedId, context);
-                }
-
                 sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
                         new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
                                 "Request has expired."));
