@@ -50,6 +50,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.CONTEXT_VP_REQUEST;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DEFAULT_VP_REQUEST_EXPIRY_MS;
 
 /*/**
  * Servlet handling VP (Verifiable Presentation) submissions from wallets.
@@ -149,11 +150,34 @@ public class VPSubmissionServlet extends HttpServlet {
             }
 
             Object vpRequestContextObj = context.getProperty(CONTEXT_VP_REQUEST);
-            if (!(vpRequestContextObj instanceof VPRequestContext) ||
-                    !VPRequestStatus.ACTIVE.equals(((VPRequestContext) vpRequestContextObj).getRequestStatus())) {
+            if (!(vpRequestContextObj instanceof VPRequestContext)) {
+                sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
+                        new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
+                                "Invalid request context."));
+                return;
+            }
+
+            VPRequestContext vpRequestContext = (VPRequestContext) vpRequestContextObj;
+            if (!VPRequestStatus.ACTIVE.equals(vpRequestContext.getRequestStatus())) {
                 sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
                         new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
                                 "Request is not in ACTIVE status."));
+                return;
+            }
+
+            // Check if the request has expired.
+            if (isRequestExpired(vpRequestContext)) {
+                vpRequestContext.setRequestStatus(VPRequestStatus.EXPIRED);
+                FrameworkUtils.addAuthenticationContextToCache(submission.getRequestId(), context);
+                // Update the context in the cache using the masked requestId (alias).
+                String maskedId = (String) context.getProperty("VP_REQUEST_ID");
+                if (StringUtils.isNotBlank(maskedId) && !maskedId.equals(submission.getRequestId())) {
+                    FrameworkUtils.addAuthenticationContextToCache(maskedId, context);
+                }
+
+                sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
+                        new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
+                                "Request has expired."));
                 return;
             }
 
@@ -176,6 +200,21 @@ public class VPSubmissionServlet extends HttpServlet {
                     new VPAuthenticatorServerException(VPAuthenticatorErrorCode.INTERNAL_SERVER_ERROR,
                             "Internal server error.", e));
         }
+    }
+
+    /**
+     * Check if the VP request has expired.
+     *
+     * @param vpRequestContext VP request context.
+     * @return True if expired, false otherwise.
+     */
+    private boolean isRequestExpired(VPRequestContext vpRequestContext) {
+
+        if (vpRequestContext == null) {
+            return false;
+        }
+        long currentTime = System.currentTimeMillis();
+        return (currentTime - vpRequestContext.getCreatedAt()) > DEFAULT_VP_REQUEST_EXPIRY_MS;
     }
 
     /**
