@@ -133,14 +133,14 @@ public class VPRequestServiceImpl extends VPRequestService {
 
         String baseUrl = resolveTenantAwareBaseUrl();
 
-        String clientId = Constraints.DID_WEB_PREFIX + baseUrl
-                .replaceFirst(Constraints.URL_SCHEME_REGEX, "")
-                .replaceAll(Constraints.TRAILING_SLASH_REGEX, "");
-
         if (StringUtils.isBlank(baseUrl)) {
             throw new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
                     "Client ID (hostname) cannot be null or empty.");
         }
+
+        String clientId = Constraints.DID_WEB_PREFIX + baseUrl
+                .replaceFirst(Constraints.URL_SCHEME_REGEX, "")
+                .replaceAll(Constraints.TRAILING_SLASH_REGEX, "");
 
         String presentationDefinitionId = context
                 .getAuthenticatorProperties().get(PROP_PRESENTATION_DEFINITION_ID);
@@ -159,7 +159,7 @@ public class VPRequestServiceImpl extends VPRequestService {
         long expiresAt = calculateExpiryTime(createdAt, DEFAULT_EXPIRY_MS);
 
         // 3. Resolve and process presentation definition.
-        String presentationDefinition = resolvePresentationDefinition(presentationDefinitionId, null, tenantId);
+        String presentationDefinition = resolvePresentationDefinition(presentationDefinitionId, tenantId);
 
         // 4. Build the final request object.
         String responseUri = buildResponseUri(baseUrl);
@@ -180,9 +180,8 @@ public class VPRequestServiceImpl extends VPRequestService {
                 .build();
 
         // 5. Generate request JWT.
-        String requestJwt = buildRequestObjectJwt(vpRequest, didMethod, signingAlgorithm);
+        String requestJwt = buildRequestObjectJwt(vpRequest, didMethod);
         vpRequest.setRequestJwt(requestJwt);
-
 
         vpRequest.setRequestUri(buildRequestUri(baseUrl, requestId));
 
@@ -194,28 +193,14 @@ public class VPRequestServiceImpl extends VPRequestService {
      * Resolve the presentation definition from ID or inline value.
      *
      * @param definitionId      The presentation definition ID.
-     * @param inlineDefinition  The inline presentation definition.
      * @param tenantId          The tenant ID.
      * @return The resolution presentation definition JSON.
      * @throws VPAuthenticatorException If an error occurs during resolution.
      */
     private String resolvePresentationDefinition(final String definitionId,
-                                                 final String inlineDefinition,
                                                  final int tenantId)
             throws VPAuthenticatorException {
 
-        if (StringUtils.isNotBlank(inlineDefinition)) {
-            if (!PresentationDefinitionUtil
-                    .isValidPresentationDefinition(inlineDefinition)) {
-                throw new VPAuthenticatorClientException(
-                        VPAuthenticatorErrorCode
-                                .INVALID_PRESENTATION_DEFINITION,
-                        "Invalid presentation definition JSON.");
-            }
-            return inlineDefinition;
-        }
-
-        // Otherwise, fetch from stored definitions.
         if (StringUtils.isNotBlank(definitionId)) {
             PresentationDefinition definition = null;
             try {
@@ -242,13 +227,11 @@ public class VPRequestServiceImpl extends VPRequestService {
      *
      * @param vpRequest         The VP request model.
      * @param didMethod         The DID method to use.
-     * @param signingAlgorithm  The signing algorithm to use.
      * @return The signed request object JWT.
      * @throws VPAuthenticatorException If an error occurs during JWT building.
      */
     private String buildRequestObjectJwt(final VPRequest vpRequest,
-                                         final String didMethod,
-                                         final String signingAlgorithm)
+                                         final String didMethod)
             throws VPAuthenticatorException {
 
         try {
@@ -411,17 +394,6 @@ public class VPRequestServiceImpl extends VPRequestService {
     }
 
     /**
-     * Check if the request is expired.
-     *
-     * @param expiresAt The expiration time in milliseconds.
-     * @return True if the request is expired, false otherwise.
-     */
-    private boolean isExpired(final long expiresAt) {
-
-        return System.currentTimeMillis() > expiresAt;
-    }
-
-    /**
      * Build the response URI.
      *
      * @param currentBaseUrl The base URL to use.
@@ -429,7 +401,7 @@ public class VPRequestServiceImpl extends VPRequestService {
      */
     private String buildResponseUri(final String currentBaseUrl) {
 
-        String endpoint = "/oid4vp/v1/response";
+        String endpoint = Constraints.RESPONSE_URI_ENDPOINT;
         if (currentBaseUrl.endsWith("/")) {
             return currentBaseUrl.substring(0, currentBaseUrl.length() - 1)
                     + endpoint;
@@ -447,7 +419,7 @@ public class VPRequestServiceImpl extends VPRequestService {
     private String buildRequestUri(final String currentBaseUrl,
                                    final String requestId) {
 
-        String endpoint = "/oid4vp/v1/vp-request/"
+        String endpoint = Constraints.REQUEST_URI_ENDPOINT
                 + requestId;
         if (currentBaseUrl.endsWith("/")) {
             return currentBaseUrl.substring(0, currentBaseUrl.length() - 1)

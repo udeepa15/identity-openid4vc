@@ -19,50 +19,39 @@
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.model;
 
 import com.google.gson.JsonObject;
-import com.google.gson.annotations.SerializedName;
 
-import java.io.Serializable;
 
 /**
  * Model class representing a Verifiable Presentation Request.
  * This corresponds to an OpenID4VP authorization request.
  */
-public class VPRequest implements Serializable {
+public class VPRequest {
 
-    /**
-     * Serial version UID.
-     */
-    private static final long serialVersionUID = 1L;
 
     /**
      * Unique identifier for the VP request.
      */
-    @SerializedName("requestId")
     private String requestId;
 
 
     /**
      * Client ID of the relying party making the request.
      */
-    @SerializedName("clientId")
     private String clientId;
 
     /**
      * Nonce value to prevent replay attacks.
      */
-    @SerializedName("nonce")
     private String nonce;
 
     /**
      * Identifier for the presentation definition.
      */
-    @SerializedName("presentationDefinitionId")
     private String presentationDefinitionId;
 
     /**
      * The presentation definition JSON string.
      */
-    @SerializedName("presentationDefinition")
     private String presentationDefinition;
 
     /**
@@ -73,7 +62,6 @@ public class VPRequest implements Serializable {
     /**
      * Mode of the response (e.g., direct_post).
      */
-    @SerializedName("responseMode")
     private String responseMode;
 
     /**
@@ -84,13 +72,11 @@ public class VPRequest implements Serializable {
     /**
      * Current status of the VP request.
      */
-    @SerializedName("status")
     private VPRequestStatus status;
 
     /**
      * Timestamp when the request expires.
      */
-    @SerializedName("expiresAt")
     private long expiresAt;
 
     /**
@@ -101,25 +87,21 @@ public class VPRequest implements Serializable {
     /**
      * DID method used for signing.
      */
-    @SerializedName("didMethod")
     private String didMethod;
 
     /**
      * Algorithm used for signing the request.
      */
-    @SerializedName("signingAlgorithm")
     private String signingAlgorithm;
 
     /**
      * Authorization details for request-by-value.
      */
-    @SerializedName("authorizationDetails")
     private AuthorizationDetails authorizationDetails;
 
     /**
      * URI for the request if sent as request_uri.
      */
-    @SerializedName("requestUri")
     private String requestUri;
 
     /**
@@ -710,53 +692,42 @@ public class VPRequest implements Serializable {
      * Nested class containing authorization request details.
      * Used for request-by-value responses.
      */
-    public static class AuthorizationDetails implements Serializable {
-
-        /**
-         * Serial version UID.
-         */
-        private static final long serialVersionUID = 1L;
+    public static class AuthorizationDetails {
+        // ...existing code...
 
         /**
          * Client ID of the relying party.
          */
-        @SerializedName("clientId")
         private String clientId;
 
         /**
          * Expected response type.
          */
-        @SerializedName("responseType")
         private String responseType = "vp_token";
 
         /**
          * Expected response mode.
          */
-        @SerializedName("responseMode")
         private String responseMode = "direct_post";
 
         /**
          * URI where the wallet should send the response.
          */
-        @SerializedName("responseUri")
         private String responseUri;
 
         /**
          * Nonce value.
          */
-        @SerializedName("nonce")
         private String nonce;
 
         /**
          * State value to maintain session consistency.
          */
-        @SerializedName("state")
         private String state;
 
         /**
          * The presentation definition for the request.
          */
-        @SerializedName("presentationDefinition")
         private JsonObject presentationDefinition;
 
         /**
