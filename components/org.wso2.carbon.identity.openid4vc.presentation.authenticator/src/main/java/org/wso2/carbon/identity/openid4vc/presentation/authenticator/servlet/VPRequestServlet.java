@@ -44,6 +44,9 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.CONTEXT_VP_REQUEST;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DEFAULT_VP_REQUEST_EXPIRY_MS;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.RESPONSE_REQUEST_ID;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.RESPONSE_STATUS;
 
 /**
  * Servlet handling VP (Verifiable Presentation) authorization request operations.
@@ -132,15 +135,83 @@ public class VPRequestServlet extends HttpServlet {
         }
 
         String requestId = removeOid4vpSuffix(pathParts[1]);
-        int tenantId = getTenantId(request);
+        boolean isStatusRequest = pathParts.length >= 3 && "status".equals(pathParts[2]);
 
         try {
-            // Check if status endpoint.
-            if (pathParts.length >= 3 && "status".equals(pathParts[2])) {
-                handleStatusRequest(response, requestId, tenantId);
-            } else {
-                handleRequestJwtRequest(response, requestId, tenantId);
+            AuthenticationContext context = FrameworkUtils.getAuthenticationContextFromCache(requestId);
+            if (context == null) {
+                if (isStatusRequest) {
+                    JsonObject statusResponse = new JsonObject();
+                    statusResponse.addProperty(RESPONSE_REQUEST_ID, requestId);
+                    statusResponse.addProperty(RESPONSE_STATUS, VPRequestStatus.EXPIRED.name());
+                    sendJsonResponse(response, HttpServletResponse.SC_OK, statusResponse);
+                } else {
+                    sendErrorResponse(response, HttpServletResponse.SC_NOT_FOUND,
+                            new VPAuthenticatorClientException(VPAuthenticatorErrorCode.VP_REQUEST_NOT_FOUND,
+                                    "VP request not found: " + requestId));
+                }
+                return;
             }
+
+            VPRequestContext vpContext = null;
+            Object vpRequestContextObj = context.getProperty(CONTEXT_VP_REQUEST);
+            if (vpRequestContextObj instanceof VPRequestContext) {
+                vpContext = (VPRequestContext) vpRequestContextObj;
+            }
+
+            if (vpContext == null) {
+                throw new VPAuthenticatorServerException(
+                        VPAuthenticatorErrorCode.INTERNAL_SERVER_ERROR,
+                        "VP request context is missing for request: " + requestId);
+            }
+
+            VPRequestStatus status = vpContext.getRequestStatus();
+
+            // 1. Check if the context vpstatus is failed or verified or vp_submitted.
+            if (status == VPRequestStatus.FAILED || status == VPRequestStatus.VERIFIED ||
+                    status == VPRequestStatus.VP_SUBMITTED) {
+                JsonObject statusResponse = new JsonObject();
+                statusResponse.addProperty(RESPONSE_REQUEST_ID, requestId);
+                statusResponse.addProperty(RESPONSE_STATUS, status.name());
+                sendJsonResponse(response, HttpServletResponse.SC_OK, statusResponse);
+                return;
+            }
+
+            // 2. If the status is active then check the context expiry time.
+            if (status == VPRequestStatus.ACTIVE) {
+                if (isRequestExpired(vpContext)) {
+                    // if expired change the context status to Expired also response status as expired.
+                    vpContext.setRequestStatus(VPRequestStatus.EXPIRED);
+                    JsonObject statusResponse = new JsonObject();
+                    statusResponse.addProperty(RESPONSE_REQUEST_ID, requestId);
+                    statusResponse.addProperty(RESPONSE_STATUS, VPRequestStatus.EXPIRED.name());
+                    sendJsonResponse(response, HttpServletResponse.SC_OK, statusResponse);
+                    return;
+                }
+
+                // if not expired then check whther the request is a status request or an authorization request.
+                if (isStatusRequest) {
+                    JsonObject statusResponse = new JsonObject();
+                    statusResponse.addProperty(RESPONSE_REQUEST_ID, requestId);
+                    statusResponse.addProperty(RESPONSE_STATUS, VPRequestStatus.ACTIVE.name());
+                    sendJsonResponse(response, HttpServletResponse.SC_OK, statusResponse);
+                } else {
+                    handleRequestJwtRequest(response, vpContext, requestId);
+                }
+                return;
+            }
+
+            // 3. Apart from status being active and not expired, all other times send an error or status accordingly.
+            if (isStatusRequest) {
+                JsonObject statusResponse = new JsonObject();
+                statusResponse.addProperty(RESPONSE_REQUEST_ID, requestId);
+                statusResponse.addProperty(RESPONSE_STATUS, status.name());
+                sendJsonResponse(response, HttpServletResponse.SC_OK, statusResponse);
+            } else {
+                throw new VPAuthenticatorClientException(VPAuthenticatorErrorCode.VP_REQUEST_EXPIRED,
+                        "VP request is not active: " + status);
+            }
+
         } catch (VPAuthenticatorClientException e) {
             if (VPAuthenticatorErrorCode.VP_REQUEST_EXPIRED.getCode().equals(e.getCode())) {
                 sendErrorResponse(response, HttpServletResponse.SC_GONE, e);
@@ -149,7 +220,7 @@ public class VPRequestServlet extends HttpServlet {
             }
         } catch (VPAuthenticatorException e) {
             sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST, e);
-        } catch (RuntimeException e) {
+        } catch (RuntimeException | IOException e) {
             sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
                 new VPAuthenticatorServerException(VPAuthenticatorErrorCode.INTERNAL_SERVER_ERROR,
                     "Internal server error.", e));
@@ -161,24 +232,13 @@ public class VPRequestServlet extends HttpServlet {
      *
      * @param response  HTTP response.
      * @param requestId Request ID.
-     * @param tenantId  Tenant ID.
      * @throws VPAuthenticatorException If a VP authenticator error occurs.
      * @throws IOException              If an I/O error occurs.
      */
-    private void handleRequestJwtRequest(HttpServletResponse response, String requestId,
-            int tenantId) throws VPAuthenticatorException, IOException {
+    private void handleRequestJwtRequest(HttpServletResponse response, VPRequestContext vpContext,
+                                         String requestId) throws VPAuthenticatorException, IOException {
 
-        AuthenticationContext context = FrameworkUtils.getAuthenticationContextFromCache(requestId);
-        if (context == null) {
-            throw new VPAuthenticatorClientException(VPAuthenticatorErrorCode.VP_REQUEST_NOT_FOUND,
-                    "VP request not found: " + requestId);
-        }
-
-        String requestJwt = null;
-        Object vpRequestContextObj = context.getProperty(CONTEXT_VP_REQUEST);
-        if (vpRequestContextObj instanceof VPRequestContext) {
-            requestJwt = ((VPRequestContext) vpRequestContextObj).getRequestJwt();
-        }
+        String requestJwt = vpContext.getRequestJwt();
 
         if (StringUtils.isBlank(requestJwt)) {
             throw new VPAuthenticatorServerException(
@@ -205,60 +265,18 @@ public class VPRequestServlet extends HttpServlet {
     }
 
     /**
-     * Handle status polling request.
+     * Check if the VP request has expired based on the 60-second active window.
      *
-     * @param response  HTTP response.
-     * @param requestId Request ID.
-     * @throws VPAuthenticatorException If a VP authenticator error occurs.
-     * @throws IOException              If an I/O error occurs.
+     * @param vpRequestContext VP request context.
+     * @return True if expired, false otherwise.
      */
-    private void handleStatusRequest(HttpServletResponse response,
-                                     String requestId)
-            throws VPAuthenticatorException, IOException {
+    private boolean isRequestExpired(VPRequestContext vpRequestContext) {
 
-        JsonObject statusResponse = pollForStatus(requestId);
-        sendJsonResponse(response, HttpServletResponse.SC_OK, statusResponse);
-    }
-
-    /**
-     * Get current status immediately without waiting.
-     *
-     * @param requestId Request ID.
-     * @param tenantId  Tenant ID.
-     * @return JsonObject with polling and VP status.
-     * @throws VPAuthenticatorException If a VP authenticator error occurs.
-     */
-    private JsonObject pollForStatus(final String requestId,
-                                     final int tenantId)
-            throws VPAuthenticatorException {
-
-        JsonObject statusResponse = new JsonObject();
-        statusResponse.addProperty("requestId", requestId);
-
-        AuthenticationContext context = FrameworkUtils.getAuthenticationContextFromCache(requestId);
-        if (context == null) {
-            statusResponse.addProperty("status", "NOT_FOUND");
-            return statusResponse;
+        if (vpRequestContext == null) {
+            return false;
         }
-
-        VPRequestStatus status = null;
-        Object vpRequestContextObj = context.getProperty(CONTEXT_VP_REQUEST);
-        if (vpRequestContextObj instanceof VPRequestContext) {
-            status = ((VPRequestContext) vpRequestContextObj).getRequestStatus();
-        }
-        if (status == null) {
-            status = VPRequestStatus.ACTIVE;
-        }
-
-        if (status == VPRequestStatus.VP_SUBMITTED || status == VPRequestStatus.VERIFIED) {
-            statusResponse.addProperty("status", VPRequestStatus.VP_SUBMITTED.name());
-        } else if (status == VPRequestStatus.EXPIRED) {
-            statusResponse.addProperty("status", VPRequestStatus.EXPIRED.name());
-        } else {
-            statusResponse.addProperty("status", VPRequestStatus.ACTIVE.name());
-        }
-
-        return statusResponse;
+        long currentTime = System.currentTimeMillis();
+        return (currentTime - vpRequestContext.getCreatedAt()) > DEFAULT_VP_REQUEST_EXPIRY_MS;
     }
 
     /**

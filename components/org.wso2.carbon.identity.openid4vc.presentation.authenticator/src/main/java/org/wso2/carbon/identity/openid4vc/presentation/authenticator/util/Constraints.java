@@ -67,6 +67,8 @@ public class Constraints {
     public static final String WALLET_LOGIN_PAGE = "/authenticationendpoint/wallet_login.jsp";
     public static final String REQUEST_URI_ENDPOINT = "/oid4vp/v1/vp-request/";
     public static final String RESPONSE_URI_ENDPOINT = "/oid4vp/v1/response";
+    public static final String RESPONSE_STATUS = "status";
+    public static final String RESPONSE_REQUEST_ID = "requestId";
 
     /**
      * JWT Claims and metadata constants.
