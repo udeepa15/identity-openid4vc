@@ -248,6 +248,7 @@
             <input type="hidden" name="sessionDataKey"
                 value='<%=Encode.forHtmlAttribute(sessionDataKey != null ? sessionDataKey : "")%>'>
             <input type="hidden" name="status" id="authStatus" value="">
+            <input type="hidden" name="vp_request_id" id="authRequestId" value="">
         </form>
 
         <script type="text/javascript">
@@ -265,6 +266,7 @@
             var pollTimer = null;
             var countdownTimer = null;
             var submitted = false;
+            var vpSubmittedNotified = false;
 
             // Keep JS QR bootstrap aligned with QRCodeUtil.generateRequestUriQRContent.
             function buildRequestUriQRContent(requestUri, clientId) {
@@ -353,24 +355,56 @@
                 .then(function(data) {
                     console.log('Poll response:', data);
 
-                    var pollingStatus = data.pollingStatus ? data.pollingStatus.toUpperCase() : '';
                     var status = data.status ? data.status.toUpperCase() : '';
+                    var requestId = data.requestId ? data.requestId : '';
 
-                    if (pollingStatus === 'SUBMITTED' || status === 'VP_SUBMITTED') {
+                    if (status === 'ACTIVE') {
+                        updateStatus('pending', 'Waiting for wallet...');
+                    } else if (status === 'VP_SUBMITTED') {
+                        notifyVpSubmitted(requestId);
+                        updateStatus('pending', 'Credentials received. Verifying...');
+                    } else if (status === 'VERIFIED') {
                         handleSuccess();
-                    } else if (pollingStatus === 'EXPIRED' || status === 'EXPIRED') {
+                    } else if (status === 'FAILED') {
+                        handleError('Verification failed');
+                    } else if (status === 'EXPIRED') {
                         handleExpired();
-                    } else if (pollingStatus === 'NOT_FOUND' || pollingStatus === 'ERROR'
-                            || status === 'NOT_FOUND' || status === 'ERROR') {
+                    } else if (status === 'NOT_FOUND' || status === 'ERROR' || status === '') {
                         handleError(data.message || 'Verification failed');
                     } else {
-                        // Still pending, continue polling
-                        updateStatus('pending', 'Waiting for wallet...');
+                        handleError('Unexpected status received: ' + status);
                     }
                 })
                 .catch(function(error) {
                     console.error('Poll error:', error);
                     // Continue polling despite errors
+                });
+            }
+
+            // Notify common auth once when VP is submitted so backend can continue processing.
+            function notifyVpSubmitted(requestId) {
+                if (vpSubmittedNotified || !requestId || !CONFIG.sessionDataKey) {
+                    return;
+                }
+
+                vpSubmittedNotified = true;
+                document.getElementById('authRequestId').value = requestId;
+
+                var params = new URLSearchParams();
+                params.append('sessionDataKey', CONFIG.sessionDataKey);
+                params.append('vp_request_id', requestId);
+
+                fetch('<%=Encode.forJavaScript(commonauthURL)%>', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+                    },
+                    body: params.toString(),
+                    credentials: 'same-origin'
+                }).catch(function(error) {
+                    console.error('VP submission callback failed:', error);
+                    // Retry callback on next poll if the request failed.
+                    vpSubmittedNotified = false;
                 });
             }
 
@@ -387,6 +421,7 @@
 
                 // Submit form to complete authentication
                 setTimeout(function() {
+                    document.getElementById('authRequestId').value = '';
                     document.getElementById('authStatus').value = 'success';
                     document.getElementById('authForm').submit();
                 }, 1000);
@@ -423,6 +458,7 @@
 
             // Retry authentication
             function retryAuth() {
+                document.getElementById('authRequestId').value = '';
                 document.getElementById('authStatus').value = 'expired';
                 document.getElementById('authForm').submit();
             }
