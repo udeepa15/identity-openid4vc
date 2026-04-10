@@ -3,8 +3,6 @@ package org.wso2.carbon.identity.openid4vc.presentation.authenticator.model;
 import com.google.gson.annotations.SerializedName;
 
 import java.io.Serializable;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Model class representing a Verifiable Presentation Submission.
@@ -17,10 +15,6 @@ public class VPSubmission implements Serializable {
      */
     private static final long serialVersionUID = 1L;
 
-    /**
-     * Transient storage mapping requestId to submission.
-     */
-    private static final Map<String, VPSubmission> submissions = new ConcurrentHashMap<>();
 
     /**
      * The ID of the request this submission belongs to.
@@ -45,32 +39,6 @@ public class VPSubmission implements Serializable {
      */
     public VPSubmission() {
 
-    }
-
-    /**
-     * Store a submission for transient handoff.
-     *
-     * @param submission The submission to store.
-     */
-    public static void store(VPSubmission submission) {
-
-        if (submission != null && submission.getRequestId() != null) {
-            submissions.put(submission.getRequestId(), submission);
-        }
-    }
-
-    /**
-     * Retrieve and remove a submission for a request.
-     *
-     * @param requestId The request ID.
-     * @return The submission, or null if not found.
-     */
-    public static VPSubmission consume(String requestId) {
-
-        if (requestId == null) {
-            return null;
-        }
-        return submissions.remove(requestId);
     }
 
     /**

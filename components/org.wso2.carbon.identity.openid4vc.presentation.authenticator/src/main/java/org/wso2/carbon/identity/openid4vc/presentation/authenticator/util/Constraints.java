@@ -47,6 +47,7 @@ public class Constraints {
     public static final String UI_REQUEST_URI = "openid4vp_ui_request_uri";
     public static final String UI_QR_CONTENT = "openid4vp_ui_qr_content";
     public static final String CONTEXT_VP_REQUEST = "VPRequest";
+    public static final String CONTEXT_VP_SUBMISSION = "VPSubmission";
 
     /**
      * Configuration property names and defaults.

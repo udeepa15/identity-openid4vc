@@ -67,6 +67,7 @@ import javax.servlet.http.HttpServletResponse;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.AUTHENTICATOR_FRIENDLY_NAME;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.AUTHENTICATOR_NAME;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.CONTEXT_VP_REQUEST;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.CONTEXT_VP_SUBMISSION;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DEFAULT_VP_REQUEST_EXPIRY_MS;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DISPLAY_ORDER_3;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DISPLAY_ORDER_4;
@@ -182,22 +183,15 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             final HttpServletResponse response,
             final AuthenticationContext context) throws AuthenticationFailedException {
 
-        String vpToken = request.getParameter(OpenID4VPConstants.ResponseParams.VP_TOKEN);
-        String presentationSubmissionJson = request.getParameter(OpenID4VPConstants.ResponseParams.PRESENTATION_SUBMISSION);
-        String state = request.getParameter(OpenID4VPConstants.ResponseParams.STATE);
+        VPSubmission submission = (VPSubmission) context.getProperty(CONTEXT_VP_SUBMISSION);
 
-        if (StringUtils.isBlank(vpToken) || StringUtils.isBlank(state)) {
-            throw new AuthenticationFailedException("No VP submission data received in request.");
+        if (submission == null) {
+            throw new AuthenticationFailedException("No VP submission data found in context.");
         }
-
-        VPSubmission submission = new VPSubmission.Builder()
-                .vpToken(vpToken)
-                .presentationSubmission(presentationSubmissionJson)
-                .requestId(state)
-                .build();
 
         // Clear properties
         context.removeProperty(CONTEXT_VP_REQUEST);
+        context.removeProperty(CONTEXT_VP_SUBMISSION);
 
         try {
             int tenantId = getTenantId(context);
@@ -406,16 +400,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
 
         if (VPRequestStatus.VP_SUBMITTED.equals(status)) {
 
-            VPSubmission submission = VPSubmission.consume(context.getContextIdentifier());
-            Map<String, String> submissionData = null;
-            if (submission != null) {
-                submissionData = new HashMap<>();
-                submissionData.put(OpenID4VPConstants.ResponseParams.VP_TOKEN, submission.getVpToken());
-                submissionData.put(OpenID4VPConstants.ResponseParams.PRESENTATION_SUBMISSION,
-                        submission.getPresentationSubmission());
-                submissionData.put(OpenID4VPConstants.ResponseParams.STATE, submission.getRequestId());
-            }
-            sendPollResponse(response, status.getValue().toLowerCase(Locale.ENGLISH), null, submissionData);
+            sendPollResponse(response, status.getValue().toLowerCase(Locale.ENGLISH), null, null);
             return AuthenticatorFlowStatus.INCOMPLETE;
         }
 

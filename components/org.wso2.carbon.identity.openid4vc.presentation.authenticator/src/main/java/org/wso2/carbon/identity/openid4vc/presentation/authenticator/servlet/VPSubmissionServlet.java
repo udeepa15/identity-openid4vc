@@ -50,6 +50,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.CONTEXT_VP_REQUEST;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.CONTEXT_VP_SUBMISSION;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DEFAULT_VP_REQUEST_EXPIRY_MS;
 
 /*/**
@@ -368,12 +369,12 @@ public class VPSubmissionServlet extends HttpServlet {
             return;
         }
 
-        // Store the submission in the transient model store for handoff.
-        VPSubmission.store(submission);
-
+        // Store the submission in the context for handoff to the authenticator.
         AuthenticationContext context =
                 FrameworkUtils.getAuthenticationContextFromCache(requestId);
         if (context != null) {
+            context.setProperty(CONTEXT_VP_SUBMISSION, submission);
+
             Object vpRequestContextObj = context.getProperty(CONTEXT_VP_REQUEST);
             if (vpRequestContextObj instanceof VPRequestContext) {
                 ((VPRequestContext) vpRequestContextObj).setRequestStatus(VPRequestStatus.VP_SUBMITTED);
@@ -391,7 +392,7 @@ public class VPSubmissionServlet extends HttpServlet {
             }
         } else {
             LOG.warn("AuthenticationContext not found for state ID; "
-                    + "submission status will not be updated.");
+                    + "submission status and data will not be updated.");
         }
 
         // Use the centralized notification service.
