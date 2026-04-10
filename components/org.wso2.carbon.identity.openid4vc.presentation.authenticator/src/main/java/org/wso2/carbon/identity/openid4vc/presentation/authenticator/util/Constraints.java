@@ -69,6 +69,20 @@ public class Constraints {
     public static final String RESPONSE_URI_ENDPOINT = "/oid4vp/v1/response";
 
     /**
+     * JWT Claims and metadata constants.
+     */
+    public static final String CLAIM_PRESENTATION_DEFINITION = "presentation_definition";
+    public static final String CLAIM_CLIENT_METADATA = "client_metadata";
+    public static final String METADATA_CLIENT_NAME = "client_name";
+    public static final String METADATA_VP_FORMATS = "vp_formats";
+    public static final String FORMAT_VC_SD_JWT = "vc+sd-jwt";
+    public static final String METADATA_SD_JWT_ALG_VALUES = "sd-jwt_alg_values";
+    public static final String METADATA_KB_JWT_ALG_VALUES = "kb-jwt_alg_values";
+    public static final String JOSE_TYPE_OAUTH_AUTHZ_REQ = "oauth-authz-req+jwt";
+    public static final String ALG_RS256 = "RS256";
+    public static final String ALG_EDDSA = "EdDSA";
+
+    /**
      * Display order and boundary constants.
      */
     public static final int DISPLAY_ORDER_3 = 3;

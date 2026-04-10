@@ -267,21 +267,23 @@ public class VPRequestServiceImpl extends VPRequestService {
             @SuppressWarnings("unchecked")
             Map<String, Object> pdMap = new Gson()
                     .fromJson(storedPdJson, Map.class);
-            claimsBuilder.claim("presentation_definition", pdMap);
+            claimsBuilder.claim(Constraints.CLAIM_PRESENTATION_DEFINITION, pdMap);
 
             // Add client_metadata.
             Map<String, Object> clientMetadata = new HashMap<>();
-            clientMetadata.put("client_name", did);
+            clientMetadata.put(Constraints.METADATA_CLIENT_NAME, did);
 
             Map<String, Object> vpFormats = new HashMap<>();
 
             Map<String, Object> vcSdJwt = new HashMap<>();
-            vcSdJwt.put("sd-jwt_alg_values", Arrays.asList("RS256", "EdDSA"));
-            vcSdJwt.put("kb-jwt_alg_values", Arrays.asList("RS256", "EdDSA"));
-            vpFormats.put("vc+sd-jwt", vcSdJwt);
+            vcSdJwt.put(Constraints.METADATA_SD_JWT_ALG_VALUES,
+                    Arrays.asList(Constraints.ALG_RS256, Constraints.ALG_EDDSA));
+            vcSdJwt.put(Constraints.METADATA_KB_JWT_ALG_VALUES,
+                    Arrays.asList(Constraints.ALG_RS256, Constraints.ALG_EDDSA));
+            vpFormats.put(Constraints.FORMAT_VC_SD_JWT, vcSdJwt);
 
-            clientMetadata.put("vp_formats", vpFormats);
-            claimsBuilder.claim("client_metadata", clientMetadata);
+            clientMetadata.put(Constraints.METADATA_VP_FORMATS, vpFormats);
+            claimsBuilder.claim(Constraints.CLAIM_CLIENT_METADATA, clientMetadata);
 
             JWTClaimsSet claimsSet = claimsBuilder.build();
 
@@ -289,7 +291,7 @@ public class VPRequestServiceImpl extends VPRequestService {
             JWSHeader header = new JWSHeader.Builder(
                     provider.getSigningAlgorithm())
                     .keyID(keyId)
-                    .type(new JOSEObjectType("oauth-authz-req+jwt"))
+                    .type(new JOSEObjectType(Constraints.JOSE_TYPE_OAUTH_AUTHZ_REQ))
                     .build();
 
             JWSObject jwsObject = new JWSObject(header,
