@@ -70,8 +70,6 @@ public class VPRequestServiceImpl extends VPRequestService {
      */
     private static final long DEFAULT_EXPIRY_MS = 60000;
 
-    private static final String LOGIN_TYPE_OID4VP = "OID4VP";
-
     /**
      * Holder for the PresentationDefinitionService reference.
      */
@@ -148,7 +146,7 @@ public class VPRequestServiceImpl extends VPRequestService {
         int tenantId = IdentityTenantUtil.getTenantId(context.getTenantDomain());
 
         // 2. Resolve identifiers and timestamps.
-        String requestId = context.getContextIdentifier() + "," + LOGIN_TYPE_OID4VP;
+        String requestId = context.getContextIdentifier();
         String nonce = generateNonce();
         long createdAt = System.currentTimeMillis();
         long expiresAt = calculateExpiryTime(createdAt, DEFAULT_EXPIRY_MS);

@@ -94,11 +94,6 @@ public class VPSubmissionServlet extends HttpServlet {
     private static final int MAX_PARAM_LENGTH = 65536;
 
     /**
-     * Suffix appended to context identifiers for OID4VP login type.
-     */
-    private static final String OID4VP_REQUEST_ID_SUFFIX = ",OID4VP";
-
-    /**
      * Service instance for status change notifications.
      */
     private transient StatusNotificationService statusNotificationService;
@@ -232,17 +227,13 @@ public class VPSubmissionServlet extends HttpServlet {
         if (StringUtils.isNotBlank(body) && body.trim().startsWith("{")) {
             // Handle JSON body.
             try {
-                builder = GSON.fromJson(body, VPSubmission.Builder.class);
+                return GSON.fromJson(body, VPSubmission.Builder.class);
             } catch (JsonSyntaxException e) {
                 LOG.warn("Failed to parse JSON submission body.");
             }
         } else {
             // Handle form-encoded body.
             parseFormEncodedSubmission(body, builder);
-        }
-
-        if (builder != null) {
-            builder.requestId(normalizeRequestId(builder.build().getRequestId()));
         }
 
         return builder;
@@ -260,23 +251,7 @@ public class VPSubmissionServlet extends HttpServlet {
         builder.vpToken(getDecodedFormParameter(formBody, OpenID4VPConstants.ResponseParams.VP_TOKEN))
                .presentationSubmission(getDecodedFormParameter(formBody,
                        OpenID4VPConstants.ResponseParams.PRESENTATION_SUBMISSION))
-               .requestId(normalizeRequestId(getDecodedFormParameter(formBody,
-                       OpenID4VPConstants.ResponseParams.STATE)));
-    }
-
-    /**
-     * Normalize request ID by removing the OID4VP login-type suffix when present.
-     *
-     * @param requestId Raw request ID from submission.
-     * @return Normalized request ID.
-     */
-    private String normalizeRequestId(final String requestId) {
-
-        if (StringUtils.isBlank(requestId)) {
-            return requestId;
-        }
-
-        return StringUtils.removeEnd(requestId, OID4VP_REQUEST_ID_SUFFIX);
+               .requestId(getDecodedFormParameter(formBody, OpenID4VPConstants.ResponseParams.STATE));
     }
 
     /**
