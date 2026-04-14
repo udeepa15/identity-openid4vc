@@ -38,7 +38,7 @@ import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.carbon.identity.openid4vc.presentation.did.exception.DIDResolutionException;
+import org.wso2.carbon.identity.openid4vc.presentation.did.exception.DIDServerException;
 import org.wso2.carbon.identity.openid4vc.presentation.did.service.DIDResolverService;
 import org.wso2.carbon.identity.openid4vc.presentation.did.service.impl.DIDResolverServiceImpl;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VerificationClientException;
@@ -130,7 +130,7 @@ public class SignatureVerifier {
             throw new VerificationClientException(VerificationErrorCode.INVALID_CREDENTIAL,
                     "Cannot verify signature for issuer: " + issuer);
 
-        } catch (DIDResolutionException e) {
+        } catch (DIDServerException e) {
             throw new VerificationServerException(VerificationErrorCode.DID_RESOLUTION_ERROR,
                     "Failed to resolve issuer DID: " + e.getMessage(), e);
         } catch (VerificationException e) {
