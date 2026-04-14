@@ -177,7 +177,7 @@
 
                         <%-- Timer --%>
                         <div class="text-center">
-                            <div id="timer" class="timer-text">Expires in 5:00</div>
+                            <div id="timer" class="timer-text">Expires in 1:00</div>
                         </div>
 
                         <div class="ui divider hidden"></div>
@@ -258,7 +258,7 @@
                 clientId: '<%=clientId != null ? Encode.forJavaScript(clientId) : ""%>',
                 requestUri: '<%=requestUri != null ? Encode.forJavaScript(requestUri) : ""%>',
                 pollInterval: 5000,
-                timeout: 300,
+                timeout: 60,
                 pollEndpoint: '/oid4vp/v1/vp-request/<%=Encode.forUriComponent(sessionDataKey != null ? sessionDataKey : "")%>/status'
             };
 
@@ -266,6 +266,7 @@
             var pollTimer = null;
             var countdownTimer = null;
             var submitted = false;
+            var currentFailureReason = 'failed';
 
             // Keep JS QR bootstrap aligned with QRCodeUtil.generateRequestUriQRContent.
             function buildRequestUriQRContent(requestUri, clientId) {
@@ -406,6 +407,7 @@
 
                 errorMessage.textContent = message;
                 errorContainer.style.display = 'block';
+                currentFailureReason = 'failed';
             }
 
             // Handle expired request
@@ -421,12 +423,13 @@
 
                 errorMessage.textContent = 'The QR code has expired. Please try again.';
                 errorContainer.style.display = 'block';
+                currentFailureReason = 'expired';
             }
 
             // Retry authentication
             function retryAuth() {
                 document.getElementById('authRequestId').value = '';
-                document.getElementById('authStatus').value = 'expired';
+                document.getElementById('authStatus').value = currentFailureReason;
                 document.getElementById('authForm').submit();
             }
 

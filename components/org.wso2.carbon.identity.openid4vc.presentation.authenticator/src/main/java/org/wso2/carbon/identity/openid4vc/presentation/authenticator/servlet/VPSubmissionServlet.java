@@ -56,6 +56,11 @@ import javax.servlet.http.HttpServletResponse;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.CONTEXT_VP_REQUEST;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.CONTEXT_VP_SUBMISSION;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DEFAULT_VP_REQUEST_EXPIRY_MS;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.RESPONSE_CONTENT_TYPE_CHARSET_UTF_8;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.RESPONSE_HEADER_VALUE_NOSNIFF;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.RESPONSE_HEADER_X_CONTENT_TYPE_OPTIONS;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.RESPONSE_STATUS;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.RESPONSE_STATUS_SUCCESS;
 
 /*/**
  * Servlet handling VP (Verifiable Presentation) submissions from wallets.
@@ -457,13 +462,13 @@ public class VPSubmissionServlet extends HttpServlet {
 
         response.setStatus(HttpServletResponse.SC_OK);
         response.setContentType(OpenID4VPConstants.HTTP.CONTENT_TYPE_JSON
-                + ";charset=UTF-8");
+                + RESPONSE_CONTENT_TYPE_CHARSET_UTF_8);
         // Prevent browsers from MIME-sniffing the JSON response as HTML.
-        response.setHeader("X-Content-Type-Options", "nosniff");
+        response.setHeader(RESPONSE_HEADER_X_CONTENT_TYPE_OPTIONS, RESPONSE_HEADER_VALUE_NOSNIFF);
 
         // Build response object per OpenID4VP spec.
         JsonObject responseObj = new JsonObject();
-        responseObj.addProperty("status", "received");
+        responseObj.addProperty(RESPONSE_STATUS, RESPONSE_STATUS_SUCCESS);
 
         String responseJson = GSON.toJson(responseObj);
 
@@ -487,9 +492,9 @@ public class VPSubmissionServlet extends HttpServlet {
 
         response.setStatus(statusCode);
         response.setContentType(OpenID4VPConstants.HTTP.CONTENT_TYPE_JSON
-                + ";charset=UTF-8");
+                + RESPONSE_CONTENT_TYPE_CHARSET_UTF_8);
         // Prevent browsers from MIME-sniffing the JSON response as HTML.
-        response.setHeader("X-Content-Type-Options", "nosniff");
+        response.setHeader(RESPONSE_HEADER_X_CONTENT_TYPE_OPTIONS, RESPONSE_HEADER_VALUE_NOSNIFF);
 
         // Use exception values for error response.
         JsonObject errorObj = new JsonObject();

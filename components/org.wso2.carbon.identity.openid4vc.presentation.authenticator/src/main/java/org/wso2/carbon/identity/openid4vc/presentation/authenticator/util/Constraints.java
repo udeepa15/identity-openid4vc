@@ -70,6 +70,10 @@ public class Constraints {
     public static final String RESPONSE_URI_ENDPOINT = "/oid4vp/v1/response";
     public static final String RESPONSE_STATUS = "status";
     public static final String RESPONSE_REQUEST_ID = "requestId";
+    public static final String RESPONSE_STATUS_SUCCESS = "sucess";
+    public static final String RESPONSE_CONTENT_TYPE_CHARSET_UTF_8 = ";charset=UTF-8";
+    public static final String RESPONSE_HEADER_X_CONTENT_TYPE_OPTIONS = "X-Content-Type-Options";
+    public static final String RESPONSE_HEADER_VALUE_NOSNIFF = "nosniff";
 
     /**
      * JWT Claims and metadata constants.
