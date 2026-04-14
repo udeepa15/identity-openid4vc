@@ -18,6 +18,7 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.servlet;
 
+import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
@@ -32,12 +33,15 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.V
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorErrorCode;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorServerException;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestContext;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPSubmission;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.status.StatusNotificationService;
 import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
-import org.wso2.carbon.identity.openid4vc.presentation.common.util.OpenID4VPUtil;
+import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.PresentationSubmission;
+import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VerificationResult;
+import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VerificationException;
 
 import java.io.IOException;
 import java.net.URLDecoder;
@@ -179,6 +183,47 @@ public class VPSubmissionServlet extends HttpServlet {
                 sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
                         new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
                                 "Missing vp_token."));
+                return;
+            }
+            try {
+                // Parse the presentation_submission string into the DTO.
+                Gson gson = new GsonBuilder()
+                        .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
+                        .create();
+                PresentationSubmission presentationSubmission = gson
+                        .fromJson(submission.getPresentationSubmission(), PresentationSubmission.class);
+
+                VerificationResult verificationResult = VPServiceDataHolder
+                        .getVerificationService()
+                        .verify(
+                                presentationSubmission,
+                                getTenantId(request),
+                                submission.getVpToken());
+
+                if (!VerificationResult.VerificationStatus.VERIFIED.equals(verificationResult.getStatus())) {
+                    vpRequestContext.setRequestStatus(VPRequestStatus.FAILED);
+                    FrameworkUtils.addAuthenticationContextToCache(submission.getRequestId(), context);
+                    sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
+                            new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
+                                    "VP verification status is not VERIFIED."));
+                    return;
+                }
+
+                // Store verified claims in the context for handoff to the authenticator.
+                context.setProperty("VERIFIED_CLAIMS", verificationResult.getVerifiedClaims());
+            } catch (VerificationException e) {
+                vpRequestContext.setRequestStatus(VPRequestStatus.FAILED);
+                FrameworkUtils.addAuthenticationContextToCache(submission.getRequestId(), context);
+                sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
+                        new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
+                                "VP verification failed: " + e.getMessage()));
+                return;
+            } catch (JsonSyntaxException e) {
+                vpRequestContext.setRequestStatus(VPRequestStatus.FAILED);
+                FrameworkUtils.addAuthenticationContextToCache(submission.getRequestId(), context);
+                sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
+                        new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
+                                "Invalid presentation_submission format."));
                 return;
             }
 

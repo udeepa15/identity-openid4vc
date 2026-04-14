@@ -18,9 +18,6 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator;
 
-import com.google.gson.FieldNamingPolicy;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
@@ -45,11 +42,7 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPReq
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPSubmission;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.impl.VPRequestServiceImpl;
-import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.PresentationSubmission;
-import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VerificationResult;
-import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VerificationException;
 import org.wso2.carbon.idp.mgt.IdentityProviderManager;
-import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
 
 import java.io.IOException;
 import java.net.URLEncoder;
@@ -196,35 +189,15 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         try {
             int tenantId = getTenantId(context);
 
-            VerificationResult verificationResult;
+            Map<String, Object> verifiedClaims = (Map<String, Object>) context.getProperty("VERIFIED_CLAIMS");
 
-            try {
-                // Parse the presentation_submission string into the DTO.
-                Gson gson = new GsonBuilder()
-                        .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
-                        .create();
-                PresentationSubmission presentationSubmission = gson
-                        .fromJson(submission.getPresentationSubmission(), PresentationSubmission.class);
-
-                verificationResult = VPServiceDataHolder
-                        .getVerificationService()
-                        .verify(
-                                presentationSubmission,
-                                tenantId,
-                                submission.getVpToken());
-            } catch (VerificationException e) {
-                throw new AuthenticationFailedException(
-                        "VP verification failed: " + e.getMessage(), e);
-            } catch (com.google.gson.JsonSyntaxException e) {
-                throw new AuthenticationFailedException(
-                        "Invalid presentation_submission format: " + e.getMessage(), e);
+            if (verifiedClaims == null || verifiedClaims.isEmpty()) {
+                throw new AuthenticationFailedException("No verified claims found in context. "
+                        + "Verification must have failed.");
             }
 
-            if (!VerificationResult.VerificationStatus.VERIFIED.equals(verificationResult.getStatus())) {
-                throw new AuthenticationFailedException("VP verification status is not VERIFIED.");
-            }
-
-            Map<String, Object> verifiedClaims = new HashMap<>(verificationResult.getVerifiedClaims());
+            // Clean up temporary property.
+            context.removeProperty("VERIFIED_CLAIMS");
 
             ClaimMapping[] idpClaimMappings = resolveIdpClaimMappings(context);
 
