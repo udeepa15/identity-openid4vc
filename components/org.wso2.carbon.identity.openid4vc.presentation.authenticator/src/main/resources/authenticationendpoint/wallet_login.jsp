@@ -266,7 +266,6 @@
             var pollTimer = null;
             var countdownTimer = null;
             var submitted = false;
-            var vpSubmittedNotified = false;
 
             // Keep JS QR bootstrap aligned with QRCodeUtil.generateRequestUriQRContent.
             function buildRequestUriQRContent(requestUri, clientId) {
@@ -356,14 +355,10 @@
                     console.log('Poll response:', data);
 
                     var status = data.status ? data.status.toUpperCase() : '';
-                    var requestId = data.requestId ? data.requestId : '';
 
                     if (status === 'ACTIVE') {
                         updateStatus('pending', 'Waiting for wallet...');
-                    } else if (status === 'VP_SUBMITTED') {
-                        notifyVpSubmitted(requestId);
-                        updateStatus('pending', 'Credentials received. Verifying...');
-                    } else if (status === 'VERIFIED') {
+                    } else if (status === 'VP_SUBMITTED' || status === 'VERIFIED' || status === 'SUCCESS') {
                         handleSuccess();
                     } else if (status === 'FAILED') {
                         handleError('Verification failed');
@@ -381,33 +376,6 @@
                 });
             }
 
-            // Notify common auth once when VP is submitted so backend can continue processing.
-            function notifyVpSubmitted(requestId) {
-                if (vpSubmittedNotified || !requestId || !CONFIG.sessionDataKey) {
-                    return;
-                }
-
-                vpSubmittedNotified = true;
-                document.getElementById('authRequestId').value = requestId;
-
-                var params = new URLSearchParams();
-                params.append('sessionDataKey', CONFIG.sessionDataKey);
-                params.append('vp_request_id', requestId);
-
-                fetch('<%=Encode.forJavaScript(commonauthURL)%>', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
-                    },
-                    body: params.toString(),
-                    credentials: 'same-origin'
-                }).catch(function(error) {
-                    console.error('VP submission callback failed:', error);
-                    // Retry callback on next poll if the request failed.
-                    vpSubmittedNotified = false;
-                });
-            }
-
             // Handle successful verification
             function handleSuccess() {
                 if (submitted) return;
@@ -417,11 +385,10 @@
                 pollTimer = null;
                 countdownTimer = null;
 
-                updateStatus('success', 'Credentials received. Verifying...');
+                updateStatus('success', 'Credentials verified! Logging you in...');
 
                 // Submit form to complete authentication
                 setTimeout(function() {
-                    document.getElementById('authRequestId').value = '';
                     document.getElementById('authStatus').value = 'success';
                     document.getElementById('authForm').submit();
                 }, 1000);
