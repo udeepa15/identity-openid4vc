@@ -48,6 +48,8 @@ public class Constraints {
     public static final String UI_QR_CONTENT = "openid4vp_ui_qr_content";
     public static final String CONTEXT_VP_REQUEST = "VPRequest";
     public static final String CONTEXT_VP_SUBMISSION = "VPSubmission";
+    public static final String CONTEXT_VP_CLAIMS = "VerifiedClaims";
+    public static final String CONTEXT_VP_MAPPED_ID = "VP_REQUEST_ID";
 
     /**
      * Configuration property names and defaults.
@@ -70,7 +72,10 @@ public class Constraints {
     public static final String RESPONSE_URI_ENDPOINT = "/oid4vp/v1/response";
     public static final String RESPONSE_STATUS = "status";
     public static final String RESPONSE_REQUEST_ID = "requestId";
-    public static final String RESPONSE_STATUS_SUCCESS = "sucess";
+    public static final String RESPONSE_ERROR = "error";
+    public static final String RESPONSE_ERROR_DESCRIPTION = "error_description";
+    public static final String RESPONSE_ERROR_CODE = "error_code";
+    public static final String RESPONSE_STATUS_SUCCESS = "success";
     public static final String RESPONSE_CONTENT_TYPE_CHARSET_UTF_8 = ";charset=UTF-8";
     public static final String RESPONSE_HEADER_X_CONTENT_TYPE_OPTIONS = "X-Content-Type-Options";
     public static final String RESPONSE_HEADER_VALUE_NOSNIFF = "nosniff";
@@ -80,6 +85,8 @@ public class Constraints {
      */
     public static final String CLAIM_PRESENTATION_DEFINITION = "presentation_definition";
     public static final String CLAIM_CLIENT_METADATA = "client_metadata";
+    public static final String CLAIM_CREDENTIAL_SUBJECT = "credentialSubject";
+    public static final String CLAIM_VC = "vc";
     public static final String METADATA_CLIENT_NAME = "client_name";
     public static final String METADATA_VP_FORMATS = "vp_formats";
     public static final String FORMAT_VC_SD_JWT = "vc+sd-jwt";
@@ -90,6 +97,15 @@ public class Constraints {
     public static final String ALG_EDDSA = "EdDSA";
 
     /**
+     * Authentication status values.
+     */
+    public static final String STATUS_SUCCESS = "success";
+    public static final String STATUS_FAILED = "failed";
+    public static final String STATUS_EXPIRED = "expired";
+    public static final String STATUS_PENDING = "pending";
+    public static final String STATUS_CANCELLED = "cancelled";
+
+    /**
      * Display order and boundary constants.
      */
     public static final int DISPLAY_ORDER_3 = 3;
@@ -97,6 +113,7 @@ public class Constraints {
     public static final int DISPLAY_ORDER_5 = 5;
 
     public static final int SUPER_TENANT_ID_PLACEHOLDER = -1234;
+    public static final String TENANT_DOMAIN_PATTERN = "^[a-zA-Z0-9._-]+$";
 
     /**
      * Expiry time for VP requests.

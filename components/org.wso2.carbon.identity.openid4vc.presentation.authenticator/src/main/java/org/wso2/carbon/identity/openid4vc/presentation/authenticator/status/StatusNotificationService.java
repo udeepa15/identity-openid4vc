@@ -82,24 +82,6 @@ public class StatusNotificationService {
     }
 
     /**
-     * Notify that a VP submission has an error.
-     *
-     * @param requestId        Request ID.
-     * @param error            Error code.
-     * @param errorDescription Error description.
-     */
-    public void notifySubmissionError(final String requestId,
-            final String error,
-            final String errorDescription) {
-
-        if (requestId == null) {
-            return;
-        }
-
-        notifyStatusChangeListeners(requestId, VPRequestStatus.VP_SUBMITTED);
-    }
-
-    /**
      * Notify all registered status change listeners.
      *
      * @param requestId Request ID.
@@ -115,16 +97,6 @@ public class StatusNotificationService {
                 // Ignore runtime exceptions from listener to avoid disrupting notification flow.
             }
         }
-    }
-
-    /**
-     * Get the count of registered status change listeners.
-     *
-     * @return Number of listeners.
-     */
-    public int getStatusChangeListenerCount() {
-
-        return statusChangeListeners.size();
     }
 
     /**

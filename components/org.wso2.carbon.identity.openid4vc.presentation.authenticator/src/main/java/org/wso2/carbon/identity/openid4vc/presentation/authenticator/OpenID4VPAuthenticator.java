@@ -59,6 +59,9 @@ import javax.servlet.http.HttpServletResponse;
 
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.AUTHENTICATOR_FRIENDLY_NAME;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.AUTHENTICATOR_NAME;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.CLAIM_CREDENTIAL_SUBJECT;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.CLAIM_VC;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.CONTEXT_VP_CLAIMS;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.CONTEXT_VP_REQUEST;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.CONTEXT_VP_SUBMISSION;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DEFAULT_VP_REQUEST_EXPIRY_MS;
@@ -73,6 +76,11 @@ import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.PROP_RESPONSE_MODE;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.PROP_SUBJECT_CLAIM;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.PROP_TIMEOUT_SECONDS;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.STATUS_CANCELLED;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.STATUS_EXPIRED;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.STATUS_FAILED;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.STATUS_PENDING;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.STATUS_SUCCESS;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.SUPER_TENANT_ID_PLACEHOLDER;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.WALLET_LOGIN_PAGE;
 
@@ -189,7 +197,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         try {
             int tenantId = getTenantId(context);
 
-            Map<String, Object> verifiedClaims = (Map<String, Object>) context.getProperty("VERIFIED_CLAIMS");
+            Map<String, Object> verifiedClaims = (Map<String, Object>) context.getProperty(CONTEXT_VP_CLAIMS);
 
             if (verifiedClaims == null || verifiedClaims.isEmpty()) {
                 throw new AuthenticationFailedException("No verified claims found in context. "
@@ -197,7 +205,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             }
 
             // Clean up temporary property.
-            context.removeProperty("VERIFIED_CLAIMS");
+            context.removeProperty(CONTEXT_VP_CLAIMS);
 
             ClaimMapping[] idpClaimMappings = resolveIdpClaimMappings(context);
 
@@ -288,7 +296,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
                 mappedClaims.put(mapping, verifiedClaims.get(remoteClaim).toString());
             } else {
                 // Try credentialSubject nested map (for non-SD-JWT paths).
-                Object cs = verifiedClaims.get("credentialSubject");
+                Object cs = verifiedClaims.get(CLAIM_CREDENTIAL_SUBJECT);
                 if (cs instanceof Map) {
                     Object val = ((Map<?, ?>) cs).get(remoteClaim);
                     if (val != null) {
@@ -297,9 +305,9 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
                     }
                 }
                 // Try vc.credentialSubject (nested JWT VC).
-                Object vcObj = verifiedClaims.get("vc");
+                Object vcObj = verifiedClaims.get(CLAIM_VC);
                 if (vcObj instanceof Map) {
-                    Object csObj = ((Map<?, ?>) vcObj).get("credentialSubject");
+                    Object csObj = ((Map<?, ?>) vcObj).get(CLAIM_CREDENTIAL_SUBJECT);
                     if (csObj instanceof Map) {
                         Object val = ((Map<?, ?>) csObj).get(remoteClaim);
                         if (val != null) {
@@ -382,13 +390,13 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             sendPollResponse(response, status.getValue().toLowerCase(Locale.ENGLISH), null, null);
             return AuthenticatorFlowStatus.SUCCESS_COMPLETED;
         } else if (VPRequestStatus.EXPIRED.equals(status)) {
-            sendPollResponse(response, "expired", "Request expired.", null);
+            sendPollResponse(response, STATUS_EXPIRED, "Request expired.", null);
             throw new AuthenticationFailedException("VP request has expired.");
         } else if (VPRequestStatus.FAILED.equals(status)) {
-            sendPollResponse(response, "cancelled", "Request was cancelled.", null);
+            sendPollResponse(response, STATUS_CANCELLED, "Request was cancelled.", null);
             throw new AuthenticationFailedException("VP request was cancelled.");
         } else {
-            sendPollResponse(response, "pending", null, null);
+            sendPollResponse(response, STATUS_PENDING, null, null);
         }
 
         return AuthenticatorFlowStatus.INCOMPLETE;
@@ -410,13 +418,13 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
                                                          final String status)
             throws AuthenticationFailedException {
 
-        if ("success".equals(status)) {
+        if (STATUS_SUCCESS.equals(status)) {
             processAuthenticationResponse(request, response, context);
             return AuthenticatorFlowStatus.SUCCESS_COMPLETED;
-        } else if ("failed".equals(status)) {
+        } else if (STATUS_FAILED.equals(status)) {
             context.setRetrying(true);
             throw new AuthenticationFailedException("VP verification failed.");
-        } else if ("expired".equals(status)) {
+        } else if (STATUS_EXPIRED.equals(status)) {
             context.setRetrying(true);
             throw new AuthenticationFailedException("VP request expired.");
         }

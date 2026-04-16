@@ -28,7 +28,6 @@ import java.util.List;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static org.testng.Assert.assertEquals;
 
 public class StatusNotificationServiceTest {
 
@@ -57,25 +56,6 @@ public class StatusNotificationServiceTest {
         statusNotificationService.notifyVPSubmitted("req123");
 
         verify(listener).onStatusChange("req123", VPRequestStatus.VP_SUBMITTED);
-    }
-
-    @Test
-    public void testNotifySubmissionError() {
-        StatusNotificationService.StatusChangeListener listener =
-            mock(StatusNotificationService.StatusChangeListener.class);
-        addStatusChangeListener(listener);
-
-        statusNotificationService.notifySubmissionError("req123", "error_code", "description");
-
-        verify(listener).onStatusChange("req123", VPRequestStatus.VP_SUBMITTED);
-    }
-
-    @Test
-    public void testGetStatusChangeListenerCount() {
-        StatusNotificationService.StatusChangeListener listener =
-                mock(StatusNotificationService.StatusChangeListener.class);
-        addStatusChangeListener(listener);
-        assertEquals(statusNotificationService.getStatusChangeListenerCount(), 1);
     }
 
     @SuppressWarnings("unchecked")

@@ -53,14 +53,21 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.CONTEXT_VP_CLAIMS;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.CONTEXT_VP_MAPPED_ID;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.CONTEXT_VP_REQUEST;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.CONTEXT_VP_SUBMISSION;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DEFAULT_VP_REQUEST_EXPIRY_MS;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.RESPONSE_CONTENT_TYPE_CHARSET_UTF_8;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.RESPONSE_ERROR;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.RESPONSE_ERROR_CODE;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.RESPONSE_ERROR_DESCRIPTION;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.RESPONSE_HEADER_VALUE_NOSNIFF;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.RESPONSE_HEADER_X_CONTENT_TYPE_OPTIONS;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.RESPONSE_STATUS;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.RESPONSE_STATUS_SUCCESS;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.SUPER_TENANT_ID_PLACEHOLDER;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.TENANT_DOMAIN_PATTERN;
 
 /*/**
  * Servlet handling VP (Verifiable Presentation) submissions from wallets.
@@ -215,7 +222,7 @@ public class VPSubmissionServlet extends HttpServlet {
                 }
 
                 // Store verified claims in the context for handoff to the authenticator.
-                context.setProperty("VERIFIED_CLAIMS", verificationResult.getVerifiedClaims());
+                context.setProperty(CONTEXT_VP_CLAIMS, verificationResult.getVerifiedClaims());
             } catch (VerificationException e) {
                 vpRequestContext.setRequestStatus(VPRequestStatus.FAILED);
                 FrameworkUtils.addAuthenticationContextToCache(submission.getRequestId(), context);
@@ -436,7 +443,7 @@ public class VPSubmissionServlet extends HttpServlet {
             FrameworkUtils.addAuthenticationContextToCache(requestId, context);
 
             // Update the context in the cache using the masked requestId (alias).
-            String maskedId = (String) context.getProperty("VP_REQUEST_ID");
+            String maskedId = (String) context.getProperty(CONTEXT_VP_MAPPED_ID);
             if (StringUtils.isNotBlank(maskedId) && !maskedId.equals(requestId)) {
                 FrameworkUtils.addAuthenticationContextToCache(maskedId, context);
             }
@@ -498,25 +505,15 @@ public class VPSubmissionServlet extends HttpServlet {
 
         // Use exception values for error response.
         JsonObject errorObj = new JsonObject();
-        errorObj.addProperty("error", sanitize(exception.getOAuth2ErrorCode()));
-        errorObj.addProperty("error_description",
+        errorObj.addProperty(RESPONSE_ERROR, sanitize(exception.getOAuth2ErrorCode()));
+        errorObj.addProperty(RESPONSE_ERROR_DESCRIPTION,
                 sanitize(exception.getMessage()));
-        errorObj.addProperty("error_code", exception.getCode());
+        errorObj.addProperty(RESPONSE_ERROR_CODE, exception.getCode());
 
         byte[] payload = GSON.toJson(errorObj).getBytes(StandardCharsets.UTF_8);
         response.getOutputStream().write(payload);
         response.getOutputStream().flush();
     }
-
-    /**
-     * Default tenant ID to use when tenant domain cannot be resolved.
-     */
-    private static final int DEFAULT_TENANT_ID = -1234;
-
-    /**
-     * Pattern to validate tenant domain names.
-     */
-    private static final String TENANT_DOMAIN_PATTERN = "^[a-zA-Z0-9._-]+$";
 
     /**
      * Resolve the tenant ID from the request context or attributes.
@@ -544,7 +541,7 @@ public class VPSubmissionServlet extends HttpServlet {
             }
         }
 
-        return DEFAULT_TENANT_ID;
+        return SUPER_TENANT_ID_PLACEHOLDER;
     }
 }
 
