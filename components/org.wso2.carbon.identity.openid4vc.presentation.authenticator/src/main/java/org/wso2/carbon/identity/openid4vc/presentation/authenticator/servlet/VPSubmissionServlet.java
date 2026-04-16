@@ -141,11 +141,8 @@ public class VPSubmissionServlet extends HttpServlet {
             throws ServletException, IOException {
 
         try {
-            // Parse submission directly into a builder.
-            VPSubmission.Builder submissionBuilder = parseSubmission(request);
-
-            // Get tenant ID and other context.
-            VPSubmission submission = submissionBuilder.build();
+            // Parse submission directly into the model.
+            VPSubmission submission = parseSubmission(request);
 
             // Basic validation.
             if (StringUtils.isBlank(submission.getRequestId())) {
@@ -267,47 +264,34 @@ public class VPSubmissionServlet extends HttpServlet {
         return (currentTime - vpRequestContext.getCreatedAt()) > DEFAULT_VP_REQUEST_EXPIRY_MS;
     }
 
-    /**
-     * Parse submission from request body into a VPSubmission builder.
-     *
-     * @param request HTTP request.
-     * @return A VPSubmission.Builder populated with request data.
-     * @throws IOException If an I/O error occurs.
-     */
-    private VPSubmission.Builder parseSubmission(final HttpServletRequest request)
+    private VPSubmission xparseSubmission(final HttpServletRequest request)
             throws IOException {
-
+ 
         String body = new String(request.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-        VPSubmission.Builder builder = new VPSubmission.Builder();
+        VPSubmission submission = new VPSubmission();
 
         if (StringUtils.isNotBlank(body) && body.trim().startsWith("{")) {
             // Handle JSON body.
             try {
-                return GSON.fromJson(body, VPSubmission.Builder.class);
+                return GSON.fromJson(body, VPSubmission.class);
             } catch (JsonSyntaxException e) {
                 LOG.warn("Failed to parse JSON submission body.");
             }
         } else {
             // Handle form-encoded body.
-            parseFormEncodedSubmission(body, builder);
+            parseFormEncodedSubmission(body, submission);
         }
-
-        return builder;
+ 
+        return submission;
     }
 
-    /**
-     * Parse form-encoded submission into the builder.
-     *
-     * @param formBody The raw form-encoded body string.
-     * @param builder  The builder to populate.
-     */
     private void parseFormEncodedSubmission(final String formBody,
-                                             final VPSubmission.Builder builder) {
-
-        builder.vpToken(getDecodedFormParameter(formBody, OpenID4VPConstants.ResponseParams.VP_TOKEN))
-               .presentationSubmission(getDecodedFormParameter(formBody,
-                       OpenID4VPConstants.ResponseParams.PRESENTATION_SUBMISSION))
-               .requestId(getDecodedFormParameter(formBody, OpenID4VPConstants.ResponseParams.STATE));
+                                             final VPSubmission submission) {
+ 
+        submission.setVpToken(getDecodedFormParameter(formBody, OpenID4VPConstants.ResponseParams.VP_TOKEN));
+        submission.setPresentationSubmission(getDecodedFormParameter(formBody,
+                OpenID4VPConstants.ResponseParams.PRESENTATION_SUBMISSION));
+        submission.setRequestId(getDecodedFormParameter(formBody, OpenID4VPConstants.ResponseParams.STATE));
     }
 
     /**
