@@ -56,7 +56,6 @@ import javax.servlet.http.HttpServletResponse;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.CONTEXT_VP_CLAIMS;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.CONTEXT_VP_MAPPED_ID;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.CONTEXT_VP_REQUEST;
-import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.CONTEXT_VP_SUBMISSION;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DEFAULT_VP_REQUEST_EXPIRY_MS;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.RESPONSE_CONTENT_TYPE_CHARSET_UTF_8;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.RESPONSE_ERROR;
@@ -426,11 +425,10 @@ public class VPSubmissionServlet extends HttpServlet {
             return;
         }
 
-        // Store the submission in the context for handoff to the authenticator.
+        // Update the context with submission status for poller handoff.
         AuthenticationContext context =
                 FrameworkUtils.getAuthenticationContextFromCache(requestId);
         if (context != null) {
-            context.setProperty(CONTEXT_VP_SUBMISSION, submission);
 
             Object vpRequestContextObj = context.getProperty(CONTEXT_VP_REQUEST);
             if (vpRequestContextObj instanceof VPRequestContext) {

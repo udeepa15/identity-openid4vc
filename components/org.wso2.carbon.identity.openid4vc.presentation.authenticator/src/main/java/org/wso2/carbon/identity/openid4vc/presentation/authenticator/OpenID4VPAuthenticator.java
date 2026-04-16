@@ -40,7 +40,6 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VP
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestContext;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPSubmission;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.impl.VPRequestServiceImpl;
 import org.wso2.carbon.idp.mgt.IdentityProviderManager;
 
@@ -63,7 +62,6 @@ import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.CLAIM_VC;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.CONTEXT_VP_CLAIMS;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.CONTEXT_VP_REQUEST;
-import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.CONTEXT_VP_SUBMISSION;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DEFAULT_VP_REQUEST_EXPIRY_MS;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DISPLAY_ORDER_3;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DISPLAY_ORDER_4;
@@ -184,15 +182,8 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             final HttpServletResponse response,
             final AuthenticationContext context) throws AuthenticationFailedException {
 
-        VPSubmission submission = (VPSubmission) context.getProperty(CONTEXT_VP_SUBMISSION);
-
-        if (submission == null) {
-            throw new AuthenticationFailedException("No VP submission data found in context.");
-        }
-
-        // Clear properties
+        // Clear context properties.
         context.removeProperty(CONTEXT_VP_REQUEST);
-        context.removeProperty(CONTEXT_VP_SUBMISSION);
 
         try {
             int tenantId = getTenantId(context);

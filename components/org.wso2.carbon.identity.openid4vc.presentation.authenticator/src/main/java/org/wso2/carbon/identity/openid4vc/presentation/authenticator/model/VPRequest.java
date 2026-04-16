@@ -18,8 +18,6 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.model;
 
-import com.google.gson.JsonObject;
-
 
 /**
  * Model class representing a Verifiable Presentation Request.
@@ -95,11 +93,6 @@ public class VPRequest {
     private String signingAlgorithm;
 
     /**
-     * Authorization details for request-by-value.
-     */
-    private AuthorizationDetails authorizationDetails;
-
-    /**
      * URI for the request if sent as request_uri.
      */
     private String requestUri;
@@ -124,7 +117,6 @@ public class VPRequest {
         this.tenantId = builder.tenantId;
         this.didMethod = builder.didMethod;
         this.signingAlgorithm = builder.signingAlgorithm;
-        this.authorizationDetails = builder.authorizationDetails;
         this.requestUri = builder.requestUri;
     }
 
@@ -437,26 +429,6 @@ public class VPRequest {
     }
 
     /**
-     * Get the authorization details for request-by-value.
-     *
-     * @return The AuthorizationDetails object.
-     */
-    public AuthorizationDetails getAuthorizationDetails() {
-
-        return authorizationDetails;
-    }
-
-    /**
-     * Set the authorization details for request-by-value.
-     *
-     * @param authorizationDetails The AuthorizationDetails object.
-     */
-    public void setAuthorizationDetails(AuthorizationDetails authorizationDetails) {
-
-        this.authorizationDetails = authorizationDetails;
-    }
-
-    /**
      * Returns a string representation of the VPRequest.
      *
      * @return String representing the request.
@@ -493,7 +465,6 @@ public class VPRequest {
         private int tenantId;
         private String didMethod;
         private String signingAlgorithm;
-        private AuthorizationDetails authorizationDetails;
         private String requestUri;
 
         /**
@@ -654,18 +625,6 @@ public class VPRequest {
         }
 
         /**
-         * Set the authorization details.
-         *
-         * @param authorizationDetails The AuthorizationDetails object.
-         * @return The builder instance.
-         */
-        public Builder authorizationDetails(AuthorizationDetails authorizationDetails) {
-
-            this.authorizationDetails = authorizationDetails;
-            return this;
-        }
-
-        /**
          * Set the request URI.
          *
          * @param requestUri The request URI string.
@@ -685,190 +644,6 @@ public class VPRequest {
         public VPRequest build() {
 
             return new VPRequest(this);
-        }
-    }
-
-    /**
-     * Nested class containing authorization request details.
-     * Used for request-by-value responses.
-     */
-    public static class AuthorizationDetails {
-        // ...existing code...
-
-        /**
-         * Client ID of the relying party.
-         */
-        private String clientId;
-
-        /**
-         * Expected response type.
-         */
-        private String responseType = "vp_token";
-
-        /**
-         * Expected response mode.
-         */
-        private String responseMode = "direct_post";
-
-        /**
-         * URI where the wallet should send the response.
-         */
-        private String responseUri;
-
-        /**
-         * Nonce value.
-         */
-        private String nonce;
-
-        /**
-         * State value to maintain session consistency.
-         */
-        private String state;
-
-        /**
-         * The presentation definition for the request.
-         */
-        private JsonObject presentationDefinition;
-
-        /**
-         * Get the client ID.
-         *
-         * @return The client ID string.
-         */
-        public String getClientId() {
-
-            return clientId;
-        }
-
-        /**
-         * Set the client ID.
-         *
-         * @param clientId The client identifier string.
-         */
-        public void setClientId(String clientId) {
-
-            this.clientId = clientId;
-        }
-
-        /**
-         * Get the response type.
-         *
-         * @return The response type string.
-         */
-        public String getResponseType() {
-
-            return responseType;
-        }
-
-        /**
-         * Set the response type.
-         *
-         * @param responseType The response type string.
-         */
-        public void setResponseType(String responseType) {
-
-            this.responseType = responseType;
-        }
-
-        /**
-         * Get the response mode.
-         *
-         * @return The response mode string.
-         */
-        public String getResponseMode() {
-
-            return responseMode;
-        }
-
-        /**
-         * Set the response mode.
-         *
-         * @param responseMode The response mode string.
-         */
-        public void setResponseMode(String responseMode) {
-
-            this.responseMode = responseMode;
-        }
-
-        /**
-         * Get the response URI.
-         *
-         * @return The response URI string.
-         */
-        public String getResponseUri() {
-
-            return responseUri;
-        }
-
-        /**
-         * Set the response URI.
-         *
-         * @param responseUri The response URI string.
-         */
-        public void setResponseUri(String responseUri) {
-
-            this.responseUri = responseUri;
-        }
-
-        /**
-         * Get the nonce.
-         *
-         * @return The nonce string.
-         */
-        public String getNonce() {
-
-            return nonce;
-        }
-
-        /**
-         * Set the nonce.
-         *
-         * @param nonce The nonce string.
-         */
-        public void setNonce(String nonce) {
-
-            this.nonce = nonce;
-        }
-
-        /**
-         * Get the state.
-         *
-         * @return The state string.
-         */
-        public String getState() {
-
-            return state;
-        }
-
-        /**
-         * Set the state.
-         *
-         * @param state The state string.
-         */
-        public void setState(String state) {
-
-            this.state = state;
-        }
-
-        /**
-         * Get the presentation definition.
-         *
-         * @return The presentation definition JSON object.
-         */
-        public JsonObject getPresentationDefinition() {
-
-            return presentationDefinition != null ? presentationDefinition.deepCopy() : null;
-        }
-
-        /**
-         * Set the presentation definition.
-         *
-         * @param presentationDefinition The presentation definition JSON object.
-         */
-        public void setPresentationDefinition(JsonObject presentationDefinition) {
-
-            this.presentationDefinition = presentationDefinition != null
-                    ? presentationDefinition.deepCopy() : null;
         }
     }
 }

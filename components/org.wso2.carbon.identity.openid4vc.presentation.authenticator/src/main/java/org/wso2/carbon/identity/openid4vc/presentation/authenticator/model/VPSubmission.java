@@ -2,18 +2,11 @@ package org.wso2.carbon.identity.openid4vc.presentation.authenticator.model;
 
 import com.google.gson.annotations.SerializedName;
 
-import java.io.Serializable;
-
 /**
  * Model class representing a Verifiable Presentation Submission.
  * This stores the VP token submitted by the wallet for transient handoff to the poller.
  */
-public class VPSubmission implements Serializable {
-
-    /**
-     * Serial version UID.
-     */
-    private static final long serialVersionUID = 1L;
+public class VPSubmission {
 
 
     /**
