@@ -1,7 +1,5 @@
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.model;
 
-import com.google.gson.annotations.SerializedName;
-
 /**
  * Model class representing a Verifiable Presentation Submission.
  * This stores the VP token submitted by the wallet for transient handoff to the poller.
@@ -12,19 +10,16 @@ public class VPSubmission {
     /**
      * The ID of the request this submission belongs to.
      */
-    @SerializedName("state")
-    private String requestId;
+    private String state;
 
     /**
      * The VP token string submitted by the wallet.
      */
-    @SerializedName("vp_token")
     private String vpToken;
 
     /**
      * The presentation submission JSON string.
      */
-    @SerializedName("presentation_submission")
     private String presentationSubmission;
 
     /**
@@ -41,7 +36,7 @@ public class VPSubmission {
      */
     public String getRequestId() {
 
-        return requestId;
+        return state;
     }
 
     /**
@@ -51,7 +46,7 @@ public class VPSubmission {
      */
     public void setRequestId(String requestId) {
 
-        this.requestId = requestId;
+        this.state = requestId;
     }
 
     /**
@@ -98,7 +93,7 @@ public class VPSubmission {
     public String toString() {
 
         return "VPSubmission{" +
-                "requestId='" + requestId + '\'' +
+                "state='" + state + '\'' +
                 ", hasVpToken=" + (vpToken != null && !vpToken.isEmpty()) +
                 ", hasPresentationSubmission=" + (presentationSubmission != null && !presentationSubmission.isEmpty()) +
                 '}';

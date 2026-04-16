@@ -100,6 +100,7 @@ public class VPSubmissionServlet extends HttpServlet {
      * Gson instance for JSON serialization/deserialization.
      */
     private static final Gson GSON = new GsonBuilder()
+            .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
             .setPrettyPrinting()
             .create();
 
@@ -264,7 +265,7 @@ public class VPSubmissionServlet extends HttpServlet {
         return (currentTime - vpRequestContext.getCreatedAt()) > DEFAULT_VP_REQUEST_EXPIRY_MS;
     }
 
-    private VPSubmission xparseSubmission(final HttpServletRequest request)
+    private VPSubmission parseSubmission(final HttpServletRequest request)
             throws IOException {
  
         String body = new String(request.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
