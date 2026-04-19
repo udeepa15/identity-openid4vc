@@ -19,36 +19,39 @@
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.model;
 
 import java.io.Serializable;
+import java.util.Map;
 
 /**
  * Context model that stores VP request JWT and request status in a single cacheable object.
  */
-public class VPRequestContext implements Serializable {
+public class VPContext implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
     private String requestJwt;
     private VPRequestStatus requestStatus;
     private final long createdAt;
+    private Map<String, Object> verifiedClaims;
 
     /**
-     * Create a request context.
+     * Create a VP context.
      *
      * @param requestJwt    Request JWT string.
      * @param requestStatus Current VP request status.
      */
-    public VPRequestContext(String requestJwt, VPRequestStatus requestStatus) {
+    public VPContext(String requestJwt, VPRequestStatus requestStatus) {
+
         this(requestJwt, requestStatus, System.currentTimeMillis());
     }
 
     /**
-     * Create a request context.
+     * Create a VP context.
      *
      * @param requestJwt    Request JWT string.
      * @param requestStatus Current VP request status.
      * @param createdAt     Creation timestamp.
      */
-    public VPRequestContext(String requestJwt, VPRequestStatus requestStatus, long createdAt) {
+    public VPContext(String requestJwt, VPRequestStatus requestStatus, long createdAt) {
 
         this.requestJwt = requestJwt;
         this.requestStatus = requestStatus;
@@ -104,5 +107,24 @@ public class VPRequestContext implements Serializable {
 
         return createdAt;
     }
-}
 
+    /**
+     * Returns the verified claims.
+     *
+     * @return Verified claims map.
+     */
+    public Map<String, Object> getVerifiedClaims() {
+
+        return verifiedClaims;
+    }
+
+    /**
+     * Sets the verified claims.
+     *
+     * @param verifiedClaims Verified claims map.
+     */
+    public void setVerifiedClaims(Map<String, Object> verifiedClaims) {
+
+        this.verifiedClaims = verifiedClaims;
+    }
+}

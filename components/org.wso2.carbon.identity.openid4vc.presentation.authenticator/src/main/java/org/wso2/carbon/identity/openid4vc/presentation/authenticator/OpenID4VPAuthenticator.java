@@ -37,8 +37,8 @@ import org.wso2.carbon.identity.application.common.model.IdentityProvider;
 import org.wso2.carbon.identity.application.common.model.Property;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPContext;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestContext;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.impl.VPRequestServiceImpl;
 import org.wso2.carbon.idp.mgt.IdentityProviderManager;
@@ -51,6 +51,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import javax.servlet.http.HttpServletRequest;
@@ -60,8 +61,6 @@ import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.AUTHENTICATOR_NAME;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.CLAIM_CREDENTIAL_SUBJECT;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.CLAIM_VC;
-import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.CONTEXT_VP_CLAIMS;
-import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.CONTEXT_VP_REQUEST;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DEFAULT_VP_REQUEST_EXPIRY_MS;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DISPLAY_ORDER_3;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DISPLAY_ORDER_4;
@@ -129,8 +128,8 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             // Create VP request using the service
             VPRequest vpRequestResponse = getVPRequestService().createVPRequest(context);
 
-            context.setProperty(CONTEXT_VP_REQUEST,
-                    new VPRequestContext(vpRequestResponse.getRequestJwt(), VPRequestStatus.ACTIVE));
+            VPServiceDataHolder.getVPContextService().setVPContext(context,
+                    new VPContext(vpRequestResponse.getRequestJwt(), VPRequestStatus.ACTIVE));
 
             String redirectUrl = createRedirectURI(
                     WALLET_LOGIN_PAGE,
@@ -182,21 +181,21 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             final HttpServletResponse response,
             final AuthenticationContext context) throws AuthenticationFailedException {
 
-        // Clear context properties.
-        context.removeProperty(CONTEXT_VP_REQUEST);
-
         try {
             int tenantId = getTenantId(context);
-
-            Map<String, Object> verifiedClaims = (Map<String, Object>) context.getProperty(CONTEXT_VP_CLAIMS);
-
+ 
+            VPContext vpContext = VPServiceDataHolder.getVPContextService().getVPContext(context)
+                    .orElseThrow(() -> new AuthenticationFailedException("No VP request context found."));
+ 
+            Map<String, Object> verifiedClaims = vpContext.getVerifiedClaims();
+ 
             if (verifiedClaims == null || verifiedClaims.isEmpty()) {
                 throw new AuthenticationFailedException("No verified claims found in context. "
                         + "Verification must have failed.");
             }
-
+ 
             // Clean up temporary property.
-            context.removeProperty(CONTEXT_VP_CLAIMS);
+            VPServiceDataHolder.getVPContextService().removeVPContext(context);
 
             ClaimMapping[] idpClaimMappings = resolveIdpClaimMappings(context);
 
@@ -355,15 +354,15 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             throws AuthenticationFailedException {
 
         VPRequestStatus status = null;
-        Object vpRequestContextObj = context.getProperty(CONTEXT_VP_REQUEST);
-        if (vpRequestContextObj instanceof VPRequestContext) {
-            VPRequestContext vpRequestContext = (VPRequestContext) vpRequestContextObj;
-            status = vpRequestContext.getRequestStatus();
+        Optional<VPContext> vpContextOpt = VPServiceDataHolder.getVPContextService().getVPContext(context);
+        if (vpContextOpt.isPresent()) {
+            VPContext vpContext = vpContextOpt.get();
+            status = vpContext.getRequestStatus();
 
             // Check if the request has expired based on the 60-second window.
-            if (VPRequestStatus.ACTIVE.equals(status) && isRequestExpired(vpRequestContext)) {
+            if (VPRequestStatus.ACTIVE.equals(status) && isRequestExpired(vpContext)) {
                 status = VPRequestStatus.EXPIRED;
-                vpRequestContext.setRequestStatus(status);
+                vpContext.setRequestStatus(status);
             }
         }
         if (status == null) {
@@ -788,12 +787,12 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      * @param vpRequestContext VP request context.
      * @return True if expired, false otherwise.
      */
-    private boolean isRequestExpired(VPRequestContext vpRequestContext) {
+    private boolean isRequestExpired(VPContext vpContext) {
 
-        if (vpRequestContext == null) {
+        if (vpContext == null) {
             return false;
         }
         long currentTime = System.currentTimeMillis();
-        return (currentTime - vpRequestContext.getCreatedAt()) > DEFAULT_VP_REQUEST_EXPIRY_MS;
+        return (currentTime - vpContext.getCreatedAt()) > DEFAULT_VP_REQUEST_EXPIRY_MS;
     }
 }

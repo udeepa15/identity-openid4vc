@@ -30,7 +30,8 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.V
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorErrorCode;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorServerException;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestContext;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPContext;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
 
@@ -43,7 +44,6 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.CONTEXT_VP_REQUEST;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DEFAULT_VP_REQUEST_EXPIRY_MS;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.RESPONSE_REQUEST_ID;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.RESPONSE_STATUS;
@@ -153,12 +153,8 @@ public class VPRequestServlet extends HttpServlet {
                 return;
             }
 
-            VPRequestContext vpContext = null;
-            Object vpRequestContextObj = context.getProperty(CONTEXT_VP_REQUEST);
-            if (vpRequestContextObj instanceof VPRequestContext) {
-                vpContext = (VPRequestContext) vpRequestContextObj;
-            }
-
+            VPContext vpContext = VPServiceDataHolder.getVPContextService().getVPContext(context).orElse(null);
+ 
             if (vpContext == null) {
                 throw new VPAuthenticatorServerException(
                         VPAuthenticatorErrorCode.INTERNAL_SERVER_ERROR,
@@ -235,7 +231,7 @@ public class VPRequestServlet extends HttpServlet {
      * @throws VPAuthenticatorException If a VP authenticator error occurs.
      * @throws IOException              If an I/O error occurs.
      */
-    private void handleRequestJwtRequest(HttpServletResponse response, VPRequestContext vpContext,
+    private void handleRequestJwtRequest(HttpServletResponse response, VPContext vpContext,
                                          String requestId) throws VPAuthenticatorException, IOException {
 
         String requestJwt = vpContext.getRequestJwt();
@@ -267,16 +263,16 @@ public class VPRequestServlet extends HttpServlet {
     /**
      * Check if the VP request has expired based on the 60-second active window.
      *
-     * @param vpRequestContext VP request context.
+     * @param vpContext VP request context.
      * @return True if expired, false otherwise.
      */
-    private boolean isRequestExpired(VPRequestContext vpRequestContext) {
+    private boolean isRequestExpired(VPContext vpContext) {
 
-        if (vpRequestContext == null) {
+        if (vpContext == null) {
             return false;
         }
         long currentTime = System.currentTimeMillis();
-        return (currentTime - vpRequestContext.getCreatedAt()) > DEFAULT_VP_REQUEST_EXPIRY_MS;
+        return (currentTime - vpContext.getCreatedAt()) > DEFAULT_VP_REQUEST_EXPIRY_MS;
     }
 
     /**
