@@ -182,8 +182,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             final AuthenticationContext context) throws AuthenticationFailedException {
 
         try {
-            int tenantId = getTenantId(context);
- 
+
             VPContext vpContext = VPServiceDataHolder.getVPContextService().getVPContext(context)
                     .orElseThrow(() -> new AuthenticationFailedException("No VP request context found."));
  

@@ -50,4 +50,21 @@ public interface VPContextService {
      * @param context Authentication context.
      */
     void removeVPContext(AuthenticationContext context);
+ 
+    /**
+     * Get the VP context by its context identifier.
+     *
+     * @param contextId Context identifier.
+     * @return Optional containing the VP context if found.
+     */
+    Optional<VPContext> getVPContext(String contextId);
+ 
+    /**
+     * Update the VP context by its context identifier.
+     * This will persist the updated context into the cache.
+     *
+     * @param contextId Context identifier.
+     * @param vpContext VP context to update.
+     */
+    void updateVPContext(String contextId, VPContext vpContext);
 }

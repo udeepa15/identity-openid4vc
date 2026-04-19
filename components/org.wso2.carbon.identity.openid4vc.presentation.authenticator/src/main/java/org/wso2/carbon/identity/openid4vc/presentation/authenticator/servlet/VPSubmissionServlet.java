@@ -28,13 +28,13 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.osgi.service.component.annotations.Component;
 import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
-import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkUtils;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorClientException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorErrorCode;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorServerException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPContext;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPContextService;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPSubmission;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.status.StatusNotificationService;
@@ -152,40 +152,34 @@ public class VPSubmissionServlet extends HttpServlet {
                 return;
             }
 
-            // Retrieve AuthenticationContext to check status.
-            //ToDo: check cache persistence - 172 AuthenticationContextcache.
-            AuthenticationContext context =
-                    FrameworkUtils.getAuthenticationContextFromCache(submission.getRequestId());
-            if (context == null) {
+            // Retrieve VPContext directly from the service by requestId.
+            VPContextService vpContextService = VPServiceDataHolder.getVPContextService();
+            VPContext vpContext = vpContextService.getVPContext(submission.getRequestId()).orElse(null);
+ 
+            if (vpContext == null) {
                 sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
                         new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
                                 "Invalid state parameter."));
                 return;
             }
-
-            VPContext vpContext = VPServiceDataHolder.getVPContextService().getVPContext(context).orElse(null);
-            if (vpContext == null) {
-                sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
-                        new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
-                                "Invalid request context."));
-                return;
-            }
+ 
             if (!VPRequestStatus.ACTIVE.equals(vpContext.getRequestStatus())) {
                 sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
                         new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
                                 "Request is not in ACTIVE status."));
                 return;
             }
-
+ 
             // Check if the request has expired.
             if (isRequestExpired(vpContext)) {
                 vpContext.setRequestStatus(VPRequestStatus.EXPIRED);
+                vpContextService.updateVPContext(submission.getRequestId(), vpContext);
                 sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
                         new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
                                 "Request has expired."));
                 return;
             }
-
+ 
             if (StringUtils.isBlank(submission.getVpToken())) {
                 sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
                         new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
@@ -199,35 +193,35 @@ public class VPSubmissionServlet extends HttpServlet {
                         .create();
                 PresentationSubmission presentationSubmission = gson
                         .fromJson(submission.getPresentationSubmission(), PresentationSubmission.class);
-
+ 
                 VerificationResult verificationResult = VPServiceDataHolder
                         .getVerificationService()
                         .verify(
                                 presentationSubmission,
                                 getTenantId(request),
                                 submission.getVpToken());
-
+ 
                 if (!VerificationResult.VerificationStatus.VERIFIED.equals(verificationResult.getStatus())) {
                     vpContext.setRequestStatus(VPRequestStatus.FAILED);
-                    FrameworkUtils.addAuthenticationContextToCache(submission.getRequestId(), context);
+                    vpContextService.updateVPContext(submission.getRequestId(), vpContext);
                     sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
                             new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
                                     "VP verification status is not VERIFIED."));
                     return;
                 }
-
+ 
                 // Store verified claims in the request context for handoff to the authenticator.
                 vpContext.setVerifiedClaims(verificationResult.getVerifiedClaims());
             } catch (VerificationException e) {
                 vpContext.setRequestStatus(VPRequestStatus.FAILED);
-                FrameworkUtils.addAuthenticationContextToCache(submission.getRequestId(), context);
+                vpContextService.updateVPContext(submission.getRequestId(), vpContext);
                 sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
                         new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
                                 "VP verification failed: " + e.getMessage()));
                 return;
             } catch (JsonSyntaxException e) {
                 vpContext.setRequestStatus(VPRequestStatus.FAILED);
-                FrameworkUtils.addAuthenticationContextToCache(submission.getRequestId(), context);
+                vpContextService.updateVPContext(submission.getRequestId(), vpContext);
                 sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
                         new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
                                 "Invalid presentation_submission format."));
@@ -401,44 +395,22 @@ public class VPSubmissionServlet extends HttpServlet {
      * @param requestId  The request ID (state).
      * @param submission The VP submission data.
      */
-    private void notifyStatusListeners(final String requestId,
-            final VPSubmission submission) {
-
-        if (StringUtils.isBlank(requestId)) {
-            return;
-        }
-
+    private void notifyStatusListeners(String requestId, VPSubmission submission) {
+ 
         // Update the context with submission status for poller handoff.
-        AuthenticationContext authenticationContext =
-                FrameworkUtils.getAuthenticationContextFromCache(requestId);
-        if (authenticationContext != null) {
-
+        VPContextService vpContextService = VPServiceDataHolder.getVPContextService();
+        VPContext vpContext = vpContextService.getVPContext(requestId).orElse(null);
+ 
+        if (vpContext != null) {
             // Update status to VP_SUBMITTED for the poller.
-            Optional<VPContext> vpContextOpt = VPServiceDataHolder.getVPContextService()
-                    .getVPContext(authenticationContext);
-            if (vpContextOpt.isPresent()) {
-                vpContextOpt.get().setRequestStatus(VPRequestStatus.VP_SUBMITTED);
-            } else {
-                VPServiceDataHolder.getVPContextService().setVPContext(authenticationContext,
-                        new VPContext(null, VPRequestStatus.VP_SUBMITTED));
-            }
-
-            FrameworkUtils.addAuthenticationContextToCache(requestId, authenticationContext);
-
-            // Update the context in the cache using the masked requestId (alias).
-            String maskedId = (String) authenticationContext.getProperty(CONTEXT_VP_MAPPED_ID);
-            if (StringUtils.isNotBlank(maskedId) && !maskedId.equals(requestId)) {
-                FrameworkUtils.addAuthenticationContextToCache(maskedId, authenticationContext);
-            }
+            vpContext.setRequestStatus(VPRequestStatus.VP_SUBMITTED);
+            vpContextService.updateVPContext(requestId, vpContext);
         } else {
-            LOG.warn("AuthenticationContext not found for state ID; "
-                    + "submission status and data will not be updated.");
+            LOG.warn("VPContext not found for request ID; submission status will not be updated.");
         }
-
-        // Use the centralized notification service.
-        if (statusNotificationService != null) {
-            statusNotificationService.notifyVPSubmitted(requestId);
-        }
+ 
+        // Notify any other registered status listeners via the centralized notification service.
+        StatusNotificationService.getInstance().notifyVPSubmitted(requestId);
     }
 
     /**

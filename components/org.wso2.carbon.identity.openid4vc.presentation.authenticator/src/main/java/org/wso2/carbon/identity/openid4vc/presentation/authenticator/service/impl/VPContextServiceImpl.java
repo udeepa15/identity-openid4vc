@@ -18,7 +18,9 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.impl;
 
+import org.apache.commons.lang.StringUtils;
 import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
+import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkUtils;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPContext;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPContextService;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints;
@@ -57,6 +59,37 @@ public class VPContextServiceImpl implements VPContextService {
 
         if (context != null) {
             context.removeProperty(Constraints.CONTEXT_VP_CONTEXT);
+        }
+    }
+
+    @Override
+    public Optional<VPContext> getVPContext(String contextId) {
+
+        if (StringUtils.isBlank(contextId)) {
+            return Optional.empty();
+        }
+
+        AuthenticationContext context = FrameworkUtils.getAuthenticationContextFromCache(contextId);
+        return getVPContext(context);
+    }
+
+    @Override
+    public void updateVPContext(String contextId, VPContext vpContext) {
+
+        if (StringUtils.isBlank(contextId) || vpContext == null) {
+            return;
+        }
+
+        AuthenticationContext context = FrameworkUtils.getAuthenticationContextFromCache(contextId);
+        if (context != null) {
+            setVPContext(context, vpContext);
+            FrameworkUtils.addAuthenticationContextToCache(contextId, context);
+
+            // Update the context in the cache using the masked requestId (alias) if it exists.
+            String mappedId = (String) context.getProperty(Constraints.CONTEXT_VP_MAPPED_ID);
+            if (StringUtils.isNotBlank(mappedId) && !mappedId.equals(contextId)) {
+                FrameworkUtils.addAuthenticationContextToCache(mappedId, context);
+            }
         }
     }
 }
