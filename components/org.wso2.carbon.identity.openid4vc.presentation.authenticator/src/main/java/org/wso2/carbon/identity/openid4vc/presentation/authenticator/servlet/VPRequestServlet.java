@@ -227,12 +227,12 @@ public class VPRequestServlet extends HttpServlet {
     private void handleRequestJwtRequest(HttpServletResponse response, VPContext vpContext,
                                          String requestId) throws VPAuthenticatorException, IOException {
 
-        String requestJwt = vpContext.getRequestJwt();
+        String requestJwt = VPServiceDataHolder.getVPRequestService().generateRequestJwt(requestId);
 
         if (StringUtils.isBlank(requestJwt)) {
             throw new VPAuthenticatorServerException(
                 VPAuthenticatorErrorCode.INTERNAL_SERVER_ERROR,
-                "Request JWT is missing for request: " + requestId);
+                "Failed to generate request JWT for request: " + requestId);
         }
 
         response.setContentType("application/oauth-authz-req+jwt");

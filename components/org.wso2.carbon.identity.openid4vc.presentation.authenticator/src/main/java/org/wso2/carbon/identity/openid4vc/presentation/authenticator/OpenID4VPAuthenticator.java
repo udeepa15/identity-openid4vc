@@ -38,7 +38,6 @@ import org.wso2.carbon.identity.application.common.model.Property;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPContext;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.impl.VPRequestServiceImpl;
 import org.wso2.carbon.idp.mgt.IdentityProviderManager;
@@ -128,21 +127,23 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             throws AuthenticationFailedException {
 
         try {
-            // Create VP request using the service//ToDo move to GET
-            VPRequest vpRequestResponse = getVPRequestService().createVPRequest(context);
+            // Resolve metadata for the initial redirect.
+            Map<String, String> metadata = getVPRequestService().getVPRequestMetadata(context);
+
+            String nonce = UUID.randomUUID().toString();
+            String requestId = context.getContextIdentifier();
 
             VPServiceDataHolder.getVPContextService().setVPContext(context,
-                    new VPContext(vpRequestResponse.getRequestJwt(), VPRequestStatus.ACTIVE));
+                    new VPContext(nonce, VPRequestStatus.ACTIVE));
 
             String redirectUrl = createRedirectURI(
                     WALLET_LOGIN_PAGE,
-                    vpRequestResponse.getRequestId(),
-                    vpRequestResponse.getClientId(),
-                    vpRequestResponse.getRequestUri());
+                    requestId,
+                    metadata.get(PARAM_CLIENT_ID),
+                    metadata.get(PARAM_REQUEST_URI));
             response.sendRedirect(redirectUrl);
-//ToDo: Add Diagnostic logs
         } catch (VPAuthenticatorException e) {
-            throw new AuthenticationFailedException("Failed to create VP request: " + e.getMessage(), e);
+            throw new AuthenticationFailedException("Failed to initiate VP request: " + e.getMessage(), e);
         } catch (IOException e) {
             throw new AuthenticationFailedException("Failed to redirect to login page", e);
         }

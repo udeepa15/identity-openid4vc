@@ -21,10 +21,31 @@ import org.wso2.carbon.identity.application.authentication.framework.context.Aut
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 
+import java.util.Map;
+
 /**
  * Base service contract for managing VP (Verifiable Presentation) requests.
  */
 public abstract class VPRequestService {
+
+    /**
+     * Generate a signed VP authorization request JWT for the given request identifier.
+     *
+     * @param requestId Unique identifier for the VP request.
+     * @return Signed JWT string.
+     * @throws VPAuthenticatorException If an error occurs during JWT generation.
+     */
+    public abstract String generateRequestJwt(String requestId) throws VPAuthenticatorException;
+
+    /**
+     * Resolve metadata required for initiating the VP request (client ID, request URI).
+     *
+     * @param context Authentication context.
+     * @return Map containing request metadata.
+     * @throws VPAuthenticatorException If an error occurs during metadata resolution.
+     */
+    public abstract Map<String, String> getVPRequestMetadata(AuthenticationContext context)
+            throws VPAuthenticatorException;
 
     /**
      * Create a new VP authorization request for the authentication session.

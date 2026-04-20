@@ -29,6 +29,7 @@ import com.nimbusds.jose.Payload;
 import com.nimbusds.jwt.JWTClaimsSet;
 import org.apache.commons.lang.StringUtils;
 import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
+import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkUtils;
 import org.wso2.carbon.identity.core.ServiceURLBuilder;
 import org.wso2.carbon.identity.core.URLBuilderException;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
@@ -37,6 +38,7 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.V
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorServerException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPContext;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
@@ -117,26 +119,25 @@ public class VPRequestServiceImpl extends VPRequestService {
     }
 
     @Override
-    public VPRequest createVPRequest(AuthenticationContext context) throws VPAuthenticatorException {
+    public String generateRequestJwt(String requestId) throws VPAuthenticatorException {
+
+        AuthenticationContext context = FrameworkUtils.getAuthenticationContextFromCache(requestId);
+        if (context == null) {
+            throw new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
+                    "No authentication context found for request ID: " + requestId);
+        }
+
+        VPContext vpContext = VPServiceDataHolder.getVPContextService().getVPContext(requestId)
+                .orElseThrow(() -> new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
+                        "No VP context found for request ID: " + requestId));
 
         // 1. Resolve basic configuration.
         String didMethod = Constraints.DEFAULT_DID_METHOD_WEB;
-
         String signingAlgorithm = OpenID4VPConstants.Verification.ALG_EDDSA;
-
         String baseUrl = resolveTenantAwareBaseUrl();
 
-        if (StringUtils.isBlank(baseUrl)) {
-            throw new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
-                    "Client ID (hostname) cannot be null or empty.");
-        }
-
-        String clientId = Constraints.DID_WEB_PREFIX + baseUrl
-                .replaceFirst(Constraints.URL_SCHEME_REGEX, "")
-                .replaceAll(Constraints.TRAILING_SLASH_REGEX, "");
-
-        String presentationDefinitionId = context
-                .getAuthenticatorProperties().get(PROP_PRESENTATION_DEFINITION_ID);
+        String clientId = getClientId(baseUrl);
+        String presentationDefinitionId = context.getAuthenticatorProperties().get(PROP_PRESENTATION_DEFINITION_ID);
 
         if (StringUtils.isBlank(presentationDefinitionId)) {
             throw new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_PRESENTATION_DEFINITION,
@@ -146,24 +147,27 @@ public class VPRequestServiceImpl extends VPRequestService {
         int tenantId = IdentityTenantUtil.getTenantId(context.getTenantDomain());
 
         // 2. Resolve identifiers and timestamps.
-        String requestId = context.getContextIdentifier();
-        String nonce = generateNonce();
-        long createdAt = System.currentTimeMillis();
+        String nonce = vpContext.getNonce();
+        if (StringUtils.isBlank(nonce)) {
+            nonce = generateNonce();
+            vpContext.setNonce(nonce);
+            VPServiceDataHolder.getVPContextService().updateVPContext(requestId, vpContext);
+        }
+
+        long createdAt = vpContext.getCreatedAt();
         long expiresAt = calculateExpiryTime(createdAt, DEFAULT_EXPIRY_MS);
 
         // 3. Resolve and process presentation definition.
         String presentationDefinition = resolvePresentationDefinition(presentationDefinitionId, tenantId);
 
-        // 4. Build the final request object.
-        String responseUri = buildResponseUri(baseUrl);
-
+        // 4. Build temporary request object for JWT generation.
         VPRequest vpRequest = new VPRequest.Builder()
                 .requestId(requestId)
                 .clientId(clientId)
                 .nonce(nonce)
                 .presentationDefinitionId(presentationDefinitionId)
                 .presentationDefinition(presentationDefinition)
-                .responseUri(responseUri)
+                .responseUri(buildResponseUri(baseUrl))
                 .responseMode(OpenID4VPConstants.Protocol.RESPONSE_MODE_DIRECT_POST)
                 .status(VPRequestStatus.ACTIVE)
                 .expiresAt(expiresAt)
@@ -172,13 +176,49 @@ public class VPRequestServiceImpl extends VPRequestService {
                 .signingAlgorithm(signingAlgorithm)
                 .build();
 
-        // 5. Generate request JWT.
-        String requestJwt = buildRequestObjectJwt(vpRequest, didMethod);
-        vpRequest.setRequestJwt(requestJwt);
+        return buildRequestObjectJwt(vpRequest, didMethod);
+    }
 
-        vpRequest.setRequestUri(buildRequestUri(baseUrl, requestId));
+    @Override
+    public Map<String, String> getVPRequestMetadata(AuthenticationContext context) throws VPAuthenticatorException {
 
-        return vpRequest;
+        String baseUrl = resolveTenantAwareBaseUrl();
+        String requestId = context.getContextIdentifier();
+
+        Map<String, String> metadata = new HashMap<>();
+        metadata.put(Constraints.PARAM_CLIENT_ID, getClientId(baseUrl));
+        metadata.put(Constraints.PARAM_REQUEST_URI, buildRequestUri(baseUrl, requestId));
+
+        return metadata;
+    }
+
+    private String getClientId(String baseUrl) throws VPAuthenticatorClientException {
+
+        if (StringUtils.isBlank(baseUrl)) {
+            throw new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
+                    "Base URL cannot be null or empty.");
+        }
+
+        return Constraints.DID_WEB_PREFIX + baseUrl
+                .replaceFirst(Constraints.URL_SCHEME_REGEX, "")
+                .replaceAll(Constraints.TRAILING_SLASH_REGEX, "");
+    }
+
+    @Override
+    public VPRequest createVPRequest(AuthenticationContext context) throws VPAuthenticatorException {
+
+        String requestId = context.getContextIdentifier();
+        String requestJwt = generateRequestJwt(requestId);
+        
+        Map<String, String> metadata = getVPRequestMetadata(context);
+
+        return new VPRequest.Builder()
+                .requestId(requestId)
+                .clientId(metadata.get(Constraints.PARAM_CLIENT_ID))
+                .requestJwt(requestJwt)
+                .requestUri(metadata.get(Constraints.PARAM_REQUEST_URI))
+                .status(VPRequestStatus.ACTIVE)
+                .build();
     }
 
 

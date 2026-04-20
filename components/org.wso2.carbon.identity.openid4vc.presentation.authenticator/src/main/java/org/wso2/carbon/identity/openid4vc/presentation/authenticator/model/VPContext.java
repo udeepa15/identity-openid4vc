@@ -22,13 +22,13 @@ import java.io.Serializable;
 import java.util.Map;
 
 /**
- * Context model that stores VP request JWT and request status in a single cacheable object.
+ * Context model that stores VP request status and other session-bound data in a single cacheable object.
  */
 public class VPContext implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    private String requestJwt;
+    private String nonce;
     private VPRequestStatus requestStatus;
     private final long createdAt;
     private Map<String, Object> verifiedClaims;
@@ -36,46 +36,56 @@ public class VPContext implements Serializable {
     /**
      * Create a VP context.
      *
-     * @param requestJwt    Request JWT string.
      * @param requestStatus Current VP request status.
      */
-    public VPContext(String requestJwt, VPRequestStatus requestStatus) {
+    public VPContext(VPRequestStatus requestStatus) {
 
-        this(requestJwt, requestStatus, System.currentTimeMillis());
+        this(null, requestStatus, System.currentTimeMillis());
     }
 
     /**
      * Create a VP context.
      *
-     * @param requestJwt    Request JWT string.
+     * @param nonce         Nonce value.
+     * @param requestStatus Current VP request status.
+     */
+    public VPContext(String nonce, VPRequestStatus requestStatus) {
+
+        this(nonce, requestStatus, System.currentTimeMillis());
+    }
+
+    /**
+     * Create a VP context.
+     *
+     * @param nonce         Nonce value.
      * @param requestStatus Current VP request status.
      * @param createdAt     Creation timestamp.
      */
-    public VPContext(String requestJwt, VPRequestStatus requestStatus, long createdAt) {
+    public VPContext(String nonce, VPRequestStatus requestStatus, long createdAt) {
 
-        this.requestJwt = requestJwt;
+        this.nonce = nonce;
         this.requestStatus = requestStatus;
         this.createdAt = createdAt;
     }
 
     /**
-     * Returns the request JWT.
+     * Returns the nonce value.
      *
-     * @return Request JWT.
+     * @return Nonce value.
      */
-    public String getRequestJwt() {
+    public String getNonce() {
 
-        return requestJwt;
+        return nonce;
     }
 
     /**
-     * Sets the request JWT.
+     * Sets the nonce value.
      *
-     * @param requestJwt Request JWT.
+     * @param nonce Nonce value.
      */
-    public void setRequestJwt(String requestJwt) {
+    public void setNonce(String nonce) {
 
-        this.requestJwt = requestJwt;
+        this.nonce = nonce;
     }
 
     /**
