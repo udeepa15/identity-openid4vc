@@ -83,11 +83,14 @@ public class VPContextServiceImpl implements VPContextService {
         AuthenticationContext context = FrameworkUtils.getAuthenticationContextFromCache(contextId);
         if (context != null) {
             setVPContext(context, vpContext);
-            FrameworkUtils.addAuthenticationContextToCache(contextId, context);
 
-            // Update the context in the cache using the masked requestId (alias) if it exists.
+            // Always update the internal context entry to keep it in sync.
+            String internalContextId = context.getContextIdentifier();
+            FrameworkUtils.addAuthenticationContextToCache(internalContextId, context);
+
+            // Update the context in the cache using the public alias ID if it exists.
             String mappedId = (String) context.getProperty(Constraints.CONTEXT_VP_MAPPED_ID);
-            if (StringUtils.isNotBlank(mappedId) && !mappedId.equals(contextId)) {
+            if (StringUtils.isNotBlank(mappedId) && !mappedId.equals(internalContextId)) {
                 FrameworkUtils.addAuthenticationContextToCache(mappedId, context);
             }
         }

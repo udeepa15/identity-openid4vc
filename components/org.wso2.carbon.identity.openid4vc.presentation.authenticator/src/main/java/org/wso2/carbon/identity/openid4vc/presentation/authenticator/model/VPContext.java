@@ -18,6 +18,8 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.model;
 
+import org.apache.commons.collections4.MapUtils;
+
 import java.io.Serializable;
 import java.util.Map;
 
@@ -125,7 +127,7 @@ public class VPContext implements Serializable {
      */
     public Map<String, Object> getVerifiedClaims() {
 
-        return verifiedClaims;
+        return MapUtils.emptyIfNull(verifiedClaims);
     }
 
     /**

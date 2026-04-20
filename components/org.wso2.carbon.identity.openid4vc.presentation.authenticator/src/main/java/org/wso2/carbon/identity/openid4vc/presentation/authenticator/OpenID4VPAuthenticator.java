@@ -19,6 +19,7 @@
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator;
 
 import com.google.gson.JsonObject;
+import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -32,6 +33,7 @@ import org.wso2.carbon.identity.application.authentication.framework.context.Aut
 import org.wso2.carbon.identity.application.authentication.framework.exception.AuthenticationFailedException;
 import org.wso2.carbon.identity.application.authentication.framework.exception.LogoutFailedException;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
+import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkUtils;
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 import org.wso2.carbon.identity.application.common.model.IdentityProvider;
 import org.wso2.carbon.identity.application.common.model.Property;
@@ -40,6 +42,7 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VP
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPContext;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.impl.VPRequestServiceImpl;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints;
 import org.wso2.carbon.idp.mgt.IdentityProviderManager;
 
 import java.io.IOException;
@@ -127,18 +130,24 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             throws AuthenticationFailedException {
 
         try {
+            // Generate a random UUID as the public Request ID to avoid exposing internal context IDs.
+            String publicRequestId = UUID.randomUUID().toString();
+            context.setProperty(Constraints.CONTEXT_VP_MAPPED_ID, publicRequestId);
+
+            // Proactively cache the context using the alias ID to ensure it is immediately available for servlets.
+            FrameworkUtils.addAuthenticationContextToCache(publicRequestId, context);
+
             // Resolve metadata for the initial redirect.
             Map<String, String> metadata = getVPRequestService().getVPRequestMetadata(context);
 
             String nonce = UUID.randomUUID().toString();
-            String requestId = context.getContextIdentifier();
 
             VPServiceDataHolder.getVPContextService().setVPContext(context,
                     new VPContext(nonce, VPRequestStatus.ACTIVE));
 
             String redirectUrl = createRedirectURI(
                     WALLET_LOGIN_PAGE,
-                    requestId,
+                    publicRequestId,
                     metadata.get(PARAM_CLIENT_ID),
                     metadata.get(PARAM_REQUEST_URI));
             response.sendRedirect(redirectUrl);
@@ -190,10 +199,9 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
 
             VPContext vpContext = VPServiceDataHolder.getVPContextService().getVPContext(context)
                     .orElseThrow(() -> new AuthenticationFailedException("No VP request context found."));
- //ToDo: use apache utils
             Map<String, Object> verifiedClaims = vpContext.getVerifiedClaims();
  
-            if (verifiedClaims == null || verifiedClaims.isEmpty()) {
+            if (MapUtils.isEmpty(verifiedClaims)) {
                 throw new AuthenticationFailedException("No verified claims found in context. "
                         + "Verification must have failed.");
             }
@@ -256,8 +264,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         if (StringUtils.isBlank(subjectRemoteClaim)) {
             return null;
         }
-        Object val = verifiedClaims.get(subjectRemoteClaim);
-        return (val != null && StringUtils.isNotBlank(val.toString())) ? val.toString() : null;
+        return MapUtils.getString(verifiedClaims, subjectRemoteClaim);
     }
 
     /**
@@ -285,9 +292,10 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             }
 
             String remoteClaim = mapping.getRemoteClaim().getClaimUri();
-            // Direct top-level match.
-            if (verifiedClaims.containsKey(remoteClaim)) {
-                mappedClaims.put(mapping, verifiedClaims.get(remoteClaim).toString());
+            String remoteValue = MapUtils.getString(verifiedClaims, remoteClaim);
+
+            if (StringUtils.isNotBlank(remoteValue)) {
+                mappedClaims.put(mapping, remoteValue);
             } else {
                 // Try credentialSubject nested map (for non-SD-JWT paths).
                 Object cs = verifiedClaims.get(CLAIM_CREDENTIAL_SUBJECT);

@@ -27,6 +27,7 @@ import com.nimbusds.jose.JWSObject;
 import com.nimbusds.jose.JWSSigner;
 import com.nimbusds.jose.Payload;
 import com.nimbusds.jwt.JWTClaimsSet;
+import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang.StringUtils;
 import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
 import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkUtils;
@@ -137,7 +138,8 @@ public class VPRequestServiceImpl extends VPRequestService {
         String baseUrl = resolveTenantAwareBaseUrl();
 
         String clientId = getClientId(baseUrl);
-        String presentationDefinitionId = context.getAuthenticatorProperties().get(PROP_PRESENTATION_DEFINITION_ID);
+        String presentationDefinitionId = MapUtils.getString(context.getAuthenticatorProperties(),
+                PROP_PRESENTATION_DEFINITION_ID);
 
         if (StringUtils.isBlank(presentationDefinitionId)) {
             throw new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_PRESENTATION_DEFINITION,
@@ -183,7 +185,10 @@ public class VPRequestServiceImpl extends VPRequestService {
     public Map<String, String> getVPRequestMetadata(AuthenticationContext context) throws VPAuthenticatorException {
 
         String baseUrl = resolveTenantAwareBaseUrl();
-        String requestId = context.getContextIdentifier();
+        String requestId = (String) context.getProperty(Constraints.CONTEXT_VP_MAPPED_ID);
+        if (StringUtils.isBlank(requestId)) {
+            requestId = context.getContextIdentifier();
+        }
 
         Map<String, String> metadata = new HashMap<>();
         metadata.put(Constraints.PARAM_CLIENT_ID, getClientId(baseUrl));
