@@ -65,7 +65,10 @@ import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DISPLAY_ORDER_3;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DISPLAY_ORDER_4;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DISPLAY_ORDER_5;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.PARAM_CLIENT_ID;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.PARAM_POLL;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.PARAM_REQUEST_URI;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.PARAM_SESSION_DATA_KEY;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.PARAM_STATUS;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.PARAM_VP_REQUEST_ID;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.PROP_CLIENT_ID;
@@ -163,9 +166,11 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         String separator = walletPath.contains("?") ? "&" : "?";
 
         return walletPath + separator
-                + "sessionDataKey=" + URLEncoder.encode(sessionId, StandardCharsets.UTF_8)
-                + "&clientId=" + URLEncoder.encode(StringUtils.defaultString(clientId), StandardCharsets.UTF_8)
-                + "&requestUri=" + URLEncoder.encode(StringUtils.defaultString(requestUri), StandardCharsets.UTF_8);
+                + PARAM_SESSION_DATA_KEY + "=" + URLEncoder.encode(sessionId, StandardCharsets.UTF_8)
+                + "&" + PARAM_CLIENT_ID + "="
+                + URLEncoder.encode(StringUtils.defaultString(clientId), StandardCharsets.UTF_8)
+                + "&" + PARAM_REQUEST_URI + "="
+                + URLEncoder.encode(StringUtils.defaultString(requestUri), StandardCharsets.UTF_8);
     }
 
     /**
@@ -663,7 +668,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
     public String getContextIdentifier(final HttpServletRequest request) {
 
         return StringUtils.trimToNull(
-                getValidatedParameter(request, "sessionDataKey"));
+                getValidatedParameter(request, PARAM_SESSION_DATA_KEY));
     }
 
     /**
@@ -676,7 +681,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
     public boolean canHandle(final HttpServletRequest request) {
 
         String sessionDataKey = StringUtils.trimToNull(
-            getValidatedParameter(request, "sessionDataKey"));
+            getValidatedParameter(request, PARAM_SESSION_DATA_KEY));
         String vpRequestId = StringUtils.trimToNull(
             getValidatedParameter(request, PARAM_VP_REQUEST_ID));
         String poll = StringUtils.trimToNull(

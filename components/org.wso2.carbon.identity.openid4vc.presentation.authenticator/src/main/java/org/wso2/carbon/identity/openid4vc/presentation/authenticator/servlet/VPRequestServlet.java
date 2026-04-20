@@ -24,8 +24,6 @@ import com.google.gson.JsonObject;
 import org.apache.commons.lang.StringUtils;
 import org.osgi.service.component.annotations.Component;
 import org.owasp.encoder.Encode;
-import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
-import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkUtils;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorClientException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorErrorCode;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
@@ -33,6 +31,7 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.V
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPContext;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPContextService;
 import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
 
 import java.io.IOException;
@@ -138,8 +137,9 @@ public class VPRequestServlet extends HttpServlet {
         boolean isStatusRequest = pathParts.length >= 3 && "status".equals(pathParts[2]);
 
         try {
-            AuthenticationContext context = FrameworkUtils.getAuthenticationContextFromCache(requestId);
-            if (context == null) {
+            VPContextService vpContextService = VPServiceDataHolder.getVPContextService();
+            VPContext vpContext = vpContextService.getVPContext(requestId).orElse(null);
+            if (vpContext == null) {
                 if (isStatusRequest) {
                     JsonObject statusResponse = new JsonObject();
                     statusResponse.addProperty(RESPONSE_REQUEST_ID, requestId);
@@ -151,14 +151,6 @@ public class VPRequestServlet extends HttpServlet {
                                     "VP request not found: " + requestId));
                 }
                 return;
-            }
-
-            VPContext vpContext = VPServiceDataHolder.getVPContextService().getVPContext(context).orElse(null);
- 
-            if (vpContext == null) {
-                throw new VPAuthenticatorServerException(
-                        VPAuthenticatorErrorCode.INTERNAL_SERVER_ERROR,
-                        "VP request context is missing for request: " + requestId);
             }
 
             VPRequestStatus status = vpContext.getRequestStatus();
@@ -178,6 +170,7 @@ public class VPRequestServlet extends HttpServlet {
                 if (isRequestExpired(vpContext)) {
                     // if expired change the context status to Expired also response status as expired.
                     vpContext.setRequestStatus(VPRequestStatus.EXPIRED);
+                    vpContextService.updateVPContext(requestId, vpContext);
                     JsonObject statusResponse = new JsonObject();
                     statusResponse.addProperty(RESPONSE_REQUEST_ID, requestId);
                     statusResponse.addProperty(RESPONSE_STATUS, VPRequestStatus.EXPIRED.name());

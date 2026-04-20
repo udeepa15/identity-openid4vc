@@ -35,6 +35,9 @@ public class Constraints {
     public static final String PARAM_VP_REQUEST_ID = "vp_request_id";
     public static final String PARAM_STATUS = "status";
     public static final String PARAM_POLL = "poll";
+    public static final String PARAM_SESSION_DATA_KEY = "sessionDataKey";
+    public static final String PARAM_CLIENT_ID = "clientId";
+    public static final String PARAM_REQUEST_URI = "requestUri";
 
     /**
      * Session data and UI attribute keys.
