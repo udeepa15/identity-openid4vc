@@ -42,13 +42,6 @@ public class Constraints {
     /**
      * Session data and UI attribute keys.
      */
-    public static final String SESSION_VP_REQUEST_ID = "openid4vp_request_id";
-    public static final String SESSION_TRANSACTION_ID = "openid4vp_transaction_id";
-    public static final String UI_SESSION_DATA_KEY = "openid4vp_ui_session_data_key";
-    public static final String UI_REQUEST_ID = "openid4vp_ui_request_id";
-    public static final String UI_TRANSACTION_ID = "openid4vp_ui_transaction_id";
-    public static final String UI_REQUEST_URI = "openid4vp_ui_request_uri";
-    public static final String UI_QR_CONTENT = "openid4vp_ui_qr_content";
     public static final String CONTEXT_VP_CONTEXT = "VPContext";
     public static final String CONTEXT_VP_MAPPED_ID = "VP_REQUEST_ID";
 
