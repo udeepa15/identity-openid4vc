@@ -226,6 +226,7 @@ public class VPSubmissionServlet extends HttpServlet {
             }
 
             // Notify listeners.
+            //ToDo: update the status listner
             notifyStatusListeners(submission.getRequestId(), submission);
 
             // Send success response.

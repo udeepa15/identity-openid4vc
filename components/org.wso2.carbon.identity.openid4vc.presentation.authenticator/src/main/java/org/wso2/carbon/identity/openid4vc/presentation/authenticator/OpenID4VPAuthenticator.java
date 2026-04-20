@@ -122,13 +122,13 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      * @throws AuthenticationFailedException If request initiation fails.
      */
     @Override
-    protected void initiateAuthenticationRequest(final HttpServletRequest request,
-            final HttpServletResponse response,
-            final AuthenticationContext context)
+    protected void initiateAuthenticationRequest(HttpServletRequest request,
+            HttpServletResponse response,
+            AuthenticationContext context)
             throws AuthenticationFailedException {
 
         try {
-            // Create VP request using the service
+            // Create VP request using the service//ToDo move to GET
             VPRequest vpRequestResponse = getVPRequestService().createVPRequest(context);
 
             VPServiceDataHolder.getVPContextService().setVPContext(context,
@@ -139,9 +139,8 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
                     vpRequestResponse.getRequestId(),
                     vpRequestResponse.getClientId(),
                     vpRequestResponse.getRequestUri());
-
             response.sendRedirect(redirectUrl);
-
+//ToDo: Add Diagnostic logs
         } catch (VPAuthenticatorException e) {
             throw new AuthenticationFailedException("Failed to create VP request: " + e.getMessage(), e);
         } catch (IOException e) {
@@ -158,10 +157,10 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      * @param requestUri Request URI for by-reference OpenID4VP flow.
      * @return Redirect URI with encoded query parameters.
      */
-    private String createRedirectURI(final String walletPath,
-                                     final String sessionId,
-                                     final String clientId,
-                                     final String requestUri) {
+    private String createRedirectURI(String walletPath,
+                                     String sessionId,
+                                     String clientId,
+                                     String requestUri) {
 
         String separator = walletPath.contains("?") ? "&" : "?";
 
@@ -182,15 +181,15 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      * @throws AuthenticationFailedException If authentication fails.
      */
     @Override
-    protected void processAuthenticationResponse(final HttpServletRequest request,
-            final HttpServletResponse response,
-            final AuthenticationContext context) throws AuthenticationFailedException {
+    protected void processAuthenticationResponse(HttpServletRequest request,
+            HttpServletResponse response,
+            AuthenticationContext context) throws AuthenticationFailedException {
 
         try {
 
             VPContext vpContext = VPServiceDataHolder.getVPContextService().getVPContext(context)
                     .orElseThrow(() -> new AuthenticationFailedException("No VP request context found."));
- 
+ //ToDo: use apache utils
             Map<String, Object> verifiedClaims = vpContext.getVerifiedClaims();
  
             if (verifiedClaims == null || verifiedClaims.isEmpty()) {
@@ -200,7 +199,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
  
             // Clean up temporary property.
             VPServiceDataHolder.getVPContextService().removeVPContext(context);
-
+//ToDo: use clearCacheEntry
             ClaimMapping[] idpClaimMappings = resolveIdpClaimMappings(context);
 
             // Derive subject claim name from IDP's userIdClaim configuration when available.
@@ -213,7 +212,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             String username = isSubjectClaimConfigured
                     ? extractUsername(verifiedClaims, subjectRemoteClaim)
                     : UUID.randomUUID().toString();
-
+//ToDo: check the framework and remove  subjectclaim set and username
             if (isSubjectClaimConfigured && StringUtils.isBlank(username)) {
                 throw new AuthenticationFailedException("No user identifier found in verified credentials.");
             }
@@ -232,7 +231,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
                 authenticatedUser.setUserAttributes(userAttributes);
             }
             context.setSubject(authenticatedUser);
-
+//ToDo: scope down exp
         } catch (RuntimeException e) {
             throw new AuthenticationFailedException("Authentication failed: " + e.getMessage(), e);
         }
@@ -250,8 +249,8 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      * @param subjectRemoteClaim The remote (VC-side) claim name that corresponds to the IDP subject.
      * @return Username string, or null if not determinable.
      */
-    private String extractUsername(final Map<String, Object> verifiedClaims,
-                                   final String subjectRemoteClaim) {
+    private String extractUsername(Map<String, Object> verifiedClaims,
+                                   String subjectRemoteClaim) {
 
         if (StringUtils.isBlank(subjectRemoteClaim)) {
             return null;
@@ -325,9 +324,9 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      * @throws LogoutFailedException         If logout fails.
      */
     @Override
-    public AuthenticatorFlowStatus process(final HttpServletRequest request,
-                                           final HttpServletResponse response,
-                                           final AuthenticationContext context)
+    public AuthenticatorFlowStatus process(HttpServletRequest request,
+                                           HttpServletResponse response,
+                                           AuthenticationContext context)
             throws AuthenticationFailedException, LogoutFailedException {
 
         // Check if this is a polling request.
@@ -353,8 +352,8 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      * @return Status of the authentication flow.
      * @throws AuthenticationFailedException If polling fails.
      */
-    private AuthenticatorFlowStatus handlePollRequest(final HttpServletResponse response,
-                                                      final AuthenticationContext context)
+    private AuthenticatorFlowStatus handlePollRequest(HttpServletResponse response,
+                                                      AuthenticationContext context)
             throws AuthenticationFailedException {
 
         VPRequestStatus status = null;
@@ -406,10 +405,10 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      * @return Status of the authentication flow.
      * @throws AuthenticationFailedException If callback processing fails.
      */
-    private AuthenticatorFlowStatus handleStatusCallback(final HttpServletRequest request,
-                                                         final HttpServletResponse response,
-                                                         final AuthenticationContext context,
-                                                         final String status)
+    private AuthenticatorFlowStatus handleStatusCallback(HttpServletRequest request,
+                                                         HttpServletResponse response,
+                                                         AuthenticationContext context,
+                                                         String status)
             throws AuthenticationFailedException {
 
         if (STATUS_SUCCESS.equals(status)) {
@@ -586,7 +585,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      * @param context Authentication context.
      * @return IDP name or null.
      */
-    private String resolveIdpNameFromSequenceConfig(final AuthenticationContext context) {
+    private String resolveIdpNameFromSequenceConfig(AuthenticationContext context) {
 
         if (context.getSequenceConfig() == null) {
             return null;
@@ -615,7 +614,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      * @param context Authentication context.
      * @return Tenant ID.
      */
-    private int getTenantId(final AuthenticationContext context) {
+    private int getTenantId(AuthenticationContext context) {
 
         // Default to super tenant.
         int tenantId = SUPER_TENANT_ID_PLACEHOLDER;
@@ -665,7 +664,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      * @return Context identifier.
      */
     @Override
-    public String getContextIdentifier(final HttpServletRequest request) {
+    public String getContextIdentifier(HttpServletRequest request) {
 
         return StringUtils.trimToNull(
                 getValidatedParameter(request, PARAM_SESSION_DATA_KEY));
@@ -678,7 +677,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      * @return True if can handle.
      */
     @Override
-    public boolean canHandle(final HttpServletRequest request) {
+    public boolean canHandle(HttpServletRequest request) {
 
         String sessionDataKey = StringUtils.trimToNull(
             getValidatedParameter(request, PARAM_SESSION_DATA_KEY));
