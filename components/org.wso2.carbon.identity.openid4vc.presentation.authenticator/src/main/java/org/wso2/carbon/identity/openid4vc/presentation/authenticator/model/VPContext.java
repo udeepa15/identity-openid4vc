@@ -30,7 +30,6 @@ public class VPContext implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    private String nonce;
     private VPRequestStatus requestStatus;
     private final long createdAt;
     private Map<String, Object> verifiedClaims;
@@ -42,52 +41,20 @@ public class VPContext implements Serializable {
      */
     public VPContext(VPRequestStatus requestStatus) {
 
-        this(null, requestStatus, System.currentTimeMillis());
+        this.requestStatus = requestStatus;
+        this.createdAt = System.currentTimeMillis();
     }
 
     /**
      * Create a VP context.
      *
-     * @param nonce         Nonce value.
-     * @param requestStatus Current VP request status.
-     */
-    public VPContext(String nonce, VPRequestStatus requestStatus) {
-
-        this(nonce, requestStatus, System.currentTimeMillis());
-    }
-
-    /**
-     * Create a VP context.
-     *
-     * @param nonce         Nonce value.
      * @param requestStatus Current VP request status.
      * @param createdAt     Creation timestamp.
      */
-    public VPContext(String nonce, VPRequestStatus requestStatus, long createdAt) {
+    public VPContext(VPRequestStatus requestStatus, long createdAt) {
 
-        this.nonce = nonce;
         this.requestStatus = requestStatus;
         this.createdAt = createdAt;
-    }
-
-    /**
-     * Returns the nonce value.
-     *
-     * @return Nonce value.
-     */
-    public String getNonce() {
-
-        return nonce;
-    }
-
-    /**
-     * Sets the nonce value.
-     *
-     * @param nonce Nonce value.
-     */
-    public void setNonce(String nonce) {
-
-        this.nonce = nonce;
     }
 
     /**

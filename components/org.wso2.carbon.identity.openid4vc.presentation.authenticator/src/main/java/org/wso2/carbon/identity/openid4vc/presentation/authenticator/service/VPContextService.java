@@ -37,15 +37,22 @@ public interface VPContextService {
     Optional<VPContext> getVPContext(AuthenticationContext context);
 
     /**
-     * Set the VP context in the authentication context.
+     * Store the VP request context in the authentication context.
      *
      * @param context   Authentication context.
-     * @param vpContext VP context to set.
+     * @param vpContext VP request context.
      */
     void setVPContext(AuthenticationContext context, VPContext vpContext);
 
     /**
-     * Remove the VP context from the authentication context.
+     * Clean up the VP request context and any associated aliases from the cache.
+     *
+     * @param context Authentication context.
+     */
+    void cleanupVPContext(AuthenticationContext context);
+
+    /**
+     * Remove the VP request context from the authentication context.
      *
      * @param context Authentication context.
      */

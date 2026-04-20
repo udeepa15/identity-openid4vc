@@ -149,13 +149,7 @@ public class VPRequestServiceImpl extends VPRequestService {
         int tenantId = IdentityTenantUtil.getTenantId(context.getTenantDomain());
 
         // 2. Resolve identifiers and timestamps.
-        String nonce = vpContext.getNonce();
-        if (StringUtils.isBlank(nonce)) {
-            nonce = generateNonce();
-            vpContext.setNonce(nonce);
-            VPServiceDataHolder.getVPContextService().updateVPContext(requestId, vpContext);
-        }
-
+        String nonce = generateNonce();
         long createdAt = vpContext.getCreatedAt();
         long expiresAt = calculateExpiryTime(createdAt, DEFAULT_EXPIRY_MS);
 

@@ -55,6 +55,23 @@ public class VPContextServiceImpl implements VPContextService {
     }
 
     @Override
+    public void cleanupVPContext(AuthenticationContext context) {
+
+        if (context == null) {
+            return;
+        }
+
+        // Retrieve the mapped alias ID if it exists and remove from cache.
+        String mappedId = (String) context.getProperty(Constraints.CONTEXT_VP_MAPPED_ID);
+        if (StringUtils.isNotBlank(mappedId)) {
+            FrameworkUtils.removeAuthenticationContextFromCache(mappedId);
+        }
+
+        // Remove the internal VPContext property.
+        removeVPContext(context);
+    }
+
+    @Override
     public void removeVPContext(AuthenticationContext context) {
 
         if (context != null) {
@@ -84,13 +101,19 @@ public class VPContextServiceImpl implements VPContextService {
         if (context != null) {
             setVPContext(context, vpContext);
 
-            // Always update the internal context entry to keep it in sync.
-            String internalContextId = context.getContextIdentifier();
-            FrameworkUtils.addAuthenticationContextToCache(internalContextId, context);
+            // Always update the entry for the provided contextId.
+            FrameworkUtils.addAuthenticationContextToCache(contextId, context);
 
-            // Update the context in the cache using the public alias ID if it exists.
+            // Update the internal framework context ID if it's different and available.
+            String internalContextId = context.getContextIdentifier();
+            if (StringUtils.isNotBlank(internalContextId) && !internalContextId.equals(contextId)) {
+                FrameworkUtils.addAuthenticationContextToCache(internalContextId, context);
+            }
+
+            // Sync with the mapped alias ID property if it exists in the context.
             String mappedId = (String) context.getProperty(Constraints.CONTEXT_VP_MAPPED_ID);
-            if (StringUtils.isNotBlank(mappedId) && !mappedId.equals(internalContextId)) {
+            if (StringUtils.isNotBlank(mappedId) && !mappedId.equals(contextId)
+                    && !mappedId.equals(internalContextId)) {
                 FrameworkUtils.addAuthenticationContextToCache(mappedId, context);
             }
         }

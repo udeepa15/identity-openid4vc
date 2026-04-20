@@ -130,27 +130,33 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             throws AuthenticationFailedException {
 
         try {
-            // Generate a random UUID as the public Request ID to avoid exposing internal context IDs.
+            // Generate a random UUID as the public Request ID.
             String publicRequestId = UUID.randomUUID().toString();
-            context.setProperty(Constraints.CONTEXT_VP_MAPPED_ID, publicRequestId);
 
-            // Proactively cache the context using the alias ID to ensure it is immediately available for servlets.
+            // Proactively cache a shadow copy of the context using the alias ID.
+            // This ensures the framework's internal context remains clean while the alias holds the OpenID4VP state.
             FrameworkUtils.addAuthenticationContextToCache(publicRequestId, context);
 
-            // Resolve metadata for the initial redirect.
-            Map<String, String> metadata = getVPRequestService().getVPRequestMetadata(context);
+            // Retrieve the alias context and initialize it with OpenID4VP specific state.
+            AuthenticationContext aliasContext = FrameworkUtils.getAuthenticationContextFromCache(publicRequestId);
+            if (aliasContext != null) {
+                aliasContext.setProperty(Constraints.CONTEXT_VP_MAPPED_ID, publicRequestId);
+                VPServiceDataHolder.getVPContextService().setVPContext(aliasContext,
+                        new VPContext(VPRequestStatus.ACTIVE));
+                FrameworkUtils.addAuthenticationContextToCache(publicRequestId, aliasContext);
+            }
 
-            String nonce = UUID.randomUUID().toString();
-
-            VPServiceDataHolder.getVPContextService().setVPContext(context,
-                    new VPContext(nonce, VPRequestStatus.ACTIVE));
+            // Resolve metadata using the alias context to ensure URLs point to the correct ID.
+            Map<String, String> metadata = getVPRequestService().getVPRequestMetadata(aliasContext);
 
             String redirectUrl = createRedirectURI(
                     WALLET_LOGIN_PAGE,
                     publicRequestId,
                     metadata.get(PARAM_CLIENT_ID),
                     metadata.get(PARAM_REQUEST_URI));
+
             response.sendRedirect(redirectUrl);
+
         } catch (VPAuthenticatorException e) {
             throw new AuthenticationFailedException("Failed to initiate VP request: " + e.getMessage(), e);
         } catch (IOException e) {
@@ -196,18 +202,24 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             AuthenticationContext context) throws AuthenticationFailedException {
 
         try {
+            String publicRequestId = request.getParameter(Constraints.PARAM_VP_REQUEST_ID);
+            if (StringUtils.isBlank(publicRequestId)) {
+                throw new AuthenticationFailedException("Public request ID missing in the response.");
+            }
 
-            VPContext vpContext = VPServiceDataHolder.getVPContextService().getVPContext(context)
-                    .orElseThrow(() -> new AuthenticationFailedException("No VP request context found."));
+            // Retrieve the isolated VP context using the alias ID.
+            VPContext vpContext = VPServiceDataHolder.getVPContextService().getVPContext(publicRequestId)
+                    .orElseThrow(() -> new AuthenticationFailedException("No VP request context found for ID: "
+                            + publicRequestId));
             Map<String, Object> verifiedClaims = vpContext.getVerifiedClaims();
- 
+
             if (MapUtils.isEmpty(verifiedClaims)) {
                 throw new AuthenticationFailedException("No verified claims found in context. "
                         + "Verification must have failed.");
             }
- 
-            // Clean up temporary property.
-            VPServiceDataHolder.getVPContextService().removeVPContext(context);
+
+            // Clean up the alias context from the cache.
+            FrameworkUtils.removeAuthenticationContextFromCache(publicRequestId);
 //ToDo: use clearCacheEntry
             ClaimMapping[] idpClaimMappings = resolveIdpClaimMappings(context);
 
