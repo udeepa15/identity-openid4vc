@@ -215,7 +215,6 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         if (StringUtils.isNotBlank(cacheKey)) {
             FrameworkUtils.removeAuthenticationContextFromCache(cacheKey);
         }
-//ToDo: use clearCacheEntry
         // 3. Set a default subject identifier.
         String defaultSubject = UUID.randomUUID().toString();
 
