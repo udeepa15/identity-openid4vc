@@ -43,6 +43,11 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.JOSE_TYPE_OAUTH_AUTHZ_REQ;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.RESPONSE_CONTENT_TYPE_CHARSET_UTF_8;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.RESPONSE_ERROR;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.RESPONSE_ERROR_CODE;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.RESPONSE_ERROR_DESCRIPTION;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.RESPONSE_REQUEST_ID;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.RESPONSE_STATUS;
 
@@ -78,21 +83,11 @@ public class VPRequestServlet extends HttpServlet {
             .setPrettyPrinting()
             .create();
 
-    /**
-     * Default tenant ID to use when tenant domain cannot be resolved.
-     */
-    private static final int DEFAULT_TENANT_ID = -1234;
-
-    /**
-     * Pattern to validate tenant domain names.
-     */
-    private static final String TENANT_DOMAIN_PATTERN = "^[a-zA-Z0-9._-]+$";
-
-    /**
-     * Initialize the servlet.
-     *
-     * @throws ServletException If an error occurs during initialization.
-     */
+     /**
+      * Initialize the servlet.
+      *
+      * @throws ServletException If an error occurs during initialization.
+      */
     @Override
     public void init() throws ServletException {
 
@@ -219,7 +214,7 @@ public class VPRequestServlet extends HttpServlet {
                 "Failed to generate request JWT for request: " + requestId);
         }
 
-        response.setContentType("application/oauth-authz-req+jwt");
+        response.setContentType(JOSE_TYPE_OAUTH_AUTHZ_REQ);
         response.setStatus(HttpServletResponse.SC_OK);
         writeResponse(response, requestJwt);
     }
@@ -250,7 +245,7 @@ public class VPRequestServlet extends HttpServlet {
             throws IOException {
 
         response.setStatus(statusCode);
-        response.setContentType(OpenID4VPConstants.HTTP.CONTENT_TYPE_JSON + ";charset=UTF-8");
+        response.setContentType(OpenID4VPConstants.HTTP.CONTENT_TYPE_JSON + RESPONSE_CONTENT_TYPE_CHARSET_UTF_8);
 
         writeResponse(response, gson.toJson(data));
     }
@@ -268,9 +263,9 @@ public class VPRequestServlet extends HttpServlet {
             throws IOException {
 
         JsonObject errorObj = new JsonObject();
-        errorObj.addProperty("error", exception.getOAuth2ErrorCode());
-        errorObj.addProperty("error_description", Encode.forJava(exception.getMessage()));
-        errorObj.addProperty("error_code", exception.getCode());
-        sendJsonResponse(response, statusCode, errorObj);
-    }
-}
+        errorObj.addProperty(RESPONSE_ERROR, exception.getOAuth2ErrorCode());
+        errorObj.addProperty(RESPONSE_ERROR_DESCRIPTION, Encode.forJava(exception.getMessage()));
+        errorObj.addProperty(RESPONSE_ERROR_CODE, exception.getCode());
+         sendJsonResponse(response, statusCode, errorObj);
+     }
+ }
