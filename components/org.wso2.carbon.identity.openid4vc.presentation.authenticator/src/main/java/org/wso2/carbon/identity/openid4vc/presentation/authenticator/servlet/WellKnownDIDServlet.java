@@ -19,12 +19,14 @@
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.servlet;
 
 import com.google.gson.JsonObject;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.osgi.service.component.annotations.Component;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorErrorCode;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorServerException;
+import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
 import org.wso2.carbon.identity.openid4vc.presentation.did.exception.DIDServerException;
 import org.wso2.carbon.identity.openid4vc.presentation.did.service.DIDDocumentService;
 import org.wso2.carbon.identity.openid4vc.presentation.did.service.impl.DIDDocumentServiceImpl;
@@ -37,6 +39,13 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.RESPONSE_CONTENT_TYPE_CHARSET_UTF_8;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.RESPONSE_ERROR;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.RESPONSE_ERROR_CODE;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.RESPONSE_ERROR_DESCRIPTION;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.SUPER_TENANT_ID_PLACEHOLDER;
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.TENANT_DOMAIN_PATTERN;
 
 /**
  * Servlet handling the /.well-known/did.json endpoint.
@@ -70,14 +79,9 @@ public class WellKnownDIDServlet extends HttpServlet {
      */
     private static final Log LOG = LogFactory.getLog(WellKnownDIDServlet.class);
 
-    /**
-     * Default tenant ID to use when tenant domain cannot be resolved.
-     */
-    private static final int DEFAULT_TENANT_ID = -1234;
-
-    /**
-     * Service instance for DID document operations.
-     */
+     /**
+      * Service instance for DID document operations.
+      */
     private transient DIDDocumentService didDocumentService;
 
     /**
@@ -107,10 +111,16 @@ public class WellKnownDIDServlet extends HttpServlet {
         try {
             // Get tenant domain and ID from context.
             String tenantDomain = org.wso2.carbon.identity.core.util.IdentityTenantUtil.getTenantDomainFromContext();
-            if (org.apache.commons.lang.StringUtils.isBlank(tenantDomain)) {
+            if (StringUtils.isBlank(tenantDomain) || !tenantDomain.matches(TENANT_DOMAIN_PATTERN)) {
                 tenantDomain = org.wso2.carbon.utils.multitenancy.MultitenantConstants.SUPER_TENANT_DOMAIN_NAME;
             }
-            int tenantId = org.wso2.carbon.identity.core.util.IdentityTenantUtil.getTenantId(tenantDomain);
+            int tenantId;
+            try {
+                tenantId = org.wso2.carbon.identity.core.util.IdentityTenantUtil.getTenantId(tenantDomain);
+            } catch (RuntimeException ex) {
+                LOG.debug("Falling back to super tenant ID placeholder for tenant domain: " + tenantDomain, ex);
+                tenantId = SUPER_TENANT_ID_PLACEHOLDER;
+            }
 
             // Dynamically construct domain with path for this tenant.
             String baseUrl = org.wso2.carbon.identity.openid4vc.presentation.common.util.OpenID4VPUtil
@@ -163,13 +173,13 @@ public class WellKnownDIDServlet extends HttpServlet {
                                    VPAuthenticatorException exception)
             throws IOException {
 
-        response.setContentType("application/json;charset=UTF-8");
-        response.setStatus(statusCode);
+         response.setContentType(OpenID4VPConstants.HTTP.CONTENT_TYPE_JSON + RESPONSE_CONTENT_TYPE_CHARSET_UTF_8);
+         response.setStatus(statusCode);
 
         JsonObject errorJson = new JsonObject();
-        errorJson.addProperty("error", exception.getOAuth2ErrorCode());
-        errorJson.addProperty("error_description", exception.getMessage());
-        errorJson.addProperty("error_code", exception.getCode());
+        errorJson.addProperty(RESPONSE_ERROR, exception.getOAuth2ErrorCode());
+        errorJson.addProperty(RESPONSE_ERROR_DESCRIPTION, exception.getMessage());
+        errorJson.addProperty(RESPONSE_ERROR_CODE, exception.getCode());
 
         writeResponse(response, errorJson.toString());
     }

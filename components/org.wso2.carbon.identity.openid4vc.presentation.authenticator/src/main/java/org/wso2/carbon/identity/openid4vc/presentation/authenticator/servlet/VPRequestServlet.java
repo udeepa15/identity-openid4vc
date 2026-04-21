@@ -162,16 +162,14 @@ public class VPRequestServlet extends HttpServlet {
                 return;
             }
 
-            // 2. If the status is active then check the context expiry time.
             if (status == VPRequestStatus.ACTIVE) {
-                // if not expired then check whther the request is a status request or an authorization request.
                 if (isStatusRequest) {
                     JsonObject statusResponse = new JsonObject();
                     statusResponse.addProperty(RESPONSE_REQUEST_ID, requestId);
                     statusResponse.addProperty(RESPONSE_STATUS, VPRequestStatus.ACTIVE.name());
                     sendJsonResponse(response, HttpServletResponse.SC_OK, statusResponse);
                 } else {
-                    handleRequestJwtRequest(response, vpContext, requestId);
+                    handleRequestJwtRequest(response, requestId);
                 }
                 return;
             }
@@ -210,7 +208,7 @@ public class VPRequestServlet extends HttpServlet {
      * @throws VPAuthenticatorException If a VP authenticator error occurs.
      * @throws IOException              If an I/O error occurs.
      */
-    private void handleRequestJwtRequest(HttpServletResponse response, VPContext vpContext,
+    private void handleRequestJwtRequest(HttpServletResponse response,
                                          String requestId) throws VPAuthenticatorException, IOException {
 
         String requestJwt = VPServiceDataHolder.getVPRequestService().generateRequestJwt(requestId);
