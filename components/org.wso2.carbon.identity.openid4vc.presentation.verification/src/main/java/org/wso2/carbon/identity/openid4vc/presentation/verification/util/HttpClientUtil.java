@@ -182,10 +182,7 @@ public final class HttpClientUtil {
         try {
             InetAddress[] addresses = InetAddress.getAllByName(host);
             for (InetAddress address : addresses) {
-                if (address.isLoopbackAddress() ||
-                        address.isAnyLocalAddress() ||
-                        address.isSiteLocalAddress() ||
-                        address.isLinkLocalAddress()) {
+                if (isRestrictedAddress(address)) {
                     throw new VerificationClientException(VerificationErrorCode.INVALID_CREDENTIAL,
                             "SSRF Validation Failed: Target resolves to an internal or restricted IP address.");
                 }
@@ -194,5 +191,34 @@ public final class HttpClientUtil {
             throw new VerificationClientException(VerificationErrorCode.INVALID_CREDENTIAL,
                     "SSRF Validation Failed: Unknown host.", e);
         }
+    }
+
+    /**
+     * Checks if the given address is a restricted (non-global) address.
+     *
+     * @param addr The address to check
+     * @return {@code true} if the address is restricted, {@code false} otherwise
+     */
+    private static boolean isRestrictedAddress(InetAddress addr) {
+
+        if (addr == null) {
+            return true;
+        }
+
+        if (addr.isLoopbackAddress() ||
+                addr.isAnyLocalAddress() ||
+                addr.isLinkLocalAddress() ||
+                addr.isSiteLocalAddress() ||
+                addr.isMulticastAddress()) {
+            return true;
+        }
+
+        // Check for IPv6 unique-local addresses (fc00::/7)
+        byte[] raw = addr.getAddress();
+        if (raw.length == 16) { // IPv6
+            return (raw[0] & 0xFE) == 0xFC;
+        }
+
+        return false;
     }
 }
