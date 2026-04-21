@@ -36,7 +36,6 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPCon
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPSubmission;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPContextService;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.status.StatusNotificationService;
 import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.PresentationSubmission;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VerificationResult;
@@ -104,11 +103,6 @@ public class VPSubmissionServlet extends HttpServlet {
      */
     private static final int MAX_PARAM_LENGTH = 65536;
 
-    /**
-     * Service instance for status change notifications.
-     */
-    private transient StatusNotificationService statusNotificationService;
-
 
     /**
      * Initialize the servlet and its dependencies.
@@ -119,8 +113,6 @@ public class VPSubmissionServlet extends HttpServlet {
     public void init() throws ServletException {
 
         super.init();
-        this.statusNotificationService =
-                StatusNotificationService.getInstance();
     }
 
     /**
@@ -214,9 +206,8 @@ public class VPSubmissionServlet extends HttpServlet {
                 return;
             }
 
-            // Notify listeners.
-            //ToDo: update the status listner
-            notifyStatusListeners(submission.getRequestId(), submission);
+            // Update the request status.
+            updateRequestStatus(submission.getRequestId());
 
             // Send success response.
             sendSuccessResponse(response);
@@ -362,12 +353,11 @@ public class VPSubmissionServlet extends HttpServlet {
     }
 
     /**
-     * Notify status listeners and store the submission in the cache.
+     * Update the request status in the context for poller handoff.
      *
      * @param requestId  The request ID (state).
-     * @param submission The VP submission data.
      */
-    private void notifyStatusListeners(String requestId, VPSubmission submission) {
+    private void updateRequestStatus(String requestId) {
  
         // Update the context with submission status for poller handoff.
         VPContextService vpContextService = VPServiceDataHolder.getVPContextService();
@@ -380,9 +370,6 @@ public class VPSubmissionServlet extends HttpServlet {
         } else {
             LOG.warn("VPContext not found for request ID; submission status will not be updated.");
         }
- 
-        // Notify any other registered status listeners via the centralized notification service.
-        StatusNotificationService.getInstance().notifyVPSubmitted(requestId);
     }
 
     /**
