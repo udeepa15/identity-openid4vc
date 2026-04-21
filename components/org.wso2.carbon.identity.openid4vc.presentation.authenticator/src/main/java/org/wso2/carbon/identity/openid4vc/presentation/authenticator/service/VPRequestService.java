@@ -40,11 +40,11 @@ public abstract class VPRequestService {
     /**
      * Resolve metadata required for initiating the VP request (client ID, request URI).
      *
-     * @param context Authentication context.
+     * @param requestId VP request identifier.
      * @return Map containing request metadata.
      * @throws VPAuthenticatorException If an error occurs during metadata resolution.
      */
-    public abstract Map<String, String> getVPRequestMetadata(AuthenticationContext context)
+    public abstract Map<String, String> getVPRequestMetadata(String requestId)
             throws VPAuthenticatorException;
 
     /**

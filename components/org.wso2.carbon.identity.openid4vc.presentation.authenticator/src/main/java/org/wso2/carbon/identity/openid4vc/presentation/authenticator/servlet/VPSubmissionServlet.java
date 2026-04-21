@@ -52,7 +52,6 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DEFAULT_VP_REQUEST_EXPIRY_MS;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.RESPONSE_CONTENT_TYPE_CHARSET_UTF_8;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.RESPONSE_ERROR;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.RESPONSE_ERROR_CODE;
@@ -167,16 +166,6 @@ public class VPSubmissionServlet extends HttpServlet {
                 return;
             }
  
-            // Check if the request has expired.
-            if (isRequestExpired(vpContext)) {
-                vpContext.setRequestStatus(VPRequestStatus.EXPIRED);
-                vpContextService.updateVPContext(submission.getRequestId(), vpContext);
-                sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
-                        new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
-                                "Request has expired."));
-                return;
-            }
- 
             if (StringUtils.isBlank(submission.getVpToken())) {
                 sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
                         new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
@@ -238,21 +227,6 @@ public class VPSubmissionServlet extends HttpServlet {
                     new VPAuthenticatorServerException(VPAuthenticatorErrorCode.INTERNAL_SERVER_ERROR,
                             "Internal server error.", e));
         }
-    }
-
-    /**
-     * Check if the VP request has expired.
-     *
-     * @param vpContext VP request context.
-     * @return True if expired, false otherwise.
-     */
-    private boolean isRequestExpired(VPContext vpContext) {
-
-        if (vpContext == null) {
-            return false;
-        }
-        long currentTime = System.currentTimeMillis();
-        return (currentTime - vpContext.getCreatedAt()) > DEFAULT_VP_REQUEST_EXPIRY_MS;
     }
 
     private VPSubmission parseSubmission(final HttpServletRequest request)

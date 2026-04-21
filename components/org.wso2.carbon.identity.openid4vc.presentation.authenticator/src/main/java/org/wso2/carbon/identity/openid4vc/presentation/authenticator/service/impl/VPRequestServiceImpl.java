@@ -176,14 +176,9 @@ public class VPRequestServiceImpl extends VPRequestService {
     }
 
     @Override
-    public Map<String, String> getVPRequestMetadata(AuthenticationContext context) throws VPAuthenticatorException {
+    public Map<String, String> getVPRequestMetadata(String requestId) throws VPAuthenticatorException {
 
         String baseUrl = resolveTenantAwareBaseUrl();
-        String requestId = (String) context.getProperty(Constraints.CONTEXT_VP_MAPPED_ID);
-        if (StringUtils.isBlank(requestId)) {
-            requestId = context.getContextIdentifier();
-        }
-
         Map<String, String> metadata = new HashMap<>();
         metadata.put(Constraints.PARAM_CLIENT_ID, getClientId(baseUrl));
         metadata.put(Constraints.PARAM_REQUEST_URI, buildRequestUri(baseUrl, requestId));
@@ -208,8 +203,8 @@ public class VPRequestServiceImpl extends VPRequestService {
 
         String requestId = context.getContextIdentifier();
         String requestJwt = generateRequestJwt(requestId);
-        
-        Map<String, String> metadata = getVPRequestMetadata(context);
+
+        Map<String, String> metadata = getVPRequestMetadata(requestId);
 
         return new VPRequest.Builder()
                 .requestId(requestId)

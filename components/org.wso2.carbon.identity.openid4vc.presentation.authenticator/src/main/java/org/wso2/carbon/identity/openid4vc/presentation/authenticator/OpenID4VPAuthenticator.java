@@ -139,15 +139,16 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
 
             // Retrieve the alias context and initialize it with OpenID4VP specific state.
             AuthenticationContext aliasContext = FrameworkUtils.getAuthenticationContextFromCache(publicRequestId);
-            if (aliasContext != null) {
-                aliasContext.setProperty(Constraints.CONTEXT_VP_MAPPED_ID, publicRequestId);
-                VPServiceDataHolder.getVPContextService().setVPContext(aliasContext,
-                        new VPContext(VPRequestStatus.ACTIVE));
-                FrameworkUtils.addAuthenticationContextToCache(publicRequestId, aliasContext);
+            if (aliasContext == null) {
+                throw new AuthenticationFailedException(
+                        "Failed to retrieve authentication context for request ID: " + publicRequestId);
             }
 
+            VPServiceDataHolder.getVPContextService().setVPContext(aliasContext,
+                    new VPContext(VPRequestStatus.ACTIVE));
+
             // Resolve metadata using the alias context to ensure URLs point to the correct ID.
-            Map<String, String> metadata = getVPRequestService().getVPRequestMetadata(aliasContext);
+            Map<String, String> metadata = getVPRequestService().getVPRequestMetadata(publicRequestId);
 
             String redirectUrl = createRedirectURI(
                     WALLET_LOGIN_PAGE,
@@ -201,61 +202,56 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             HttpServletResponse response,
             AuthenticationContext context) throws AuthenticationFailedException {
 
-        try {
-            String publicRequestId = request.getParameter(Constraints.PARAM_VP_REQUEST_ID);
-            if (StringUtils.isBlank(publicRequestId)) {
-                throw new AuthenticationFailedException("Public request ID missing in the response.");
-            }
-
-            // Retrieve the isolated VP context using the alias ID.
-            VPContext vpContext = VPServiceDataHolder.getVPContextService().getVPContext(publicRequestId)
-                    .orElseThrow(() -> new AuthenticationFailedException("No VP request context found for ID: "
-                            + publicRequestId));
-            Map<String, Object> verifiedClaims = vpContext.getVerifiedClaims();
-
-            if (MapUtils.isEmpty(verifiedClaims)) {
-                throw new AuthenticationFailedException("No verified claims found in context. "
-                        + "Verification must have failed.");
-            }
-
-            // Clean up the alias context from the cache.
-            FrameworkUtils.removeAuthenticationContextFromCache(publicRequestId);
-//ToDo: use clearCacheEntry
-            ClaimMapping[] idpClaimMappings = resolveIdpClaimMappings(context);
-
-            // Derive subject claim name from IDP's userIdClaim configuration when available.
-            String subjectRemoteClaim = resolveSubjectRemoteClaim(context, idpClaimMappings);
-
-            boolean isSubjectClaimConfigured = StringUtils.isNotBlank(resolveConfiguredSubjectClaimUri(context));
-
-            // If IDP subject claim is configured, enforce it.
-            // Otherwise, use a transient random UUID as the subject identifier.
-            String username = isSubjectClaimConfigured
-                    ? extractUsername(verifiedClaims, subjectRemoteClaim)
-                    : UUID.randomUUID().toString();
-//ToDo: check the framework and remove  subjectclaim set and username
-            if (isSubjectClaimConfigured && StringUtils.isBlank(username)) {
-                throw new AuthenticationFailedException("No user identifier found in verified credentials.");
-            }
-
-            AuthenticatedUser authenticatedUser = AuthenticatedUser
-                    .createFederateAuthenticatedUserFromSubjectIdentifier(username);
-            authenticatedUser.setFederatedUser(true);
-            if (context.getExternalIdP() != null) {
-                authenticatedUser.setFederatedIdPName(context.getExternalIdP().getIdPName());
-            }
-            authenticatedUser.setTenantDomain(context.getTenantDomain());
-
-            Map<ClaimMapping, String> userAttributes = mapVerifiedClaimsToLocal(verifiedClaims, idpClaimMappings);
-
-            if (!userAttributes.isEmpty()) {
-                authenticatedUser.setUserAttributes(userAttributes);
-            }
-            context.setSubject(authenticatedUser);
-//ToDo: scope down exp
-        } catch (RuntimeException e) {
-            throw new AuthenticationFailedException("Authentication failed: " + e.getMessage(), e);
+        String publicRequestId = request.getParameter(Constraints.PARAM_VP_REQUEST_ID);
+        if (StringUtils.isBlank(publicRequestId)) {
+            throw new AuthenticationFailedException("Public request ID missing in the response.");
         }
+
+        // Retrieve the isolated VP context using the alias ID.
+        VPContext vpContext = VPServiceDataHolder.getVPContextService().getVPContext(publicRequestId)
+                .orElseThrow(() -> new AuthenticationFailedException("No VP request context found for ID: "
+                        + publicRequestId));
+        Map<String, Object> verifiedClaims = vpContext.getVerifiedClaims();
+
+        if (MapUtils.isEmpty(verifiedClaims)) {
+            throw new AuthenticationFailedException("No verified claims found in context. "
+                    + "Verification must have failed.");
+        }
+
+        // Clean up the alias context from the cache.
+        FrameworkUtils.removeAuthenticationContextFromCache(publicRequestId);
+//ToDo: use clearCacheEntry
+        ClaimMapping[] idpClaimMappings = resolveIdpClaimMappings(context);
+
+        // Derive subject claim name from IDP's userIdClaim configuration when available.
+        String subjectRemoteClaim = resolveSubjectRemoteClaim(context, idpClaimMappings);
+
+        boolean isSubjectClaimConfigured = StringUtils.isNotBlank(resolveConfiguredSubjectClaimUri(context));
+
+        // If IDP subject claim is configured, enforce it.
+        // Otherwise, use a transient random UUID as the subject identifier.
+        String username = isSubjectClaimConfigured
+                ? extractUsername(verifiedClaims, subjectRemoteClaim)
+                : UUID.randomUUID().toString();
+//ToDo: check the framework and remove  subjectclaim set and username
+        if (isSubjectClaimConfigured && StringUtils.isBlank(username)) {
+            throw new AuthenticationFailedException("No user identifier found in verified credentials.");
+        }
+
+        AuthenticatedUser authenticatedUser = AuthenticatedUser
+                .createFederateAuthenticatedUserFromSubjectIdentifier(username);
+        authenticatedUser.setFederatedUser(true);
+        if (context.getExternalIdP() != null) {
+            authenticatedUser.setFederatedIdPName(context.getExternalIdP().getIdPName());
+        }
+        authenticatedUser.setTenantDomain(context.getTenantDomain());
+
+        Map<ClaimMapping, String> userAttributes = mapVerifiedClaimsToLocal(verifiedClaims, idpClaimMappings);
+
+        if (!userAttributes.isEmpty()) {
+            authenticatedUser.setUserAttributes(userAttributes);
+        }
+        context.setSubject(authenticatedUser);
     }
 
     /**
