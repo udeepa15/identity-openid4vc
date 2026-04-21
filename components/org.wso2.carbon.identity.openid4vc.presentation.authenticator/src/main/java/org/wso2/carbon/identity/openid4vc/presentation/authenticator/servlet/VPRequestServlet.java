@@ -135,7 +135,7 @@ public class VPRequestServlet extends HttpServlet {
                 if (isStatusRequest) {
                     JsonObject statusResponse = new JsonObject();
                     statusResponse.addProperty(RESPONSE_REQUEST_ID, requestId);
-                    statusResponse.addProperty(RESPONSE_STATUS, VPRequestStatus.EXPIRED.name());
+                    statusResponse.addProperty(RESPONSE_STATUS, VPRequestStatus.FAILED.name());
                     sendJsonResponse(response, HttpServletResponse.SC_OK, statusResponse);
                 } else {
                     sendErrorResponse(response, HttpServletResponse.SC_NOT_FOUND,

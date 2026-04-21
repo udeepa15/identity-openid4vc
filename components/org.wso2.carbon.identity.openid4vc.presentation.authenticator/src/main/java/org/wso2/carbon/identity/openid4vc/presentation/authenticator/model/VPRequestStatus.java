@@ -34,11 +34,6 @@ public enum VPRequestStatus {
     VP_SUBMITTED("VP_SUBMITTED"),
 
     /**
-     * Request has expired before any submission was received.
-     */
-    EXPIRED("EXPIRED"),
-
-    /**
      * Verification process has been completed successfully.
      */
     VERIFIED("VERIFIED"),

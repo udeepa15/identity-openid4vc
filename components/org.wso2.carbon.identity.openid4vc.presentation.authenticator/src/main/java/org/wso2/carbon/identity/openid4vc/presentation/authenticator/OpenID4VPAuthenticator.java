@@ -71,7 +71,6 @@ import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.PROP_SUBJECT_CLAIM;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.PROP_TIMEOUT_SECONDS;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.STATUS_CANCELLED;
-import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.STATUS_EXPIRED;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.STATUS_FAILED;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.STATUS_PENDING;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.STATUS_SUCCESS;
@@ -313,9 +312,6 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
 
             sendPollResponse(response, status.getValue().toLowerCase(Locale.ENGLISH), null, null);
             return AuthenticatorFlowStatus.SUCCESS_COMPLETED;
-        } else if (VPRequestStatus.EXPIRED.equals(status)) {
-            sendPollResponse(response, STATUS_EXPIRED, "Request expired.", null);
-            throw new AuthenticationFailedException("VP request has expired.");
         } else if (VPRequestStatus.FAILED.equals(status)) {
             sendPollResponse(response, STATUS_CANCELLED, "Request was cancelled.", null);
             throw new AuthenticationFailedException("VP request was cancelled.");
@@ -348,9 +344,6 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         } else if (STATUS_FAILED.equals(status)) {
             context.setRetrying(true);
             throw new AuthenticationFailedException("VP verification failed.");
-        } else if (STATUS_EXPIRED.equals(status)) {
-            context.setRetrying(true);
-            throw new AuthenticationFailedException("VP request expired.");
         }
 
         return AuthenticatorFlowStatus.INCOMPLETE;

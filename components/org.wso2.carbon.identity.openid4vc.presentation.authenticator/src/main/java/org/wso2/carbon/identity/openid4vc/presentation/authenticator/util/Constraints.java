@@ -95,7 +95,6 @@ public class Constraints {
      */
     public static final String STATUS_SUCCESS = "success";
     public static final String STATUS_FAILED = "failed";
-    public static final String STATUS_EXPIRED = "expired";
     public static final String STATUS_PENDING = "pending";
     public static final String STATUS_CANCELLED = "cancelled";
 
