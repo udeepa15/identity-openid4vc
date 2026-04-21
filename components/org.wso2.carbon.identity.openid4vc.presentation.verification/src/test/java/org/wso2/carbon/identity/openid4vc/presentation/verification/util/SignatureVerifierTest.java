@@ -60,8 +60,46 @@ public class SignatureVerifierTest {
     }
 
     @Test
+    public void testVerifyJwtSignature_AlgorithmMismatch() throws Exception {
+        String jwt = buildSignedJwt(rsaPrivateKey, JWSAlgorithm.RS256, "user-1");
+        // Pass RS384 as expected, but the JWT is RS256
+        assertThrows(VerificationException.class,
+                () -> SignatureVerifier.verifyJwtSignature(jwt, rsaPublicKey, "RS384"));
+    }
+
+    @Test
     public void testVerifySignatureWithInvalidJwt() {
         assertThrows(VerificationException.class, () -> SignatureVerifier.verifySignature(null));
+    }
+
+    @Test
+    public void testVerifySignature_NoneAlgorithmRejected() throws Exception {
+        // Use a raw JWT string with "alg": "none" to bypass builder-level restrictions.
+        
+        String noneJwt = 
+        "eyJhbGciOiJub25lIn0.eyJpc3MiOiJodHRwczovL3RydXN0ZWQuaXNzdWVyLmV4YW1wbGUiLCJzdWIiOiJ1c2VyLTEifQ.";
+        
+        assertThrows(Exception.class, () -> {
+            SignedJWT signedJWT = SignedJWT.parse(noneJwt);
+            SignatureVerifier.verifySignature(signedJWT);
+        });
+    }
+
+    @Test
+    public void testVerifySignature_UnsupportedAlgorithmRejected() throws Exception {
+        // HS256 is not in the ALLOWED_ALGORITHMS list (only asymmetric ones)
+        JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
+                .subject("user-1")
+                .issuer("https://trusted.issuer.example")
+                .build();
+
+        SignedJWT signedJWT = new SignedJWT(
+                new JWSHeader.Builder(JWSAlgorithm.parse("HS256"))
+                        .type(JOSEObjectType.JWT)
+                        .build(),
+                claimsSet);
+
+        assertThrows(VerificationException.class, () -> SignatureVerifier.verifySignature(signedJWT));
     }
 
     @Test

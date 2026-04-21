@@ -61,6 +61,19 @@ public class SignatureVerifier {
 
     private static final long CLOCK_SKEW_TOLERANCE_MS = 60 * 1000;
 
+    private static final java.util.Set<String> ALLOWED_ALGORITHMS = java.util.Set.of(
+            JWSAlgorithm.RS256.getName(),
+            JWSAlgorithm.RS384.getName(),
+            JWSAlgorithm.RS512.getName(),
+            JWSAlgorithm.PS256.getName(),
+            JWSAlgorithm.PS384.getName(),
+            JWSAlgorithm.PS512.getName(),
+            JWSAlgorithm.ES256.getName(),
+            JWSAlgorithm.ES384.getName(),
+            JWSAlgorithm.ES512.getName(),
+            JWSAlgorithm.EdDSA.getName()
+    );
+
     /**
      * Creates a utility class instance.
      *
@@ -88,6 +101,16 @@ public class SignatureVerifier {
         DIDResolverService didResolverService = new DIDResolverServiceImpl();
         try {
             String alg = jwt.getHeader().getAlgorithm().getName();
+            if (JWSAlgorithm.NONE.getName().equalsIgnoreCase(alg)) {
+                throw new VerificationClientException(VerificationErrorCode.INVALID_SIGNATURE,
+                        "Algorithm 'none' is not allowed.");
+            }
+
+            if (!ALLOWED_ALGORITHMS.contains(alg)) {
+                throw new VerificationClientException(VerificationErrorCode.INVALID_SIGNATURE,
+                        "Unsupported or restricted JWS algorithm: " + alg);
+            }
+
             String kid = jwt.getHeader().getKeyID();
 
             Jwt payload = new Jwt();
@@ -155,6 +178,14 @@ public class SignatureVerifier {
 
         try {
             SignedJWT jwt = SignedJWT.parse(jwtString);
+
+            // Harden algorithm validation to prevent algorithm-switching attacks.
+            if (algorithm == null || !algorithm.equals(jwt.getHeader().getAlgorithm().getName())) {
+                throw new VerificationClientException(VerificationErrorCode.INVALID_SIGNATURE,
+                        "JWS algorithm mismatch. Expected: " + algorithm + ", Actual: " +
+                                jwt.getHeader().getAlgorithm().getName());
+            }
+
             JWSVerifier verifier = new DefaultJWSVerifierFactory().createJWSVerifier(
                     jwt.getHeader(), publicKey);
             return jwt.verify(verifier);
