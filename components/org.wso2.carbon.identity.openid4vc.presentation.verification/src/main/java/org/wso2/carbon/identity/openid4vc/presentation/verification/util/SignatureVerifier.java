@@ -221,8 +221,8 @@ public class SignatureVerifier {
             jwtProcessor.setJWSTypeVerifier(
                     new DefaultJOSEObjectTypeVerifier<>(
                             new JOSEObjectType("jwt"),
-                            new JOSEObjectType(VerificationConstants.FORMAT_SD_JWT),
-                            null
+                            JOSEObjectType.JWT,
+                            new JOSEObjectType(VerificationConstants.FORMAT_SD_JWT)
                     )
             );
  
