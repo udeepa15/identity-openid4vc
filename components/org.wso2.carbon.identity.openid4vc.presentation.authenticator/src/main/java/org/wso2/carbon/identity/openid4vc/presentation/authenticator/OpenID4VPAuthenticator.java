@@ -223,36 +223,38 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             FrameworkUtils.removeAuthenticationContextFromCache(cacheKey);
         }
 //ToDo: use clearCacheEntry
-        ClaimMapping[] idpClaimMappings = resolveIdpClaimMappings(context);
+        // 3. Set a default subject identifier.
+        String defaultSubject = UUID.randomUUID().toString();
 
-        // Derive subject claim name from IDP's userIdClaim configuration when available.
-        String subjectRemoteClaim = resolveSubjectRemoteClaim(context, idpClaimMappings);
-
-        boolean isSubjectClaimConfigured = StringUtils.isNotBlank(resolveConfiguredSubjectClaimUri(context));
-
-        // If IDP subject claim is configured, enforce it.
-        // Otherwise, use a transient random UUID as the subject identifier.
-        String username = isSubjectClaimConfigured
-                ? extractUsername(verifiedClaims, subjectRemoteClaim)
-                : UUID.randomUUID().toString();
-//ToDo: check the framework and remove  subjectclaim set and username
-        if (isSubjectClaimConfigured && StringUtils.isBlank(username)) {
-            throw new AuthenticationFailedException("No user identifier found in verified credentials.");
-        }
-
+        // 4. Build the AuthenticatedUser
         AuthenticatedUser authenticatedUser = AuthenticatedUser
-                .createFederateAuthenticatedUserFromSubjectIdentifier(username);
+                .createFederateAuthenticatedUserFromSubjectIdentifier(defaultSubject);
         authenticatedUser.setFederatedUser(true);
+
         if (context.getExternalIdP() != null) {
             authenticatedUser.setFederatedIdPName(context.getExternalIdP().getIdPName());
         }
         authenticatedUser.setTenantDomain(context.getTenantDomain());
 
-        Map<ClaimMapping, String> userAttributes = mapVerifiedClaimsToLocal(verifiedClaims, idpClaimMappings);
+        // 5. Pass the RAW claims directly to the framework.
+        Map<ClaimMapping, String> rawAttributes = new HashMap<>();
+        for (Map.Entry<String, Object> entry : verifiedClaims.entrySet()) {
+            if (entry.getValue() != null && org.apache.commons.lang.StringUtils
+                    .isNotBlank(entry.getValue().toString())) {
+                String claimName = entry.getKey();
+                String claimValue = entry.getValue().toString();
 
-        if (!userAttributes.isEmpty()) {
-            authenticatedUser.setUserAttributes(userAttributes);
+                // Build a raw claim mapping. The framework's ClaimHandler will translate this later.
+                ClaimMapping mapping = ClaimMapping.build(claimName, claimName, null, false);
+                rawAttributes.put(mapping, claimValue);
+            }
         }
+
+        // 6. Hand the raw data to WSO2
+        if (!rawAttributes.isEmpty()) {
+            authenticatedUser.setUserAttributes(rawAttributes);
+        }
+
         context.setSubject(authenticatedUser);
     }
 
@@ -275,61 +277,6 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             return null;
         }
         return MapUtils.getString(verifiedClaims, subjectRemoteClaim);
-    }
-
-    /**
-     * Map verified claims to WSO2 ClaimMappings using IDP-configured mappings.
-     *
-     * <p>If no mappings are configured, an empty map is returned and no claim mapping is applied.</p>
-     *
-     * @param verifiedClaims   Claims extracted and verified from the VC.
-     * @param idpClaimMappings Mappings configured for the Identity Provider.
-     * @return Map of local claim mappings to values.
-     */
-    private Map<ClaimMapping, String> mapVerifiedClaimsToLocal(Map<String, Object> verifiedClaims,
-                                                               ClaimMapping[] idpClaimMappings) {
-
-        Map<ClaimMapping, String> mappedClaims = new HashMap<>();
-        if (idpClaimMappings == null) {
-            // No IDP mappings configured.
-            return mappedClaims;
-        }
-
-        for (ClaimMapping mapping : idpClaimMappings) {
-            if (mapping == null || mapping.getRemoteClaim() == null
-                    || StringUtils.isBlank(mapping.getRemoteClaim().getClaimUri())) {
-                continue;
-            }
-
-            String remoteClaim = mapping.getRemoteClaim().getClaimUri();
-            String remoteValue = MapUtils.getString(verifiedClaims, remoteClaim);
-
-            if (StringUtils.isNotBlank(remoteValue)) {
-                mappedClaims.put(mapping, remoteValue);
-            } else {
-                // Try credentialSubject nested map (for non-SD-JWT paths).
-                Object cs = verifiedClaims.get(CLAIM_CREDENTIAL_SUBJECT);
-                if (cs instanceof Map) {
-                    Object val = ((Map<?, ?>) cs).get(remoteClaim);
-                    if (val != null) {
-                        mappedClaims.put(mapping, val.toString());
-                        continue;
-                    }
-                }
-                // Try vc.credentialSubject (nested JWT VC).
-                Object vcObj = verifiedClaims.get(CLAIM_VC);
-                if (vcObj instanceof Map) {
-                    Object csObj = ((Map<?, ?>) vcObj).get(CLAIM_CREDENTIAL_SUBJECT);
-                    if (csObj instanceof Map) {
-                        Object val = ((Map<?, ?>) csObj).get(remoteClaim);
-                        if (val != null) {
-                            mappedClaims.put(mapping, val.toString());
-                        }
-                    }
-                }
-            }
-        }
-        return mappedClaims;
     }
 
     /**
@@ -469,184 +416,6 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         } catch (IOException e) {
             // ignore.
         }
-    }
-
-
-    /**
-     * Resolve the IDP's ClaimMappings reliably from the authentication context.
-     *
-     * <p>When the framework sets up a federated flow, {@code context.getExternalIdP()} may be null
-     * at the time {@code processAuthenticationResponse} runs (e.g. in redirect-back scenarios).
-     * This method falls back to resolving the IDP by name via {@link IdentityProviderManager} if
-     * the direct accessor returns null, ensuring IDP claim mappings are always available.</p>
-     *
-     * @param context Authentication context.
-     * @return IDP claim mappings, never null (empty array if none configured).
-     */
-    private ClaimMapping[] resolveIdpClaimMappings(AuthenticationContext context) {
-
-        // ExternalIdP is already populated.
-        if (context.getExternalIdP() != null) {
-            ClaimMapping[] mappings = context.getExternalIdP().getClaimMappings();
-            return mappings != null ? mappings : new ClaimMapping[0];
-        }
-
-        // Resolve the IDP name from SequenceConfig and look it up.
-        try {
-            String idpName = resolveIdpNameFromSequenceConfig(context);
-            if (StringUtils.isNotBlank(idpName)) {
-                String tenantDomain = context.getTenantDomain();
-                IdentityProvider idp = IdentityProviderManager.getInstance().getIdPByName(idpName, tenantDomain);
-                if (idp != null && idp.getClaimConfig() != null) {
-                    ClaimMapping[] mappings = idp.getClaimConfig().getClaimMappings();
-                    return mappings != null ? mappings : new ClaimMapping[0];
-                }
-            }
-        } catch (org.wso2.carbon.idp.mgt.IdentityProviderManagementException e) {
-            if (log.isDebugEnabled()) {
-                log.debug("Could not resolve IDP claim mappings from SequenceConfig.", e);
-            }
-        }
-        return new ClaimMapping[0];
-    }
-
-    /**
-     * Resolve the remote (VC-side) claim name that corresponds to the IDP's configured subject
-     * claim URI ({@code userIdClaim}).
-     *
-     * <p>The IDP's {@code userIdClaim} is expected to be the <em>external IdP claim</em>
-     * (remote claim) such as {@code email}. This method finds the ClaimMapping whose remote
-     * claim URI matches that value and returns the same remote claim name, which is the field
-     * name we must look for inside the Verifiable Credential.</p>
-     *
-     * @param context          Authentication context.
-     * @param idpClaimMappings Resolved IDP claim mappings.
-     * @return Remote claim name for the subject, or null if not determinable.
-     */
-    private String resolveSubjectRemoteClaim(AuthenticationContext context, ClaimMapping[] idpClaimMappings) {
-
-        try {
-            String userIdClaimUri = resolveConfiguredSubjectClaimUri(context);
-
-            if (StringUtils.isBlank(userIdClaimUri) || idpClaimMappings == null) {
-                return null;
-            }
-
-            // Find the remote claim whose remote URI matches the userIdClaim.
-            for (ClaimMapping mapping : idpClaimMappings) {
-                if (mapping.getRemoteClaim() != null
-                        && userIdClaimUri.equals(mapping.getRemoteClaim().getClaimUri())) {
-                    return mapping.getRemoteClaim().getClaimUri();
-                }
-
-                // Backward compatibility: allow old configurations where userIdClaim was local.
-                if (mapping.getLocalClaim() != null
-                        && userIdClaimUri.equals(mapping.getLocalClaim().getClaimUri())) {
-                    return mapping.getRemoteClaim() != null
-                            ? mapping.getRemoteClaim().getClaimUri()
-                            : null;
-                }
-            }
-        } catch (Exception e) {
-            if (log.isDebugEnabled()) {
-                log.debug("Could not resolve subject remote claim.", e);
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Resolve the configured subject claim URI ({@code userIdClaim}) from the IDP.
-     *
-     * @param context Authentication context.
-     * @return Configured subject claim URI, or null.
-     */
-    private String resolveConfiguredSubjectClaimUri(AuthenticationContext context) {
-
-        try {
-            // Try ExternalIdP directly first.
-            if (context.getExternalIdP() != null && context.getExternalIdP().getIdentityProvider() != null
-                    && context.getExternalIdP().getIdentityProvider().getClaimConfig() != null) {
-                String userIdClaimUri = context.getExternalIdP().getIdentityProvider()
-                        .getClaimConfig().getUserClaimURI();
-                if (StringUtils.isNotBlank(userIdClaimUri)) {
-                    return userIdClaimUri;
-                }
-            }
-
-            // Fall back to IdentityProviderManager lookup.
-            String idpName = resolveIdpNameFromSequenceConfig(context);
-            if (StringUtils.isNotBlank(idpName)) {
-                IdentityProvider idp = IdentityProviderManager.getInstance()
-                        .getIdPByName(idpName, context.getTenantDomain());
-                if (idp != null && idp.getClaimConfig() != null) {
-                    return idp.getClaimConfig().getUserClaimURI();
-                }
-            }
-        } catch (org.wso2.carbon.idp.mgt.IdentityProviderManagementException e) {
-            if (log.isDebugEnabled()) {
-                log.debug("Could not resolve configured subject claim.", e);
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Extract the IDP name from the SequenceConfig StepMap when {@code getExternalIdP()} is null.
-     * Shared by {@link #resolveIdpClaimMappings} and {@link #resolveSubjectRemoteClaim}.
-     *
-     * @param context Authentication context.
-     * @return IDP name or null.
-     */
-    private String resolveIdpNameFromSequenceConfig(AuthenticationContext context) {
-
-        if (context.getSequenceConfig() == null) {
-            return null;
-        }
-        Map<Integer, StepConfig> stepMap = context.getSequenceConfig().getStepMap();
-        if (stepMap == null) {
-            return null;
-        }
-        StepConfig stepConfig = stepMap.get(context.getCurrentStep());
-        if (stepConfig == null) {
-            return null;
-        }
-        for (AuthenticatorConfig authConfig : stepConfig.getAuthenticatorList()) {
-            if (getName().equals(authConfig.getName())
-                    && authConfig.getIdpNames() != null
-                    && !authConfig.getIdpNames().isEmpty()) {
-                return authConfig.getIdpNames().get(0);
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Get tenant ID from authentication context.
-     *
-     * @param context Authentication context.
-     * @return Tenant ID.
-     */
-    private int getTenantId(AuthenticationContext context) {
-
-        // Default to super tenant.
-        int tenantId = SUPER_TENANT_ID_PLACEHOLDER;
-
-        String tenantDomain = context.getTenantDomain();
-        if (StringUtils.isNotBlank(tenantDomain)) {
-            try {
-                tenantId = org.wso2.carbon.identity.core.util.IdentityTenantUtil
-                        .getTenantId(tenantDomain);
-            } catch (Exception e) {
-                // Ignored: Failed to resolve tenant ID, using default.
-                if (log.isDebugEnabled()) {
-                    log.debug("Failed to resolve tenant ID. "
-                            + "Using default super tenant ID.", e);
-                }
-            }
-        }
-
-        return tenantId;
     }
 
     /**
