@@ -66,8 +66,6 @@ import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util
 )
 public class VPRequestServlet extends HttpServlet {
 
-    private static final String OID4VP_REQUEST_ID_SUFFIX = ",OID4VP";
-
     /**
      * Serial version UID.
      */
@@ -132,7 +130,7 @@ public class VPRequestServlet extends HttpServlet {
             return;
         }
 
-        String requestId = removeOid4vpSuffix(pathParts[1]);
+        String requestId = pathParts[1];
         boolean isStatusRequest = pathParts.length >= 3 && "status".equals(pathParts[2]);
 
         try {
@@ -277,22 +275,4 @@ public class VPRequestServlet extends HttpServlet {
         errorObj.addProperty("error_code", exception.getCode());
         sendJsonResponse(response, statusCode, errorObj);
     }
-
-    /**
-     * Remove the OID4VP request-id suffix used in wallet request URIs before cache lookup.
-     *
-     * @param requestId Raw request ID from request path.
-     * @return Normalized request ID without OID4VP suffix.
-     */
-    private String removeOid4vpSuffix(String requestId) {
-
-        if (StringUtils.isBlank(requestId)) {
-            return requestId;
-        }
-        if (requestId.endsWith(OID4VP_REQUEST_ID_SUFFIX)) {
-            return requestId.substring(0, requestId.length() - OID4VP_REQUEST_ID_SUFFIX.length());
-        }
-        return requestId;
-    }
-
 }

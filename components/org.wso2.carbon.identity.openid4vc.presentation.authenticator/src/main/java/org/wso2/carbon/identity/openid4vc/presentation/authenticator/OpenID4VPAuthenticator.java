@@ -251,27 +251,6 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
     }
 
     /**
-     * Extract the username from verified claims using only the IDP-configured subject claim.
-     *
-     * <p>The remote claim name to use as subject is resolved from the IDP's {@code userIdClaim}
-     * remote URI. If that cannot be determined (IDP not configured, or no matching mapping), this
-     * method returns {@code null}, which causes authentication to fail with a clear error rather
-     * than silently picking the wrong field.</p>
-     *
-     * @param verifiedClaims     Claims extracted and verified from the VC.
-     * @param subjectRemoteClaim The remote (VC-side) claim name that corresponds to the IDP subject.
-     * @return Username string, or null if not determinable.
-     */
-    private String extractUsername(Map<String, Object> verifiedClaims,
-                                   String subjectRemoteClaim) {
-
-        if (StringUtils.isBlank(subjectRemoteClaim)) {
-            return null;
-        }
-        return MapUtils.getString(verifiedClaims, subjectRemoteClaim);
-    }
-
-    /**
      * Process the authentication request and status/response callbacks.
      *
      * @param request  HTTP request.
