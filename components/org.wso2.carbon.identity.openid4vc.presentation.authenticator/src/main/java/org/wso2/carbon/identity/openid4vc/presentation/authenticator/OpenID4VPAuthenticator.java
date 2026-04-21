@@ -42,7 +42,6 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VP
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPContext;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.impl.VPRequestServiceImpl;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints;
 import org.wso2.carbon.idp.mgt.IdentityProviderManager;
 
 import java.io.IOException;
@@ -63,7 +62,6 @@ import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.AUTHENTICATOR_NAME;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.CLAIM_CREDENTIAL_SUBJECT;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.CLAIM_VC;
-import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DEFAULT_VP_REQUEST_EXPIRY_MS;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DISPLAY_ORDER_3;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DISPLAY_ORDER_4;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DISPLAY_ORDER_5;
@@ -202,15 +200,10 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             HttpServletResponse response,
             AuthenticationContext context) throws AuthenticationFailedException {
 
-        String publicRequestId = request.getParameter(Constraints.PARAM_VP_REQUEST_ID);
-        if (StringUtils.isBlank(publicRequestId)) {
-            throw new AuthenticationFailedException("Public request ID missing in the response.");
-        }
-
-        // Retrieve the isolated VP context using the alias ID.
-        VPContext vpContext = VPServiceDataHolder.getVPContextService().getVPContext(publicRequestId)
-                .orElseThrow(() -> new AuthenticationFailedException("No VP request context found for ID: "
-                        + publicRequestId));
+        // Use the framework-provided AuthenticationContext as the primary source.
+        VPContext vpContext = VPServiceDataHolder.getVPContextService().getVPContext(context)
+                .orElseThrow(() -> new AuthenticationFailedException(
+                        "No VP request context found in authentication context."));
         Map<String, Object> verifiedClaims = vpContext.getVerifiedClaims();
 
         if (MapUtils.isEmpty(verifiedClaims)) {
@@ -218,8 +211,17 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
                     + "Verification must have failed.");
         }
 
-        // Clean up the alias context from the cache.
-        FrameworkUtils.removeAuthenticationContextFromCache(publicRequestId);
+        // Clean up using the best available context cache key.
+        String cacheKey = StringUtils.trimToNull(request.getParameter(PARAM_SESSION_DATA_KEY));
+        if (StringUtils.isBlank(cacheKey)) {
+            cacheKey = StringUtils.trimToNull(request.getParameter(PARAM_VP_REQUEST_ID));
+        }
+        if (StringUtils.isBlank(cacheKey)) {
+            cacheKey = StringUtils.trimToNull(context.getContextIdentifier());
+        }
+        if (StringUtils.isNotBlank(cacheKey)) {
+            FrameworkUtils.removeAuthenticationContextFromCache(cacheKey);
+        }
 //ToDo: use clearCacheEntry
         ClaimMapping[] idpClaimMappings = resolveIdpClaimMappings(context);
 
@@ -378,12 +380,6 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         if (vpContextOpt.isPresent()) {
             VPContext vpContext = vpContextOpt.get();
             status = vpContext.getRequestStatus();
-
-            // Check if the request has expired based on the 60-second window.
-            if (VPRequestStatus.ACTIVE.equals(status) && isRequestExpired(vpContext)) {
-                status = VPRequestStatus.EXPIRED;
-                vpContext.setRequestStatus(status);
-            }
         }
         if (status == null) {
             status = VPRequestStatus.ACTIVE;
@@ -799,20 +795,5 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
 
         String value = request.getParameter(name);
         return StringUtils.isNotBlank(value) ? Encode.forHtml(value) : null;
-    }
-
-    /**
-     * Check if the VP request has expired based on the configured active window.
-     *
-     * @param vpRequestContext VP request context.
-     * @return True if expired, false otherwise.
-     */
-    private boolean isRequestExpired(VPContext vpContext) {
-
-        if (vpContext == null) {
-            return false;
-        }
-        long currentTime = System.currentTimeMillis();
-        return (currentTime - vpContext.getCreatedAt()) > DEFAULT_VP_REQUEST_EXPIRY_MS;
     }
 }

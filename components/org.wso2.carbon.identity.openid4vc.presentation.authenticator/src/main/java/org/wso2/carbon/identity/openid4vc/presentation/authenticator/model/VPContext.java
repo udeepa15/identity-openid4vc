@@ -31,7 +31,6 @@ public class VPContext implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private VPRequestStatus requestStatus;
-    private final long createdAt;
     private Map<String, Object> verifiedClaims;
 
     /**
@@ -42,19 +41,6 @@ public class VPContext implements Serializable {
     public VPContext(VPRequestStatus requestStatus) {
 
         this.requestStatus = requestStatus;
-        this.createdAt = System.currentTimeMillis();
-    }
-
-    /**
-     * Create a VP context.
-     *
-     * @param requestStatus Current VP request status.
-     * @param createdAt     Creation timestamp.
-     */
-    public VPContext(VPRequestStatus requestStatus, long createdAt) {
-
-        this.requestStatus = requestStatus;
-        this.createdAt = createdAt;
     }
 
     /**
@@ -75,16 +61,6 @@ public class VPContext implements Serializable {
     public void setRequestStatus(VPRequestStatus requestStatus) {
 
         this.requestStatus = requestStatus;
-    }
-
-    /**
-     * Returns the creation timestamp.
-     *
-     * @return Creation timestamp.
-     */
-    public long getCreatedAt() {
-
-        return createdAt;
     }
 
     /**

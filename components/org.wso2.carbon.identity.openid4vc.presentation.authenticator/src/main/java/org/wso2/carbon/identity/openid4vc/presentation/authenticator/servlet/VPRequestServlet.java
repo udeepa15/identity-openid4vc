@@ -43,7 +43,6 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.DEFAULT_VP_REQUEST_EXPIRY_MS;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.RESPONSE_REQUEST_ID;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.RESPONSE_STATUS;
 
@@ -167,17 +166,6 @@ public class VPRequestServlet extends HttpServlet {
 
             // 2. If the status is active then check the context expiry time.
             if (status == VPRequestStatus.ACTIVE) {
-                if (isRequestExpired(vpContext)) {
-                    // if expired change the context status to Expired also response status as expired.
-                    vpContext.setRequestStatus(VPRequestStatus.EXPIRED);
-                    vpContextService.updateVPContext(requestId, vpContext);
-                    JsonObject statusResponse = new JsonObject();
-                    statusResponse.addProperty(RESPONSE_REQUEST_ID, requestId);
-                    statusResponse.addProperty(RESPONSE_STATUS, VPRequestStatus.EXPIRED.name());
-                    sendJsonResponse(response, HttpServletResponse.SC_OK, statusResponse);
-                    return;
-                }
-
                 // if not expired then check whther the request is a status request or an authorization request.
                 if (isStatusRequest) {
                     JsonObject statusResponse = new JsonObject();
@@ -253,20 +241,6 @@ public class VPRequestServlet extends HttpServlet {
         response.getOutputStream().flush();
     }
 
-    /**
-     * Check if the VP request has expired based on the 60-second active window.
-     *
-     * @param vpContext VP request context.
-     * @return True if expired, false otherwise.
-     */
-    private boolean isRequestExpired(VPContext vpContext) {
-
-        if (vpContext == null) {
-            return false;
-        }
-        long currentTime = System.currentTimeMillis();
-        return (currentTime - vpContext.getCreatedAt()) > DEFAULT_VP_REQUEST_EXPIRY_MS;
-    }
 
     /**
      * Send JSON response.

@@ -268,6 +268,10 @@
             var submitted = false;
             var currentFailureReason = 'failed';
 
+            function logDebugDetails(stage, details) {
+                console.log('[OpenID4VP][wallet_login.jsp][' + stage + ']', details || {});
+            }
+
             // Keep JS QR bootstrap aligned with QRCodeUtil.generateRequestUriQRContent.
             function buildRequestUriQRContent(requestUri, clientId) {
                 if (!requestUri) {
@@ -345,6 +349,11 @@
 
             // Poll for VP status
             function pollStatus() {
+                logDebugDetails('poll-request', {
+                    endpoint: CONFIG.pollEndpoint,
+                    sessionDataKey: CONFIG.sessionDataKey
+                });
+
                 fetch(CONFIG.pollEndpoint, {
                     method: 'GET',
                     headers: {
@@ -353,7 +362,7 @@
                 })
                 .then(function(response) { return response.json(); })
                 .then(function(data) {
-                    console.log('Poll response:', data);
+                    logDebugDetails('poll-response', data);
 
                     var status = data.status ? data.status.toUpperCase() : '';
 
@@ -372,7 +381,7 @@
                     }
                 })
                 .catch(function(error) {
-                    console.error('Poll error:', error);
+                    logDebugDetails('poll-error', { message: error && error.message ? error.message : error });
                     // Continue polling despite errors
                 });
             }
@@ -391,6 +400,12 @@
                 // Submit form to complete authentication
                 setTimeout(function() {
                     document.getElementById('authStatus').value = 'success';
+                    logDebugDetails('auth-submit', {
+                        action: document.getElementById('authForm').action,
+                        sessionDataKey: CONFIG.sessionDataKey,
+                        status: 'success',
+                        vpRequestId: document.getElementById('authRequestId').value
+                    });
                     document.getElementById('authForm').submit();
                 }, 1000);
             }
@@ -430,12 +445,28 @@
             function retryAuth() {
                 document.getElementById('authRequestId').value = '';
                 document.getElementById('authStatus').value = currentFailureReason;
+                logDebugDetails('auth-retry-submit', {
+                    action: document.getElementById('authForm').action,
+                    sessionDataKey: CONFIG.sessionDataKey,
+                    status: currentFailureReason,
+                    vpRequestId: document.getElementById('authRequestId').value
+                });
                 document.getElementById('authForm').submit();
             }
 
             // Initialize
             document.addEventListener('DOMContentLoaded', function() {
                 CONFIG.qrContent = buildRequestUriQRContent(CONFIG.requestUri, CONFIG.clientId);
+
+                logDebugDetails('init-config', {
+                    sessionDataKey: CONFIG.sessionDataKey,
+                    clientId: CONFIG.clientId,
+                    requestUri: CONFIG.requestUri,
+                    qrContent: CONFIG.qrContent,
+                    pollEndpoint: CONFIG.pollEndpoint,
+                    pollInterval: CONFIG.pollInterval,
+                    timeout: CONFIG.timeout
+                });
 
                 if (CONFIG.qrContent) {
                     initQRCode();
@@ -454,3 +485,4 @@
         </script>
     </body>
 </html>
+

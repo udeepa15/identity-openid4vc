@@ -39,7 +39,6 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.V
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorServerException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPContext;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
@@ -128,7 +127,7 @@ public class VPRequestServiceImpl extends VPRequestService {
                     "No authentication context found for request ID: " + requestId);
         }
 
-        VPContext vpContext = VPServiceDataHolder.getVPContextService().getVPContext(requestId)
+        VPServiceDataHolder.getVPContextService().getVPContext(requestId)
                 .orElseThrow(() -> new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
                         "No VP context found for request ID: " + requestId));
 
@@ -150,8 +149,7 @@ public class VPRequestServiceImpl extends VPRequestService {
 
         // 2. Resolve identifiers and timestamps.
         String nonce = generateNonce();
-        long createdAt = vpContext.getCreatedAt();
-        long expiresAt = calculateExpiryTime(createdAt, DEFAULT_EXPIRY_MS);
+        long expiresAt = System.currentTimeMillis() + DEFAULT_EXPIRY_MS;
 
         // 3. Resolve and process presentation definition.
         String presentationDefinition = resolvePresentationDefinition(presentationDefinitionId, tenantId);
@@ -356,17 +354,6 @@ public class VPRequestServiceImpl extends VPRequestService {
         return UUID.randomUUID().toString();
     }
 
-    /**
-     * Calculate expiry time.
-     *
-     * @param createdAt The creation time in milliseconds.
-     * @param timeoutMs The timeout duration in milliseconds.
-     * @return The expiration time in milliseconds.
-     */
-    private long calculateExpiryTime(final long createdAt, final long timeoutMs) {
-
-        return createdAt + timeoutMs;
-    }
 
     /**
      * Build the response URI.
