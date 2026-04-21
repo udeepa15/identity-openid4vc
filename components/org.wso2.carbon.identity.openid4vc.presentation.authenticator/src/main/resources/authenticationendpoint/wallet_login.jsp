@@ -18,7 +18,6 @@
 
 <%@ page import="org.owasp.encoder.Encode" %>
 <%@ page import="java.io.File" %>
-<%@ page import="java.net.URLDecoder" %>
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <%@ taglib prefix="layout" uri="org.wso2.identity.apps.taglibs.layout.controller" %>
@@ -101,17 +100,6 @@
             @keyframes wallet-spin {
                 to { transform: rotate(360deg); }
             }
-            .timer-text {
-                font-size: 12px;
-                color: #888;
-                margin-top: 10px;
-            }
-            .timer-text.warning {
-                color: #f0ad4e;
-            }
-            .timer-text.danger {
-                color: #dc3545;
-            }
             .wallet-steps {
                 text-align: left;
                 padding-left: 20px;
@@ -131,12 +119,6 @@
     </head>
 
     <body class="login-portal layout totp-portal-layout">
-        <% if (new File(getServletContext().getRealPath("extensions/timeout.jsp")).exists()) { %>
-            <jsp:include page="extensions/timeout.jsp"/>
-        <% } else { %>
-            <jsp:include page="util/timeout.jsp"/>
-        <% } %>
-
         <layout:main layoutName="<%= layout %>" layoutFileRelativePath="<%= layoutFileRelativePath %>" data="<%= layoutData %>" >
             <layout:component componentName="ProductHeader">
                 <%-- product-title --%>
@@ -175,11 +157,6 @@
                             </div>
                         </div>
 
-                        <%-- Timer --%>
-                        <div class="text-center">
-                            <div id="timer" class="timer-text">Expires in 1:00</div>
-                        </div>
-
                         <div class="ui divider hidden"></div>
 
                         <%-- Instructions --%>
@@ -211,8 +188,6 @@
                         <div id="errorContainer" class="ui negative message" style="display: none;">
                             <div class="header">Authentication Failed</div>
                             <p id="errorMessage">An error occurred during verification.</p>
-                            <div class="ui divider hidden"></div>
-                            <button class="ui button" onclick="retryAuth()">Try Again</button>
                         </div>
                     </div>
                 </div>
@@ -258,15 +233,11 @@
                 clientId: '<%=clientId != null ? Encode.forJavaScript(clientId) : ""%>',
                 requestUri: '<%=requestUri != null ? Encode.forJavaScript(requestUri) : ""%>',
                 pollInterval: 5000,
-                timeout: 60,
                 pollEndpoint: '/oid4vp/v1/vp-request/<%=Encode.forUriComponent(sessionDataKey != null ? sessionDataKey : "")%>/status'
             };
 
-            var timeRemaining = CONFIG.timeout;
             var pollTimer = null;
-            var countdownTimer = null;
             var submitted = false;
-            var currentFailureReason = 'failed';
 
             function logDebugDetails(stage, details) {
                 console.log('[OpenID4VP][wallet_login.jsp][' + stage + ']', details || {});
@@ -326,27 +297,6 @@
                 }
             }
 
-            // Update countdown timer
-            function updateTimer() {
-                var timerDiv = document.getElementById('timer');
-                var minutes = Math.floor(timeRemaining / 60);
-                var seconds = timeRemaining % 60;
-
-                timerDiv.textContent = 'Expires in ' + minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
-
-                if (timeRemaining <= 60) {
-                    timerDiv.className = 'timer-text danger';
-                } else if (timeRemaining <= 120) {
-                    timerDiv.className = 'timer-text warning';
-                }
-
-                timeRemaining--;
-
-                if (timeRemaining < 0) {
-                    handleExpired();
-                }
-            }
-
             // Poll for VP status
             function pollStatus() {
                 logDebugDetails('poll-request', {
@@ -391,9 +341,7 @@
                 if (submitted) return;
                 submitted = true;
                 clearInterval(pollTimer);
-                clearInterval(countdownTimer);
                 pollTimer = null;
-                countdownTimer = null;
 
                 updateStatus('success', 'Credentials verified! Logging you in...');
 
@@ -410,11 +358,8 @@
                 }, 1000);
             }
 
-            // Handle error
+            // Handle error and keep polling active for possible subsequent valid submission.
             function handleError(message) {
-                clearInterval(pollTimer);
-                clearInterval(countdownTimer);
-
                 updateStatus('error', 'Verification failed');
 
                 var errorContainer = document.getElementById('errorContainer');
@@ -422,36 +367,20 @@
 
                 errorMessage.textContent = message;
                 errorContainer.style.display = 'block';
-                currentFailureReason = 'failed';
             }
 
             // Handle expired request
             function handleExpired() {
                 clearInterval(pollTimer);
-                clearInterval(countdownTimer);
+                pollTimer = null;
 
                 updateStatus('error', 'Request expired');
-                document.getElementById('timer').textContent = 'Expired';
 
                 var errorContainer = document.getElementById('errorContainer');
                 var errorMessage = document.getElementById('errorMessage');
 
-                errorMessage.textContent = 'The QR code has expired. Please try again.';
+                errorMessage.textContent = 'The QR code has expired.';
                 errorContainer.style.display = 'block';
-                currentFailureReason = 'expired';
-            }
-
-            // Retry authentication
-            function retryAuth() {
-                document.getElementById('authRequestId').value = '';
-                document.getElementById('authStatus').value = currentFailureReason;
-                logDebugDetails('auth-retry-submit', {
-                    action: document.getElementById('authForm').action,
-                    sessionDataKey: CONFIG.sessionDataKey,
-                    status: currentFailureReason,
-                    vpRequestId: document.getElementById('authRequestId').value
-                });
-                document.getElementById('authForm').submit();
             }
 
             // Initialize
@@ -464,8 +393,7 @@
                     requestUri: CONFIG.requestUri,
                     qrContent: CONFIG.qrContent,
                     pollEndpoint: CONFIG.pollEndpoint,
-                    pollInterval: CONFIG.pollInterval,
-                    timeout: CONFIG.timeout
+                    pollInterval: CONFIG.pollInterval
                 });
 
                 if (CONFIG.qrContent) {
@@ -474,10 +402,6 @@
                 } else {
                     handleError('Missing request details for wallet QR generation.');
                 }
-
-                // Start countdown
-                countdownTimer = setInterval(updateTimer, 1000);
-                updateTimer();
 
                 // Start polling
                 pollTimer = setInterval(pollStatus, CONFIG.pollInterval);

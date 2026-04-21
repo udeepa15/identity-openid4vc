@@ -151,13 +151,6 @@ public class VPSubmissionServlet extends HttpServlet {
                 return;
             }
  
-            if (!VPRequestStatus.ACTIVE.equals(vpContext.getRequestStatus())) {
-                sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
-                        new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
-                                "Request is not in ACTIVE status."));
-                return;
-            }
- 
             if (StringUtils.isBlank(submission.getVpToken())) {
                 sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
                         new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
