@@ -109,11 +109,6 @@ public class Constraints {
     public static final String TENANT_DOMAIN_PATTERN = "^[a-zA-Z0-9._-]+$";
 
     /**
-     * Expiry time for VP requests.
-     */
-    public static final long DEFAULT_VP_REQUEST_EXPIRY_MS = 60000;
-
-    /**
      * Private constructor to prevent instantiation of utility class.
      */
     private Constraints() {

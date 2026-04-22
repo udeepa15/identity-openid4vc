@@ -123,22 +123,11 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             // Generate a random UUID as the public Request ID.
             String publicRequestId = UUID.randomUUID().toString();
 
-            // Proactively cache a shadow copy of the context using the alias ID.
-            // This ensures the framework's internal context remains clean while the alias holds the OpenID4VP state.
-            FrameworkUtils.addAuthenticationContextToCache(publicRequestId, context);
-
-            // Retrieve the alias context and initialize it with OpenID4VP specific state.
-            AuthenticationContext aliasContext = FrameworkUtils.getAuthenticationContextFromCache(publicRequestId);
-            if (aliasContext == null) {
-                throw new AuthenticationFailedException(
-                        "Failed to retrieve authentication context for request ID: " + publicRequestId);
-            }
-
-            VPServiceDataHolder.getVPContextService().setVPContext(aliasContext,
+             VPServiceDataHolder.getVPContextService().setVPContext(context,
                     new VPContext(VPRequestStatus.ACTIVE));
 
-            // Resolve metadata using the alias context to ensure URLs point to the correct ID.
-            Map<String, String> metadata = getVPRequestService().getVPRequestMetadata(publicRequestId);
+             // Resolve metadata using the alias context to ensure URLs point to the correct ID.
+             Map<String, String> metadata = getVPRequestService().getVPRequestMetadata(publicRequestId);
 
             String redirectUrl = createRedirectURI(
                     WALLET_LOGIN_PAGE,
@@ -147,6 +136,9 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
                     metadata.get(PARAM_REQUEST_URI));
 
             response.sendRedirect(redirectUrl);
+
+            // Cache the authentication context at the end of initiation.
+            FrameworkUtils.addAuthenticationContextToCache(publicRequestId, context);
 
         } catch (VPAuthenticatorException e) {
             throw new AuthenticationFailedException("Failed to initiate VP request: " + e.getMessage(), e);
@@ -205,12 +197,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
 
         // Clean up using the best available context cache key.
         String cacheKey = StringUtils.trimToNull(request.getParameter(PARAM_SESSION_DATA_KEY));
-        if (StringUtils.isBlank(cacheKey)) {
-            cacheKey = StringUtils.trimToNull(request.getParameter(PARAM_VP_REQUEST_ID));
-        }
-        if (StringUtils.isBlank(cacheKey)) {
-            cacheKey = StringUtils.trimToNull(context.getContextIdentifier());
-        }
+
         if (StringUtils.isNotBlank(cacheKey)) {
             FrameworkUtils.removeAuthenticationContextFromCache(cacheKey);
         }
@@ -409,6 +396,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      * @param request HTTP request.
      * @return Context identifier.
      */
+    //ToDo use as the name request_id
     @Override
     public String getContextIdentifier(HttpServletRequest request) {
 
