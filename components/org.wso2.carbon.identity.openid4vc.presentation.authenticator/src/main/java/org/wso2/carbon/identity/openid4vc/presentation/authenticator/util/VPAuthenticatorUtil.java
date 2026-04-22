@@ -20,6 +20,7 @@ package org.wso2.carbon.identity.openid4vc.presentation.authenticator.util;
 
 import org.wso2.carbon.identity.core.ServiceURLBuilder;
 import org.wso2.carbon.identity.core.URLBuilderException;
+import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorErrorCode;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorServerException;
@@ -46,7 +47,8 @@ public final class VPAuthenticatorUtil {
             throws VPAuthenticatorException {
 
         try {
-            return ServiceURLBuilder.create().build()
+            return ServiceURLBuilder.create()
+                    .build(IdentityUtil.getHostName())
                     .getAbsolutePublicUrlWithoutPath();
         } catch (URLBuilderException e) {
             throw new VPAuthenticatorServerException(VPAuthenticatorErrorCode.INTERNAL_SERVER_ERROR,

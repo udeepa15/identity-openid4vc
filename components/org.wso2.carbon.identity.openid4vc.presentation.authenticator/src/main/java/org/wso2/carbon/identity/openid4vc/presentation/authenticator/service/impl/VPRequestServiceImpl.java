@@ -147,7 +147,7 @@ public class VPRequestServiceImpl extends VPRequestService {
         int tenantId = IdentityTenantUtil.getTenantId(context.getTenantDomain());
 
         // 2. Resolve identifiers and timestamps.
-        String nonce = generateNonce();
+        String nonce = UUID.randomUUID().toString();
         long expiresAt = System.currentTimeMillis() + DEFAULT_EXPIRY_MS;
 
         // 3. Resolve and process presentation definition.
@@ -342,18 +342,6 @@ public class VPRequestServiceImpl extends VPRequestService {
                     "Error building request object JWT.", e);
         }
     }
-
-
-    /**
-     * Generate a unique nonce.
-     *
-     * @return A unique nonce string.
-     */
-    private String generateNonce() {
-
-        return UUID.randomUUID().toString();
-    }
-
 
     /**
      * Build the response URI.

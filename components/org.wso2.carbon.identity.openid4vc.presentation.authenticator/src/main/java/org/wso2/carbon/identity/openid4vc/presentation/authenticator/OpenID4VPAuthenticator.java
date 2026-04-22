@@ -121,7 +121,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
 
         try {
             // Generate a random UUID as the public Request ID.
-            String requestId = UUID.randomUUID().toString();//ToDo request
+            String requestId = UUID.randomUUID().toString();
 
              VPServiceDataHolder.getVPContextService().setVPContext(context,
                     new VPContext(VPRequestStatus.ACTIVE));
@@ -212,7 +212,8 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
 
         // 5. Pass the RAW claims directly to the framework.
         Map<ClaimMapping, String> rawAttributes = new HashMap<>();
-        for (Map.Entry<String, Object> entry : verifiedClaims.entrySet()) {//ToDo: import
+        for (Map.Entry<String, Object> entry : verifiedClaims.entrySet()) {
+            //ToDo: import
             if (entry.getValue() != null && org.apache.commons.lang.StringUtils
                     .isNotBlank(entry.getValue().toString())) {
                 String claimName = entry.getKey();
