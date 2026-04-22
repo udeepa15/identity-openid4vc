@@ -31,8 +31,6 @@ import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang.StringUtils;
 import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
 import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkUtils;
-import org.wso2.carbon.identity.core.ServiceURLBuilder;
-import org.wso2.carbon.identity.core.URLBuilderException;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorClientException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorErrorCode;
@@ -43,6 +41,7 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPReq
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.VPAuthenticatorUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
 import org.wso2.carbon.identity.openid4vc.presentation.did.provider.DIDProvider;
 import org.wso2.carbon.identity.openid4vc.presentation.did.provider.DIDProviderFactory;
@@ -134,7 +133,7 @@ public class VPRequestServiceImpl extends VPRequestService {
         // 1. Resolve basic configuration.
         String didMethod = Constraints.DEFAULT_DID_METHOD_WEB;
         String signingAlgorithm = OpenID4VPConstants.Verification.ALG_EDDSA;
-        String baseUrl = resolveTenantAwareBaseUrl();
+        String baseUrl = VPAuthenticatorUtil.resolveTenantAwareBaseUrl();
 
         String clientId = getClientId(baseUrl);
         String presentationDefinitionId = MapUtils.getString(context.getAuthenticatorProperties(),
@@ -176,7 +175,7 @@ public class VPRequestServiceImpl extends VPRequestService {
     @Override
     public Map<String, String> getVPRequestMetadata(String requestId) throws VPAuthenticatorException {
 //ToDo : check with multi tenent
-        String baseUrl = resolveTenantAwareBaseUrl();
+        String baseUrl = VPAuthenticatorUtil.resolveTenantAwareBaseUrl();
         Map<String, String> metadata = new HashMap<>();
         metadata.put(Constraints.PARAM_CLIENT_ID, getClientId(baseUrl));
         metadata.put(Constraints.PARAM_REQUEST_URI, buildRequestUri(baseUrl, requestId));
@@ -262,7 +261,8 @@ public class VPRequestServiceImpl extends VPRequestService {
         try {
             DIDProvider provider = DIDProviderFactory.getProvider(didMethod);
             int tenantId = vpRequest.getTenantId();
-            String activeBaseUrl = resolveTenantAwareBaseUrl();
+            String activeBaseUrl = VPAuthenticatorUtil
+                    .resolveTenantAwareBaseUrl();
 
             String did = provider.getDID(tenantId, activeBaseUrl);
             String keyId = provider.getSigningKeyId(tenantId, activeBaseUrl);
@@ -390,20 +390,4 @@ public class VPRequestServiceImpl extends VPRequestService {
         return currentBaseUrl + endpoint;
     }
 
-    /**
-     * Resolve tenant-aware base URL from framework utilities.
-     *
-     * @return Tenant-aware base URL.
-     * @throws VPAuthenticatorException If URL resolution fails.
-     */
-    //ToDo: simplify the jsp info creation
-    private String resolveTenantAwareBaseUrl() throws VPAuthenticatorException {
-
-        try {
-            return ServiceURLBuilder.create().build().getAbsolutePublicUrlWithoutPath();
-        } catch (URLBuilderException e) {
-            throw new VPAuthenticatorServerException(VPAuthenticatorErrorCode.INTERNAL_SERVER_ERROR,
-                    "Error while resolving tenant-aware base URL.", e);
-        }
-    }
 }
