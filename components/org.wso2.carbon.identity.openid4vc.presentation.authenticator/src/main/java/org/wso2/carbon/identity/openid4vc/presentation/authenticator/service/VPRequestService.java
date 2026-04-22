@@ -17,9 +17,7 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.service;
 
-import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 
 import java.util.Map;
 
@@ -47,14 +45,6 @@ public abstract class VPRequestService {
     public abstract Map<String, String> getVPRequestMetadata(String requestId)
             throws VPAuthenticatorException;
 
-    /**
-     * Create a new VP authorization request for the authentication session.
-     *
-     * @param context Authentication context.
-     * @return Created VP request.
-     * @throws VPAuthenticatorException If an error occurs during VP request creation.
-     */
-    public abstract VPRequest createVPRequest(AuthenticationContext context)
-            throws VPAuthenticatorException;
+
 
 }

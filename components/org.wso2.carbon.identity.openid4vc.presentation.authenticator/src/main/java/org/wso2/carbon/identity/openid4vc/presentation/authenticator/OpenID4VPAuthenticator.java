@@ -39,6 +39,8 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VP
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPContext;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.impl.VPRequestServiceImpl;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.VPAuthenticatorUtil;
 
 import java.io.IOException;
 import java.net.URLEncoder;
@@ -126,13 +128,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
              VPServiceDataHolder.getVPContextService().setVPContext(context,
                     new VPContext(VPRequestStatus.ACTIVE));
 
-             // Resolve metadata using the alias context to ensure URLs point to the correct ID.
-             Map<String, String> metadata = getVPRequestService().getVPRequestMetadata(requestId);
-            //ToDo: Do the uri build here (util method for the client ID)
-            String redirectUrl = createRedirectURI(
-                    requestId,
-                    metadata.get(PARAM_CLIENT_ID),
-                    metadata.get(PARAM_REQUEST_URI));
+            String redirectUrl = createRedirectURI(requestId);
 
             response.sendRedirect(redirectUrl);
 
@@ -149,17 +145,17 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
     /**
      * Build wallet login redirect URI with required bootstrap parameters for QR rendering.
      *
-     * @param sessionId  Masked session data key.
-     * @param clientId   Client ID used in the VP request.
-     * @param requestUri Request URI for by-reference OpenID4VP flow.
+     * @param requestId  Masked session data key.
      * @return Redirect URI with encoded query parameters.
      */
-    private String createRedirectURI(String sessionId,
-                                     String clientId,
-                                     String requestUri) {
+    private String createRedirectURI(String requestId) throws VPAuthenticatorException {
+
+        String baseUrl = VPAuthenticatorUtil.resolveTenantAwareBaseUrl();
+        String requestUri = buildRequestUri(baseUrl, requestId);
+        String clientId = VPAuthenticatorUtil.getClientId(baseUrl);
 
         return WALLET_LOGIN_PAGE + "?"
-                + PARAM_SESSION_DATA_KEY + "=" + URLEncoder.encode(sessionId, StandardCharsets.UTF_8)
+                + PARAM_SESSION_DATA_KEY + "=" + URLEncoder.encode(requestId, StandardCharsets.UTF_8)
                 + "&" + PARAM_CLIENT_ID + "="
                 + URLEncoder.encode(StringUtils.defaultString(clientId), StandardCharsets.UTF_8)
                 + "&" + PARAM_REQUEST_URI + "="
@@ -514,4 +510,32 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         String value = request.getParameter(name);
         return StringUtils.isNotBlank(value) ? Encode.forHtml(value) : null;
     }
+
+
+
+
+    /**
+     * Build the request URI for a specific request ID.
+     *
+     * @param currentBaseUrl The base URL to use.
+     * @param requestId      The request identifier.
+     * @return The complete request URI.
+     */
+    private String buildRequestUri(final String currentBaseUrl,
+                                   final String requestId) {
+
+        String endpoint = Constraints.REQUEST_URI_ENDPOINT
+                + requestId;
+        if (currentBaseUrl.endsWith("/")) {
+            return currentBaseUrl.substring(0, currentBaseUrl.length() - 1)
+                    + endpoint;
+        }
+        return currentBaseUrl + endpoint;
+    }
+
+
+
+
+
+
 }

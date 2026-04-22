@@ -135,7 +135,7 @@ public class VPRequestServiceImpl extends VPRequestService {
         String signingAlgorithm = OpenID4VPConstants.Verification.ALG_EDDSA;
         String baseUrl = VPAuthenticatorUtil.resolveTenantAwareBaseUrl();
 
-        String clientId = getClientId(baseUrl);
+        String clientId = VPAuthenticatorUtil.getClientId(baseUrl);
         String presentationDefinitionId = MapUtils.getString(context.getAuthenticatorProperties(),
                 PROP_PRESENTATION_DEFINITION_ID);
 
@@ -177,40 +177,15 @@ public class VPRequestServiceImpl extends VPRequestService {
 //ToDo : check with multi tenent
         String baseUrl = VPAuthenticatorUtil.resolveTenantAwareBaseUrl();
         Map<String, String> metadata = new HashMap<>();
-        metadata.put(Constraints.PARAM_CLIENT_ID, getClientId(baseUrl));
+        metadata.put(Constraints.PARAM_CLIENT_ID, VPAuthenticatorUtil.getClientId(baseUrl));
         metadata.put(Constraints.PARAM_REQUEST_URI, buildRequestUri(baseUrl, requestId));
 
         return metadata;
     }
 
-    private String getClientId(String baseUrl) throws VPAuthenticatorClientException {
 
-        if (StringUtils.isBlank(baseUrl)) {
-            throw new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
-                    "Base URL cannot be null or empty.");
-        }
 
-        return Constraints.DID_WEB_PREFIX + baseUrl
-                .replaceFirst(Constraints.URL_SCHEME_REGEX, "")
-                .replaceAll(Constraints.TRAILING_SLASH_REGEX, "");
-    }
 
-    @Override
-    public VPRequest createVPRequest(AuthenticationContext context) throws VPAuthenticatorException {
-
-        String requestId = context.getContextIdentifier();
-        String requestJwt = generateRequestJwt(requestId);
-
-        Map<String, String> metadata = getVPRequestMetadata(requestId);
-
-        return new VPRequest.Builder()
-                .requestId(requestId)
-                .clientId(metadata.get(Constraints.PARAM_CLIENT_ID))
-                .requestJwt(requestJwt)
-                .requestUri(metadata.get(Constraints.PARAM_REQUEST_URI))
-                .status(VPRequestStatus.ACTIVE)
-                .build();
-    }
 
 
     /**

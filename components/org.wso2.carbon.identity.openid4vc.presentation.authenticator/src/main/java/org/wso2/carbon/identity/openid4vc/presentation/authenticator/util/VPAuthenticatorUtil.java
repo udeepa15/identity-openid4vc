@@ -18,9 +18,11 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.util;
 
+import org.apache.commons.lang.StringUtils;
 import org.wso2.carbon.identity.core.ServiceURLBuilder;
 import org.wso2.carbon.identity.core.URLBuilderException;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorClientException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorErrorCode;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorServerException;
@@ -54,5 +56,26 @@ public final class VPAuthenticatorUtil {
             throw new VPAuthenticatorServerException(VPAuthenticatorErrorCode.INTERNAL_SERVER_ERROR,
                     "Error while resolving tenant-aware base URL.", e);
         }
+    }
+
+    /**
+     * Get the client ID for the given base URL.
+     *
+     * @param baseUrl Base URL.
+     * @return Client ID.
+     * @throws VPAuthenticatorClientException If base URL is blank.
+     */
+    public static String getClientId(String baseUrl)
+            throws VPAuthenticatorClientException {
+
+        if (StringUtils.isBlank(baseUrl)) {
+            throw new VPAuthenticatorClientException(
+                    VPAuthenticatorErrorCode.INVALID_REQUEST,
+                    "Base URL cannot be null or empty.");
+        }
+
+        return Constraints.DID_WEB_PREFIX + baseUrl
+                .replaceFirst(Constraints.URL_SCHEME_REGEX, "")
+                .replaceAll(Constraints.TRAILING_SLASH_REGEX, "");
     }
 }
