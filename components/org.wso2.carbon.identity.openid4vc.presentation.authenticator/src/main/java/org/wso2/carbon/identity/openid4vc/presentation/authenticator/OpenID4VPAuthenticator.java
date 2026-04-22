@@ -121,23 +121,23 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
 
         try {
             // Generate a random UUID as the public Request ID.
-            String RequestId = UUID.randomUUID().toString();//ToDo request
+            String requestId = UUID.randomUUID().toString();//ToDo request
 
              VPServiceDataHolder.getVPContextService().setVPContext(context,
                     new VPContext(VPRequestStatus.ACTIVE));
 
              // Resolve metadata using the alias context to ensure URLs point to the correct ID.
-             Map<String, String> metadata = getVPRequestService().getVPRequestMetadata(RequestId);
+             Map<String, String> metadata = getVPRequestService().getVPRequestMetadata(requestId);
             //ToDo: Do the uri build here (util method for the client ID)
             String redirectUrl = createRedirectURI(
-                    RequestId,
+                    requestId,
                     metadata.get(PARAM_CLIENT_ID),
                     metadata.get(PARAM_REQUEST_URI));
 
             response.sendRedirect(redirectUrl);
 
             // Cache the authentication context.
-            FrameworkUtils.addAuthenticationContextToCache(RequestId, context);
+            FrameworkUtils.addAuthenticationContextToCache(requestId, context);
 
         } catch (VPAuthenticatorException e) {
             throw new AuthenticationFailedException("Failed to initiate VP request: " + e.getMessage(), e);
