@@ -175,7 +175,7 @@ public class VPRequestServiceImpl extends VPRequestService {
 
     @Override
     public Map<String, String> getVPRequestMetadata(String requestId) throws VPAuthenticatorException {
-
+//ToDo : check with multi tenent
         String baseUrl = resolveTenantAwareBaseUrl();
         Map<String, String> metadata = new HashMap<>();
         metadata.put(Constraints.PARAM_CLIENT_ID, getClientId(baseUrl));
@@ -396,6 +396,7 @@ public class VPRequestServiceImpl extends VPRequestService {
      * @return Tenant-aware base URL.
      * @throws VPAuthenticatorException If URL resolution fails.
      */
+    //ToDo: simplify the jsp info creation
     private String resolveTenantAwareBaseUrl() throws VPAuthenticatorException {
 
         try {

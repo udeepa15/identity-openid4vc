@@ -121,24 +121,23 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
 
         try {
             // Generate a random UUID as the public Request ID.
-            String publicRequestId = UUID.randomUUID().toString();
+            String RequestId = UUID.randomUUID().toString();//ToDo request
 
              VPServiceDataHolder.getVPContextService().setVPContext(context,
                     new VPContext(VPRequestStatus.ACTIVE));
 
              // Resolve metadata using the alias context to ensure URLs point to the correct ID.
-             Map<String, String> metadata = getVPRequestService().getVPRequestMetadata(publicRequestId);
-
+             Map<String, String> metadata = getVPRequestService().getVPRequestMetadata(RequestId);
+            //ToDo: Do the uri build here (util method for the client ID)
             String redirectUrl = createRedirectURI(
-                    WALLET_LOGIN_PAGE,
-                    publicRequestId,
+                    RequestId,
                     metadata.get(PARAM_CLIENT_ID),
                     metadata.get(PARAM_REQUEST_URI));
 
             response.sendRedirect(redirectUrl);
 
-            // Cache the authentication context at the end of initiation.
-            FrameworkUtils.addAuthenticationContextToCache(publicRequestId, context);
+            // Cache the authentication context.
+            FrameworkUtils.addAuthenticationContextToCache(RequestId, context);
 
         } catch (VPAuthenticatorException e) {
             throw new AuthenticationFailedException("Failed to initiate VP request: " + e.getMessage(), e);
@@ -150,20 +149,16 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
     /**
      * Build wallet login redirect URI with required bootstrap parameters for QR rendering.
      *
-     * @param walletPath Wallet login page path.
      * @param sessionId  Masked session data key.
      * @param clientId   Client ID used in the VP request.
      * @param requestUri Request URI for by-reference OpenID4VP flow.
      * @return Redirect URI with encoded query parameters.
      */
-    private String createRedirectURI(String walletPath,
-                                     String sessionId,
+    private String createRedirectURI(String sessionId,
                                      String clientId,
                                      String requestUri) {
 
-        String separator = walletPath.contains("?") ? "&" : "?";
-
-        return walletPath + separator
+        return WALLET_LOGIN_PAGE + "?"
                 + PARAM_SESSION_DATA_KEY + "=" + URLEncoder.encode(sessionId, StandardCharsets.UTF_8)
                 + "&" + PARAM_CLIENT_ID + "="
                 + URLEncoder.encode(StringUtils.defaultString(clientId), StandardCharsets.UTF_8)
@@ -188,8 +183,9 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         VPContext vpContext = VPServiceDataHolder.getVPContextService().getVPContext(context)
                 .orElseThrow(() -> new AuthenticationFailedException(
                         "No VP request context found in authentication context."));
+        //ToDo: move the claims getting here
         Map<String, Object> verifiedClaims = vpContext.getVerifiedClaims();
-
+//ToDo: improve NUll check
         if (MapUtils.isEmpty(verifiedClaims)) {
             throw new AuthenticationFailedException("No verified claims found in context. "
                     + "Verification must have failed.");
@@ -216,7 +212,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
 
         // 5. Pass the RAW claims directly to the framework.
         Map<ClaimMapping, String> rawAttributes = new HashMap<>();
-        for (Map.Entry<String, Object> entry : verifiedClaims.entrySet()) {
+        for (Map.Entry<String, Object> entry : verifiedClaims.entrySet()) {//ToDo: import
             if (entry.getValue() != null && org.apache.commons.lang.StringUtils
                     .isNotBlank(entry.getValue().toString())) {
                 String claimName = entry.getKey();
