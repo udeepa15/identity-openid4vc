@@ -23,7 +23,6 @@
     <parent>
         <groupId>org.wso2.carbon.identity.openid4vc</groupId>
         <artifactId>identity-openid4vc</artifactId>
-
         <version>1.1.7-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
