@@ -203,7 +203,7 @@ public class VerificationServiceImpl implements VerificationService {
         if (definition.getRequestedCredentials() == null) {
             return verifiedClaims;
         }
-//ToDo infor about the single VC
+        //Currently Supports a single VC
         for (PresentationDefinition.RequestedCredential req : definition.getRequestedCredentials()) {
 
             String pdIssuer = req.getIssuer();

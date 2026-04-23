@@ -27,6 +27,7 @@ import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.Ve
 import org.wso2.carbon.identity.openid4vc.presentation.verification.util.SignatureVerifier;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.util.VerificationConstants;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.vcmodel.Jwt;
+import org.wso2.carbon.identity.sdjwt.constant.SDJWTConstants;
 
 import java.text.ParseException;
 import java.util.HashMap;
@@ -100,7 +101,7 @@ public final class JwtVerifier implements Verifier {
         claims.put(VerificationConstants.CLAIM_IAT, payload.getIat());
         claims.put(VerificationConstants.CLAIM_EXP, payload.getExp());
         if (payload.getCnf() != null) {
-            claims.put(VerificationConstants.CLAIM_CNF, payload.getCnf());
+            claims.put(SDJWTConstants.CLAIM_CNF, payload.getCnf());
         }
         return claims;
     }
@@ -146,9 +147,9 @@ public final class JwtVerifier implements Verifier {
         if (claims.containsKey(VerificationConstants.CLAIM_SUB)) {
             model.setSub(claims.get(VerificationConstants.CLAIM_SUB).toString());
         }
-        if (claims.containsKey(VerificationConstants.CLAIM_CNF)
-                && claims.get(VerificationConstants.CLAIM_CNF) instanceof Map) {
-            model.setCnf((Map<String, Object>) claims.get(VerificationConstants.CLAIM_CNF));
+        if (claims.containsKey(SDJWTConstants.CLAIM_CNF)
+                && claims.get(SDJWTConstants.CLAIM_CNF) instanceof Map) {
+            model.setCnf((Map<String, Object>) claims.get(SDJWTConstants.CLAIM_CNF));
         }
 
         Map<String, Object> additional = new HashMap<>(claims);
@@ -156,7 +157,7 @@ public final class JwtVerifier implements Verifier {
         additional.remove(VerificationConstants.CLAIM_IAT);
         additional.remove(VerificationConstants.CLAIM_EXP);
         additional.remove(VerificationConstants.CLAIM_SUB);
-        additional.remove(VerificationConstants.CLAIM_CNF);
+        additional.remove(SDJWTConstants.CLAIM_CNF);
         model.setAdditionalClaims(additional);
     }
 }

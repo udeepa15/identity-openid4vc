@@ -53,13 +53,6 @@ public class VerificationConstants {
     public static final String CLAIM_SUB = "sub";
     public static final String CLAIM_IAT = "iat";
     public static final String CLAIM_EXP = "exp";
-    public static final String CLAIM_CNF = "cnf";
-
-    /**
-     * SD-JWT specific claim names.
-     *///ToDo: use the library
-    public static final String CLAIM_SD = "_sd";
-    public static final String CLAIM_SD_ALG = "_sd_alg";
 
     /**
      * DID prefixes.

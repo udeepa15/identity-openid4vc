@@ -29,6 +29,7 @@ import org.wso2.carbon.identity.openid4vc.presentation.verification.util.Verific
 import org.wso2.carbon.identity.openid4vc.presentation.verification.vcmodel.SdJwt;
 import org.wso2.carbon.identity.sdjwt.Disclosure;
 import org.wso2.carbon.identity.sdjwt.SDJWT;
+import org.wso2.carbon.identity.sdjwt.constant.SDJWTConstants;
 import org.wso2.carbon.identity.sdjwt.exception.SDJWTException;
  
 import java.text.ParseException;
@@ -119,7 +120,7 @@ public final class SdJwtVerifier implements Verifier {
         claims.put(VerificationConstants.CLAIM_IAT, payload.getIat());
         claims.put(VerificationConstants.CLAIM_EXP, payload.getExp());
         if (payload.getCnf() != null) {
-            claims.put(VerificationConstants.CLAIM_CNF, payload.getCnf());
+            claims.put(SDJWTConstants.CLAIM_CNF, payload.getCnf());
         }
         return claims;
     }
@@ -176,17 +177,17 @@ public final class SdJwtVerifier implements Verifier {
 
         Map<String, Object> claims = jwt.getJWTClaimsSet().getClaims();
 
-        if (claims.containsKey(VerificationConstants.CLAIM_SD_ALG)) {
-            payload.setSdAlg(claims.get(VerificationConstants.CLAIM_SD_ALG).toString());
+        if (claims.containsKey(SDJWTConstants.CLAIM_SD_ALG)) {
+            payload.setSdAlg(claims.get(SDJWTConstants.CLAIM_SD_ALG).toString());
         }
-        if (claims.containsKey(VerificationConstants.CLAIM_SD)
-                && claims.get(VerificationConstants.CLAIM_SD) instanceof List) {
-            payload.setSd((List<String>) claims.get(VerificationConstants.CLAIM_SD));
+        if (claims.containsKey(SDJWTConstants.CLAIM_SD)
+                && claims.get(SDJWTConstants.CLAIM_SD) instanceof List) {
+            payload.setSd((List<String>) claims.get(SDJWTConstants.CLAIM_SD));
         }
 
         Map<String, Object> additional = payload.getAdditionalClaims();
-        additional.remove(VerificationConstants.CLAIM_SD);
-        additional.remove(VerificationConstants.CLAIM_SD_ALG);
+        additional.remove(SDJWTConstants.CLAIM_SD);
+        additional.remove(SDJWTConstants.CLAIM_SD_ALG);
 
         return payload;
     }
