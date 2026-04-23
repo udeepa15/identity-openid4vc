@@ -37,6 +37,7 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.V
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorServerException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPContext;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequest;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPRequestService;
@@ -126,9 +127,11 @@ public class VPRequestServiceImpl extends VPRequestService {
                     "No authentication context found for request ID: " + requestId);
         }
 
-        VPServiceDataHolder.getVPContextService().getVPContext(requestId)
-                .orElseThrow(() -> new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
-                        "No VP context found for request ID: " + requestId));
+        Object vpContextObj = context.getProperty(Constraints.CONTEXT_VP_CONTEXT);
+        if (!(vpContextObj instanceof VPContext)) {
+            throw new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
+                    "No VP context found for request ID: " + requestId);
+        }
 
         // 1. Resolve basic configuration.
         String didMethod = Constraints.DEFAULT_DID_METHOD_WEB;

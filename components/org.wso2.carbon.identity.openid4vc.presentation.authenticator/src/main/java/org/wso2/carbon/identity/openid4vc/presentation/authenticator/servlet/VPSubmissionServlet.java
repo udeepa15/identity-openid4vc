@@ -27,6 +27,8 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.osgi.service.component.annotations.Component;
+import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
+import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkUtils;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorClientException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorErrorCode;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
@@ -35,7 +37,7 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VP
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPContext;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPSubmission;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPContextService;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints;
 import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.PresentationSubmission;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VerificationResult;
@@ -44,6 +46,7 @@ import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.Ve
 import java.io.IOException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Optional;
 
 import javax.servlet.Servlet;
 import javax.servlet.ServletException;
@@ -51,6 +54,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.PROP_PRESENTATION_DEFINITION_ID;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.RESPONSE_CONTENT_TYPE_CHARSET_UTF_8;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.RESPONSE_ERROR;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.RESPONSE_ERROR_CODE;
@@ -124,8 +128,8 @@ public class VPSubmissionServlet extends HttpServlet {
      * @throws IOException      If an I/O error occurs.
      */
     @Override
-    protected void doPost(final HttpServletRequest request,
-            final HttpServletResponse response)
+    protected void doPost(HttpServletRequest request,
+            HttpServletResponse response)
             throws ServletException, IOException {
 
         try {
@@ -136,10 +140,14 @@ public class VPSubmissionServlet extends HttpServlet {
                 return;
             }
 
-            // Retrieve VPContext directly from the service by requestId.
-            VPContextService vpContextService = VPServiceDataHolder.getVPContextService();
-            VPContext vpContext = vpContextService.getVPContext(submission.getRequestId()).orElse(null);
- 
+            AuthenticationContext context = FrameworkUtils
+                    .getAuthenticationContextFromCache(submission.getRequestId());
+
+            // Retrieve VPContext and expected definition ID from the same context.
+            VPContext vpContext = getVPContext(context).orElse(null);
+            String expectedDefinitionId = StringUtils.trimToNull(context.getAuthenticatorProperties().
+                    get(PROP_PRESENTATION_DEFINITION_ID));
+
             if (vpContext == null) {
                 sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
                         new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
@@ -148,6 +156,11 @@ public class VPSubmissionServlet extends HttpServlet {
             }
 
             try {
+                if (!validatePresentationDefinitionId(expectedDefinitionId,
+                        submission.getPresentationSubmission(), response)) {
+                    return;
+                }
+
                 // Parse the presentation_submission string into the DTO.
                 Gson gson = new GsonBuilder()
                         .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
@@ -164,7 +177,7 @@ public class VPSubmissionServlet extends HttpServlet {
  
                 if (!VerificationResult.VerificationStatus.VERIFIED.equals(verificationResult.getStatus())) {
                     vpContext.setRequestStatus(VPRequestStatus.FAILED);
-                    vpContextService.updateVPContext(submission.getRequestId(), vpContext);
+                    updateVPContext(submission.getRequestId(), vpContext);
                     sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
                             new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
                                     "VP verification status is not VERIFIED."));
@@ -175,14 +188,14 @@ public class VPSubmissionServlet extends HttpServlet {
                 vpContext.setVerifiedClaims(verificationResult.getVerifiedClaims());
             } catch (VerificationException e) {
                 vpContext.setRequestStatus(VPRequestStatus.FAILED);
-                vpContextService.updateVPContext(submission.getRequestId(), vpContext);
+                updateVPContext(submission.getRequestId(), vpContext);
                 sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
                         new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
                                 "VP verification failed: " + e.getMessage()));
                 return;
             } catch (JsonSyntaxException e) {
                 vpContext.setRequestStatus(VPRequestStatus.FAILED);
-                vpContextService.updateVPContext(submission.getRequestId(), vpContext);
+                updateVPContext(submission.getRequestId(), vpContext);
                 sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
                         new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
                                 "Invalid presentation_submission format."));
@@ -211,8 +224,8 @@ public class VPSubmissionServlet extends HttpServlet {
      * @return True when all required fields are present.
      * @throws IOException If writing the error response fails.
      */
-    private boolean validateRequiredSubmissionFields(final VPSubmission submission,
-                                                     final HttpServletResponse response)
+    private boolean validateRequiredSubmissionFields(VPSubmission submission,
+                                                     HttpServletResponse response)
             throws IOException {
 
         if (StringUtils.isBlank(submission.getRequestId())) {
@@ -239,7 +252,51 @@ public class VPSubmissionServlet extends HttpServlet {
         return true;
     }
 
-    private VPSubmission parseSubmission(final HttpServletRequest request)
+    /**
+     * Validate submitted presentation definition ID against authenticator configuration.
+     *
+     * @param expectedDefinitionId Expected definition ID from authenticator properties.
+     * @param presentationSubmissionJson Raw presentation_submission JSON.
+     * @param response HTTP response.
+     * @return True when definition IDs match.
+     * @throws IOException If writing error response fails.
+     */
+    private boolean validatePresentationDefinitionId(String expectedDefinitionId,
+                                                     String presentationSubmissionJson,
+                                                     HttpServletResponse response)
+            throws IOException {
+
+        String submittedDefinitionId = getSubmittedPresentationDefinitionId(presentationSubmissionJson);
+
+        if (StringUtils.isBlank(expectedDefinitionId)
+                || StringUtils.isBlank(submittedDefinitionId)
+                || !StringUtils.equals(expectedDefinitionId, submittedDefinitionId)) {
+
+            sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
+                    new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
+                            "Submitted presentation definition does not match the configured definition."));
+            return false;
+        }
+
+        return true;
+    }
+
+    private String getSubmittedPresentationDefinitionId(String presentationSubmissionJson) {
+
+        try {
+            JsonObject submissionJson = GSON.fromJson(presentationSubmissionJson, JsonObject.class);
+            if (submissionJson == null || !submissionJson.has("definition_id")
+                    || submissionJson.get("definition_id").isJsonNull()) {
+                return null;
+            }
+
+            return StringUtils.trimToNull(submissionJson.get("definition_id").getAsString());
+        } catch (JsonSyntaxException | UnsupportedOperationException e) {
+            return null;
+        }
+    }
+
+    private VPSubmission parseSubmission(HttpServletRequest request)
             throws IOException {
  
         String body = new String(request.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
@@ -260,8 +317,8 @@ public class VPSubmissionServlet extends HttpServlet {
         return submission;
     }
 
-    private void parseFormEncodedSubmission(final String formBody,
-                                             final VPSubmission submission) {
+    private void parseFormEncodedSubmission(String formBody,
+                                            VPSubmission submission) {
  
         submission.setVpToken(getDecodedFormParameter(formBody, OpenID4VPConstants.ResponseParams.VP_TOKEN));
         submission.setPresentationSubmission(getDecodedFormParameter(formBody,
@@ -276,8 +333,7 @@ public class VPSubmissionServlet extends HttpServlet {
      * @param paramName Parameter name to extract.
      * @return Decoded value, or null if not found or invalid.
      */
-    private String getDecodedFormParameter(final String formBody,
-            final String paramName) {
+    private String getDecodedFormParameter(String formBody, String paramName) {
 
         // Validating parameter name against a whitelist to build trust for SpotBugs.
         if (!OpenID4VPConstants.ResponseParams.VP_TOKEN.equals(paramName)
@@ -341,7 +397,7 @@ public class VPSubmissionServlet extends HttpServlet {
      * @param value The token to decode.
      * @return The decoded token.
      */
-    private String decodeFormToken(final String value) {
+    private String decodeFormToken(String value) {
 
         if (value == null) {
             return null;
@@ -360,7 +416,7 @@ public class VPSubmissionServlet extends HttpServlet {
      * @param input The raw string.
      * @return The sanitized string, or an empty string if {@code input} is null.
      */
-    private String sanitize(final String input) {
+    private String sanitize(String input) {
 
         if (input == null) {
             return "";
@@ -376,17 +432,57 @@ public class VPSubmissionServlet extends HttpServlet {
      * @param requestId  The request ID (state).
      */
     private void updateRequestStatus(String requestId) {
- 
+
         // Update the context with submission status for poller handoff.
-        VPContextService vpContextService = VPServiceDataHolder.getVPContextService();
-        VPContext vpContext = vpContextService.getVPContext(requestId).orElse(null);
- 
+        AuthenticationContext context = FrameworkUtils.getAuthenticationContextFromCache(requestId);
+        VPContext vpContext = getVPContext(context).orElse(null);
+
         if (vpContext != null) {
             // Update status to VP_SUBMITTED for the poller.
             vpContext.setRequestStatus(VPRequestStatus.VP_SUBMITTED);
-            vpContextService.updateVPContext(requestId, vpContext);
+            updateVPContext(requestId, vpContext);
         } else {
             LOG.warn("VPContext not found for request ID; submission status will not be updated.");
+        }
+    }
+
+    private Optional<VPContext> getVPContext(AuthenticationContext context) {
+
+        if (context == null) {
+            return Optional.empty();
+        }
+
+        Object vpContextObj = context.getProperty(Constraints.CONTEXT_VP_CONTEXT);
+        if (vpContextObj instanceof VPContext) {
+            return Optional.of((VPContext) vpContextObj);
+        }
+
+        return Optional.empty();
+    }
+
+    private void updateVPContext(String contextId, VPContext vpContext) {
+
+        if (StringUtils.isBlank(contextId) || vpContext == null) {
+            return;
+        }
+
+        AuthenticationContext context = FrameworkUtils.getAuthenticationContextFromCache(contextId);
+        if (context == null) {
+            return;
+        }
+
+        context.setProperty(Constraints.CONTEXT_VP_CONTEXT, vpContext);
+        FrameworkUtils.addAuthenticationContextToCache(contextId, context);
+
+        String internalContextId = context.getContextIdentifier();
+        if (StringUtils.isNotBlank(internalContextId) && !internalContextId.equals(contextId)) {
+            FrameworkUtils.addAuthenticationContextToCache(internalContextId, context);
+        }
+
+        String mappedId = (String) context.getProperty(Constraints.CONTEXT_VP_MAPPED_ID);
+        if (StringUtils.isNotBlank(mappedId) && !mappedId.equals(contextId)
+                && !mappedId.equals(internalContextId)) {
+            FrameworkUtils.addAuthenticationContextToCache(mappedId, context);
         }
     }
 
@@ -396,7 +492,7 @@ public class VPSubmissionServlet extends HttpServlet {
      * @param response   HTTP response.
      * @throws IOException If writing fails.
      */
-    private void sendSuccessResponse(final HttpServletResponse response)
+    private void sendSuccessResponse(HttpServletResponse response)
             throws IOException {
 
         response.setStatus(HttpServletResponse.SC_OK);
@@ -424,9 +520,9 @@ public class VPSubmissionServlet extends HttpServlet {
      * @param exception  The exception to send as error.
      * @throws IOException If writing fails.
      */
-    private void sendErrorResponse(final HttpServletResponse response,
-                                    final int statusCode,
-                                    final VPAuthenticatorException exception)
+    private void sendErrorResponse(HttpServletResponse response,
+                                   int statusCode,
+                                   VPAuthenticatorException exception)
             throws IOException {
 
         response.setStatus(statusCode);
@@ -453,7 +549,7 @@ public class VPSubmissionServlet extends HttpServlet {
      * @param request HTTP request.
      * @return Tenant ID.
      */
-    private int getTenantId(final HttpServletRequest request) {
+    private int getTenantId(HttpServletRequest request) {
 
         String tenantDomain = org.wso2.carbon.identity.core.util.IdentityTenantUtil
                 .getTenantDomainFromContext();

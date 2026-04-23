@@ -19,7 +19,6 @@
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal;
 
 import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPContextService;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.impl.VPRequestServiceImpl;
 import org.wso2.carbon.identity.openid4vc.presentation.did.service.DIDDocumentService;
 import org.wso2.carbon.identity.openid4vc.presentation.did.service.impl.DIDDocumentServiceImpl;
@@ -45,11 +44,6 @@ public final class VPServiceDataHolder {
      */
     private static final AtomicReference<VPRequestServiceImpl> VP_REQUEST_SERVICE = new AtomicReference<>();
  
-    /**
-     * VPContextService instance.
-     */
-    private static final AtomicReference<VPContextService> VP_CONTEXT_SERVICE = new AtomicReference<>();
-
     /**
      * PresentationDefinitionService instance.
      */
@@ -120,25 +114,6 @@ public final class VPServiceDataHolder {
         VP_REQUEST_SERVICE.set(vpRequestService);
     }
 
-    /**
-     * Get the VPContextService.
-     *
-     * @return The VPContextService instance.
-     */
-    public static VPContextService getVPContextService() {
-
-        return VP_CONTEXT_SERVICE.get();
-    }
-
-    /**
-     * Set the VPContextService.
-     *
-     * @param vpContextService The VPContextService instance to set.
-     */
-    public static void setVPContextService(VPContextService vpContextService) {
-
-        VP_CONTEXT_SERVICE.set(vpContextService);
-    }
 
     /**
      * Get the PresentationDefinitionService.

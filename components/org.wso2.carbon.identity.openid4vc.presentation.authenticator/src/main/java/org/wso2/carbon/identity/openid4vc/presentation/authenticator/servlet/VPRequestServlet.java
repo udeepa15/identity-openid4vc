@@ -24,6 +24,8 @@ import com.google.gson.JsonObject;
 import org.apache.commons.lang.StringUtils;
 import org.osgi.service.component.annotations.Component;
 import org.owasp.encoder.Encode;
+import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
+import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkUtils;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorClientException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorErrorCode;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
@@ -31,7 +33,7 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.V
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPContext;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPContextService;
+import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints;
 import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
 
 import java.io.IOException;
@@ -129,8 +131,7 @@ public class VPRequestServlet extends HttpServlet {
         boolean isStatusRequest = pathParts.length >= 3 && "status".equals(pathParts[2]);
 
         try {
-            VPContextService vpContextService = VPServiceDataHolder.getVPContextService();
-            VPContext vpContext = vpContextService.getVPContext(requestId).orElse(null);
+            VPContext vpContext = getVPContextByRequestId(requestId);
             if (vpContext == null) {
                 if (isStatusRequest) {
                     JsonObject statusResponse = new JsonObject();
@@ -268,4 +269,19 @@ public class VPRequestServlet extends HttpServlet {
         errorObj.addProperty(RESPONSE_ERROR_CODE, exception.getCode());
          sendJsonResponse(response, statusCode, errorObj);
      }
+
+    private VPContext getVPContextByRequestId(String requestId) {
+
+        AuthenticationContext context = FrameworkUtils.getAuthenticationContextFromCache(requestId);
+        if (context == null) {
+            return null;
+        }
+
+        Object vpContextObj = context.getProperty(Constraints.CONTEXT_VP_CONTEXT);
+        if (vpContextObj instanceof VPContext) {
+            return (VPContext) vpContextObj;
+        }
+
+        return null;
+    }
  }

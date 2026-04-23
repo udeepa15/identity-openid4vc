@@ -35,7 +35,6 @@ import org.wso2.carbon.identity.application.authentication.framework.util.Framew
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 import org.wso2.carbon.identity.application.common.model.Property;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPContext;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints;
@@ -155,7 +154,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             AuthenticationContext context) throws AuthenticationFailedException {
 
         // Use the framework-provided AuthenticationContext as the primary source.
-        VPContext vpContext = VPServiceDataHolder.getVPContextService().getVPContext(context)
+        VPContext vpContext = getVPContext(context)
                 .orElseThrow(() -> new AuthenticationFailedException(
                         "No VP request context found in authentication context."));
         //ToDo: move the claims getting here
@@ -273,7 +272,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             throws AuthenticationFailedException {
 
         VPRequestStatus status = null;
-        Optional<VPContext> vpContextOpt = VPServiceDataHolder.getVPContextService().getVPContext(context);
+        Optional<VPContext> vpContextOpt = getVPContext(context);
         if (vpContextOpt.isPresent()) {
             VPContext vpContext = vpContextOpt.get();
             status = vpContext.getRequestStatus();
@@ -499,5 +498,19 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
 
         String value = request.getParameter(name);
         return StringUtils.isNotBlank(value) ? Encode.forHtml(value) : null;
+    }
+
+    private Optional<VPContext> getVPContext(AuthenticationContext context) {
+
+        if (context == null) {
+            return Optional.empty();
+        }
+
+        Object vpContextObj = context.getProperty(Constraints.CONTEXT_VP_CONTEXT);
+        if (vpContextObj instanceof VPContext) {
+            return Optional.of((VPContext) vpContextObj);
+        }
+
+        return Optional.empty();
     }
 }

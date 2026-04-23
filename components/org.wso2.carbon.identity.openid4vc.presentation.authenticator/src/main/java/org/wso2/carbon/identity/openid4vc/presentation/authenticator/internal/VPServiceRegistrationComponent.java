@@ -30,8 +30,6 @@ import org.slf4j.LoggerFactory;
 import org.wso2.carbon.identity.application.authentication.framework.ApplicationAuthenticator;
 import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.OpenID4VPAuthenticator;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.VPContextService;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.impl.VPContextServiceImpl;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.impl.VPRequestServiceImpl;
 import org.wso2.carbon.identity.openid4vc.presentation.management.service.PresentationDefinitionService;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.service.VerificationService;
@@ -78,17 +76,13 @@ public class VPServiceRegistrationComponent {
 
             // Initialize services using default constructors (which create their own DAOs).
             VPRequestServiceImpl vpRequestService = new VPRequestServiceImpl();
-            VPContextService vpContextService = new VPContextServiceImpl();
- 
+
             // Register services with OSGi.
             bundleContext.registerService(VPRequestServiceImpl.class.getName(),
                     vpRequestService, new Hashtable<>());
-            bundleContext.registerService(VPContextService.class.getName(),
-                    vpContextService, new Hashtable<>());
- 
+
             // Set services in data holder.
             VPServiceDataHolder.setVPRequestService(vpRequestService);
-            VPServiceDataHolder.setVPContextService(vpContextService);
 
             // Register OpenID4VP Authenticator.
             OpenID4VPAuthenticator authenticator = new OpenID4VPAuthenticator();
@@ -110,7 +104,6 @@ public class VPServiceRegistrationComponent {
 
         // Services are automatically unregistered by OSGi.
         VPServiceDataHolder.setVPRequestService(null);
-        VPServiceDataHolder.setVPContextService(null);
         authenticatorRegistered = false;
     }
 
