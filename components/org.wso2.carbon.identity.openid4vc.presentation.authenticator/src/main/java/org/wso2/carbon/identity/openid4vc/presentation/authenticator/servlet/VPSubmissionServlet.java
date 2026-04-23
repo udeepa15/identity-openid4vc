@@ -124,13 +124,12 @@ public class VPSubmissionServlet extends HttpServlet {
      *
      * @param request  HTTP request.
      * @param response HTTP response.
-     * @throws ServletException If an error occurs in the servlet.
      * @throws IOException      If an I/O error occurs.
      */
     @Override
     protected void doPost(HttpServletRequest request,
             HttpServletResponse response)
-            throws ServletException, IOException {
+            throws IOException {
 
         try {
             // Parse submission directly into the model.
@@ -366,7 +365,7 @@ public class VPSubmissionServlet extends HttpServlet {
                 value = value.substring(0, MAX_PARAM_LENGTH);
             }
             try {
-                String decodedValue = URLDecoder.decode(value, StandardCharsets.UTF_8.name());
+                String decodedValue = URLDecoder.decode(value, StandardCharsets.UTF_8);
                 if (OpenID4VPConstants.ResponseParams.VP_TOKEN.equals(paramName)) {
                     String sanitizedValue = decodedValue.trim();
 
@@ -384,7 +383,7 @@ public class VPSubmissionServlet extends HttpServlet {
                 }
 
                 return decodedValue;
-            } catch (IllegalArgumentException | java.io.UnsupportedEncodingException e) {
+            } catch (IllegalArgumentException e) {
                 return sanitize(value);
             }
         }
@@ -403,8 +402,8 @@ public class VPSubmissionServlet extends HttpServlet {
             return null;
         }
         try {
-            return URLDecoder.decode(value, StandardCharsets.UTF_8.name());
-        } catch (IllegalArgumentException | java.io.UnsupportedEncodingException e) {
+            return URLDecoder.decode(value, StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException e) {
             return sanitize(value);
         }
     }
