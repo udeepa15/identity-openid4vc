@@ -174,13 +174,13 @@ public class VerificationServiceImpl implements VerificationService {
             // Ignore parse exception as the token is already verified by this point
         }
 
-        if (claims.containsKey(VerificationConstants.CLAIM_ISS)) {
+        if (claims.get(VerificationConstants.CLAIM_ISS) != null) {
             builder.issuerDid(claims.get(VerificationConstants.CLAIM_ISS).toString());
         }
-        if (claims.containsKey("nonce")) {
+        if (claims.get("nonce") != null) {
             builder.nonce(claims.get("nonce").toString());
         }
-        if (claims.containsKey(VerificationConstants.CLAIM_SUB)) {
+        if (claims.get(VerificationConstants.CLAIM_SUB) != null) {
             builder.holderDid(claims.get(VerificationConstants.CLAIM_SUB).toString());
         }
 
