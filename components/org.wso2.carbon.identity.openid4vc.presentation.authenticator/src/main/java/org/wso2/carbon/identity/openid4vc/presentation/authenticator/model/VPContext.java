@@ -18,10 +18,11 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.model;
 
-import org.apache.commons.collections4.MapUtils;
+
+
+import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VerificationResult;
 
 import java.io.Serializable;
-import java.util.Map;
 
 /**
  * Context model that stores VP request status and other session-bound data in a single cacheable object.
@@ -31,7 +32,7 @@ public class VPContext implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private VPRequestStatus requestStatus;
-    private Map<String, Object> verifiedClaims;
+    private VerificationResult verificationResult;
 
     /**
      * Create a VP context.
@@ -64,22 +65,22 @@ public class VPContext implements Serializable {
     }
 
     /**
-     * Returns the verified claims.
+     * Returns the verification result.
      *
-     * @return Verified claims map.
+     * @return Verification result.
      */
-    public Map<String, Object> getVerifiedClaims() {
+    public VerificationResult getVerificationResult() {
 
-        return MapUtils.emptyIfNull(verifiedClaims);
+        return verificationResult;
     }
 
     /**
-     * Sets the verified claims.
+     * Sets the verification result.
      *
-     * @param verifiedClaims Verified claims map.
+     * @param verificationResult Verification result.
      */
-    public void setVerifiedClaims(Map<String, Object> verifiedClaims) {
+    public void setVerificationResult(VerificationResult verificationResult) {
 
-        this.verifiedClaims = verifiedClaims;
+        this.verificationResult = verificationResult;
     }
 }

@@ -174,17 +174,29 @@ public class VPSubmissionServlet extends HttpServlet {
                                 getTenantId(request),
                                 submission.getVpToken());
  
-                if (!VerificationResult.VerificationStatus.VERIFIED.equals(verificationResult.getStatus())) {
+                if (!verificationResult.isVerified()) {
                     vpContext.setRequestStatus(VPRequestStatus.FAILED);
                     updateVPContext(submission.getRequestId(), vpContext);
+                    
+                    String errorMsg = "VP verification failed.";
+                    if (verificationResult.getErrors() != null && !verificationResult.getErrors().isEmpty()) {
+                        errorMsg = "Verification failed: " + String.join(", ", verificationResult.getErrors());
+                    }
                     sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
                             new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
-                                    "VP verification status is not VERIFIED."));
+                                    errorMsg));
                     return;
                 }
  
-                // Store verified claims in the request context for handoff to the authenticator.
-                vpContext.setVerifiedClaims(verificationResult.getVerifiedClaims());
+                // Store verification result in the request context for handoff to the authenticator.
+                vpContext.setVerificationResult(verificationResult);
+                
+                // Add PresentationMetadata for Audit Logging and Adaptive Auth
+                if (verificationResult.getMetadata() != null) {
+                    context.setProperty("vp_metadata", verificationResult.getMetadata());
+                    // Since context is modified, we save it immediately
+                    FrameworkUtils.addAuthenticationContextToCache(submission.getRequestId(), context);
+                }
             } catch (VerificationException e) {
                 vpContext.setRequestStatus(VPRequestStatus.FAILED);
                 updateVPContext(submission.getRequestId(), vpContext);

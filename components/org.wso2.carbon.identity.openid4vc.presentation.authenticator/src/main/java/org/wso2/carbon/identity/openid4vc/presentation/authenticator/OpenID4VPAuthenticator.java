@@ -158,12 +158,15 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
                 .orElseThrow(() -> new AuthenticationFailedException(
                         "No VP request context found in authentication context."));
         //ToDo: move the claims getting here
-        Map<String, Object> verifiedClaims = vpContext.getVerifiedClaims();
+        org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VerificationResult verificationResult =
+                vpContext.getVerificationResult();
 //ToDo: improve NUll check
-        if (MapUtils.isEmpty(verifiedClaims)) {
+        if (verificationResult == null || MapUtils.isEmpty(verificationResult.getVerifiedClaims())) {
             throw new AuthenticationFailedException("No verified claims found in context. "
                     + "Verification must have failed.");
         }
+        
+        Map<String, Object> verifiedClaims = verificationResult.getVerifiedClaims();
 
         // Clean up using the best available context cache key.
         String cacheKey = StringUtils.trimToNull(request.getParameter(PARAM_SESSION_DATA_KEY));
