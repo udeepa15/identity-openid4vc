@@ -27,6 +27,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+import org.wso2.carbon.identity.openid4vc.issuance.common.constant.Constants;
 import org.wso2.carbon.identity.openid4vc.presentation.management.model.PresentationDefinition;
 import org.wso2.carbon.identity.openid4vc.presentation.management.service.PresentationDefinitionService;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.PresentationSubmission;
@@ -116,7 +117,7 @@ public class VerificationServiceImplTest {
 
     @Test(description = "validateRequest: null vpToken throws INVALID_VP_SUBMISSION")
     public void testValidateRequest_nullToken_throwsInvalidSubmission() throws Exception {
-        PresentationSubmission sub = buildSubmission(VerificationConstants.FORMAT_JWT);
+        PresentationSubmission sub = buildSubmission(Constants.JWT_VC_FORMAT);
         VerificationResult result = service.verify(sub, 1, null);
         org.testng.Assert.assertFalse(result.isVerified());
         org.testng.Assert.assertFalse(result.getErrors().isEmpty());
@@ -125,7 +126,7 @@ public class VerificationServiceImplTest {
 
     @Test(description = "validateRequest: blank vpToken throws INVALID_VP_SUBMISSION")
     public void testValidateRequest_blankToken_throwsInvalidSubmission() throws Exception {
-        PresentationSubmission sub = buildSubmission(VerificationConstants.FORMAT_JWT);
+        PresentationSubmission sub = buildSubmission(Constants.JWT_VC_FORMAT);
         VerificationResult result = service.verify(sub, 1, "   ");
         org.testng.Assert.assertFalse(result.isVerified());
         org.testng.Assert.assertFalse(result.getErrors().isEmpty());
@@ -134,7 +135,7 @@ public class VerificationServiceImplTest {
 
     @Test(description = "validateRequest: blank definition_id throws INVALID_VP_SUBMISSION")
     public void testValidateRequest_blankDefinitionId_throwsSubmissionError() throws Exception {
-        PresentationSubmission sub = buildSubmission(VerificationConstants.FORMAT_JWT);
+        PresentationSubmission sub = buildSubmission(Constants.JWT_VC_FORMAT);
         sub.setDefinitionId("   ");
         try {
             service.verify(sub, 1, validJwtToken);
@@ -219,7 +220,7 @@ public class VerificationServiceImplTest {
         VerificationServiceImpl stub = buildStubService(
                 Collections.singletonMap("iss", (Object) validJwtIssuer));
         stub.setPresentationDefinitionService(pdService);
-        PresentationSubmission sub = buildSubmission(VerificationConstants.FORMAT_JWT);
+        PresentationSubmission sub = buildSubmission(Constants.JWT_VC_FORMAT);
         try {
             stub.verify(sub, 1, validJwtToken);
             fail("Expected downstream exception");
@@ -234,11 +235,11 @@ public class VerificationServiceImplTest {
                 .thenThrow(new RuntimeException("downstream"));
 
         // Use stub service with a verifier that handles SD-JWT.
-        VerificationServiceImpl stub = buildStubService(VerificationConstants.FORMAT_SD_JWT,
+        VerificationServiceImpl stub = buildStubService(Constants.VC_SD_JWT_FORMAT,
                 Collections.singletonMap("iss", (Object) validJwtIssuer));
         stub.setPresentationDefinitionService(pdService);
 
-        PresentationSubmission sub = buildSubmission(VerificationConstants.FORMAT_SD_JWT);
+        PresentationSubmission sub = buildSubmission(Constants.VC_SD_JWT_FORMAT);
         String sdJwtToken = validJwtToken + "~";
 
         try {
@@ -260,7 +261,7 @@ public class VerificationServiceImplTest {
         VerificationServiceImpl stub = buildStubService(
                 Collections.singletonMap("iss", (Object) validJwtIssuer));
         // Do NOT inject a PD service — it remains null.
-        PresentationSubmission sub = buildSubmission(VerificationConstants.FORMAT_JWT);
+        PresentationSubmission sub = buildSubmission(Constants.JWT_VC_FORMAT);
         try {
             stub.verify(sub, 1, validJwtToken);
             fail("Expected VerificationServerException");
@@ -277,7 +278,7 @@ public class VerificationServiceImplTest {
         VerificationServiceImpl stub = buildStubService(
                 Collections.singletonMap("iss", (Object) validJwtIssuer));
         stub.setPresentationDefinitionService(pdService);
-        PresentationSubmission sub = buildSubmission(VerificationConstants.FORMAT_JWT);
+        PresentationSubmission sub = buildSubmission(Constants.JWT_VC_FORMAT);
         try {
             stub.verify(sub, 1, validJwtToken);
             fail("Expected VerificationServerException");
@@ -299,7 +300,7 @@ public class VerificationServiceImplTest {
         stub.setPresentationDefinitionService(pdService);
 
         try {
-            stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+            stub.verify(buildSubmission(Constants.JWT_VC_FORMAT), 1, validJwtToken);
             fail("Expected VerificationServerException");
         } catch (VerificationServerException e) {
             assertEquals(e.getErrorCode(), VerificationErrorCode.INTERNAL_SERVER_ERROR);
@@ -318,7 +319,7 @@ public class VerificationServiceImplTest {
                 Collections.singletonMap("iss", (Object) validJwtIssuer));
         stub.setPresentationDefinitionService(pdService);
 
-        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        VerificationResult result = stub.verify(buildSubmission(Constants.JWT_VC_FORMAT), 1, validJwtToken);
         assertTrue(result.isVerified());
     }
 
@@ -332,7 +333,7 @@ public class VerificationServiceImplTest {
         VerificationServiceImpl stub = buildStubService(claims);
         stub.setPresentationDefinitionService(pdService);
 
-        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        VerificationResult result = stub.verify(buildSubmission(Constants.JWT_VC_FORMAT), 1, validJwtToken);
         assertTrue(result.isVerified());
     }
 
@@ -349,7 +350,7 @@ public class VerificationServiceImplTest {
         VerificationServiceImpl stub = buildStubService(claims);
         stub.setPresentationDefinitionService(pdService);
 
-        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        VerificationResult result = stub.verify(buildSubmission(Constants.JWT_VC_FORMAT), 1, validJwtToken);
         assertTrue(result.isVerified());
     }
 
@@ -363,7 +364,7 @@ public class VerificationServiceImplTest {
         VerificationServiceImpl stub = buildStubService(claims);
         stub.setPresentationDefinitionService(pdService);
 
-        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        VerificationResult result = stub.verify(buildSubmission(Constants.JWT_VC_FORMAT), 1, validJwtToken);
         assertTrue(result.isVerified());
     }
 
@@ -377,7 +378,7 @@ public class VerificationServiceImplTest {
         VerificationServiceImpl stub = buildStubService(claims);
         stub.setPresentationDefinitionService(pdService);
 
-        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        VerificationResult result = stub.verify(buildSubmission(Constants.JWT_VC_FORMAT), 1, validJwtToken);
         assertTrue(result.isVerified());
     }
 
@@ -391,7 +392,7 @@ public class VerificationServiceImplTest {
         VerificationServiceImpl stub = buildStubService(claims);
         stub.setPresentationDefinitionService(pdService);
  
-        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        VerificationResult result = stub.verify(buildSubmission(Constants.JWT_VC_FORMAT), 1, validJwtToken);
         assertTrue(result.isVerified());
     }
  
@@ -405,7 +406,7 @@ public class VerificationServiceImplTest {
         VerificationServiceImpl stub = buildStubService(claims);
         stub.setPresentationDefinitionService(pdService);
  
-        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        VerificationResult result = stub.verify(buildSubmission(Constants.JWT_VC_FORMAT), 1, validJwtToken);
         assertTrue(result.isVerified());
     }
 
@@ -419,7 +420,7 @@ public class VerificationServiceImplTest {
         VerificationServiceImpl stub = buildStubService(claims);
         stub.setPresentationDefinitionService(pdService);
  
-        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        VerificationResult result = stub.verify(buildSubmission(Constants.JWT_VC_FORMAT), 1, validJwtToken);
         org.testng.Assert.assertFalse(result.isVerified());
         org.testng.Assert.assertFalse(result.getErrors().isEmpty());
         assertTrue(result.getErrors().get(0).contains("Issuer verification failed"));
@@ -436,7 +437,7 @@ public class VerificationServiceImplTest {
         VerificationServiceImpl stub = buildStubService(claims);
         stub.setPresentationDefinitionService(pdService);
 
-        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        VerificationResult result = stub.verify(buildSubmission(Constants.JWT_VC_FORMAT), 1, validJwtToken);
         org.testng.Assert.assertFalse(result.isVerified());
         org.testng.Assert.assertFalse(result.getErrors().isEmpty());
 
@@ -452,7 +453,7 @@ public class VerificationServiceImplTest {
         VerificationServiceImpl stub = buildStubService(claims);
         stub.setPresentationDefinitionService(pdService);
 
-        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        VerificationResult result = stub.verify(buildSubmission(Constants.JWT_VC_FORMAT), 1, validJwtToken);
         org.testng.Assert.assertFalse(result.isVerified());
         org.testng.Assert.assertFalse(result.getErrors().isEmpty());
 
@@ -468,7 +469,7 @@ public class VerificationServiceImplTest {
         VerificationServiceImpl stub = buildStubService(claims);
         stub.setPresentationDefinitionService(pdService);
 
-        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        VerificationResult result = stub.verify(buildSubmission(Constants.JWT_VC_FORMAT), 1, validJwtToken);
         org.testng.Assert.assertFalse(result.isVerified());
         org.testng.Assert.assertFalse(result.getErrors().isEmpty());
 
@@ -484,7 +485,7 @@ public class VerificationServiceImplTest {
                 Collections.singletonMap("email", (Object) "alice@example.com"));
         stub.setPresentationDefinitionService(pdService);
 
-        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        VerificationResult result = stub.verify(buildSubmission(Constants.JWT_VC_FORMAT), 1, validJwtToken);
         org.testng.Assert.assertFalse(result.isVerified());
         org.testng.Assert.assertFalse(result.getErrors().isEmpty());
         assertTrue(result.getErrors().get(0).contains("'iss' claim is missing"));
@@ -504,7 +505,7 @@ public class VerificationServiceImplTest {
         VerificationServiceImpl stub = buildStubService(claims);
         stub.setPresentationDefinitionService(pdService);
 
-        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        VerificationResult result = stub.verify(buildSubmission(Constants.JWT_VC_FORMAT), 1, validJwtToken);
         org.testng.Assert.assertFalse(result.isVerified());
         org.testng.Assert.assertFalse(result.getErrors().isEmpty());
 
@@ -520,7 +521,7 @@ public class VerificationServiceImplTest {
         VerificationServiceImpl stub = buildStubService(claims);
         stub.setPresentationDefinitionService(pdService);
 
-        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        VerificationResult result = stub.verify(buildSubmission(Constants.JWT_VC_FORMAT), 1, validJwtToken);
         assertTrue(result.isVerified());
     }
 
@@ -534,7 +535,7 @@ public class VerificationServiceImplTest {
         VerificationServiceImpl stub = buildStubService(claims);
         stub.setPresentationDefinitionService(pdService);
 
-        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        VerificationResult result = stub.verify(buildSubmission(Constants.JWT_VC_FORMAT), 1, validJwtToken);
         org.testng.Assert.assertFalse(result.isVerified());
         org.testng.Assert.assertFalse(result.getErrors().isEmpty());
 
@@ -550,7 +551,7 @@ public class VerificationServiceImplTest {
         VerificationServiceImpl stub = buildStubService(claims);
         stub.setPresentationDefinitionService(pdService);
 
-        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        VerificationResult result = stub.verify(buildSubmission(Constants.JWT_VC_FORMAT), 1, validJwtToken);
         org.testng.Assert.assertFalse(result.isVerified());
         org.testng.Assert.assertFalse(result.getErrors().isEmpty());
 
@@ -566,7 +567,7 @@ public class VerificationServiceImplTest {
         VerificationServiceImpl stub = buildStubService(claims);
         stub.setPresentationDefinitionService(pdService);
 
-        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        VerificationResult result = stub.verify(buildSubmission(Constants.JWT_VC_FORMAT), 1, validJwtToken);
         assertTrue(result.isVerified());
     }
 
@@ -580,7 +581,7 @@ public class VerificationServiceImplTest {
         VerificationServiceImpl stub = buildStubService(claims);
         stub.setPresentationDefinitionService(pdService);
 
-        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        VerificationResult result = stub.verify(buildSubmission(Constants.JWT_VC_FORMAT), 1, validJwtToken);
         org.testng.Assert.assertFalse(result.isVerified());
         org.testng.Assert.assertFalse(result.getErrors().isEmpty());
 
@@ -596,7 +597,7 @@ public class VerificationServiceImplTest {
         VerificationServiceImpl stub = buildStubService(claims);
         stub.setPresentationDefinitionService(pdService);
 
-        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        VerificationResult result = stub.verify(buildSubmission(Constants.JWT_VC_FORMAT), 1, validJwtToken);
         org.testng.Assert.assertFalse(result.isVerified());
         org.testng.Assert.assertFalse(result.getErrors().isEmpty());
 
@@ -615,7 +616,7 @@ public class VerificationServiceImplTest {
         VerificationServiceImpl stub = buildStubService(claims);
         stub.setPresentationDefinitionService(pdService);
 
-        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        VerificationResult result = stub.verify(buildSubmission(Constants.JWT_VC_FORMAT), 1, validJwtToken);
         assertTrue(result.isVerified());
         assertEquals(result.getVerifiedClaims().get("email"), "alice@example.com");
         assertEquals(result.getVerifiedClaims().get("given_name"), "Alice");
@@ -631,7 +632,7 @@ public class VerificationServiceImplTest {
                 Collections.singletonMap("email", (Object) "alice@example.com"));
         stub.setPresentationDefinitionService(pdService);
 
-        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        VerificationResult result = stub.verify(buildSubmission(Constants.JWT_VC_FORMAT), 1, validJwtToken);
         org.testng.Assert.assertFalse(result.isVerified());
         org.testng.Assert.assertFalse(result.getErrors().isEmpty());
         assertTrue(result.getErrors().get(0).contains("given_name"));
@@ -646,7 +647,7 @@ public class VerificationServiceImplTest {
         VerificationServiceImpl stub = buildStubService(Collections.emptyMap());
         stub.setPresentationDefinitionService(pdService);
 
-        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        VerificationResult result = stub.verify(buildSubmission(Constants.JWT_VC_FORMAT), 1, validJwtToken);
         assertTrue(result.isVerified());
     }
 
@@ -661,7 +662,7 @@ public class VerificationServiceImplTest {
         VerificationServiceImpl stub = buildStubService(claims);
         stub.setPresentationDefinitionService(pdService);
 
-        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        VerificationResult result = stub.verify(buildSubmission(Constants.JWT_VC_FORMAT), 1, validJwtToken);
         assertTrue(result.isVerified());
     }
 
@@ -677,7 +678,7 @@ public class VerificationServiceImplTest {
         VerificationServiceImpl stub = buildStubService(claims);
         stub.setPresentationDefinitionService(pdService);
 
-        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        VerificationResult result = stub.verify(buildSubmission(Constants.JWT_VC_FORMAT), 1, validJwtToken);
         org.testng.Assert.assertFalse(result.isVerified());
         org.testng.Assert.assertFalse(result.getErrors().isEmpty());
         assertTrue(result.getErrors().get(0).contains("phone_number"));
@@ -699,7 +700,7 @@ public class VerificationServiceImplTest {
         VerificationServiceImpl stub = buildStubService(claims);
         stub.setPresentationDefinitionService(pdService);
 
-        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        VerificationResult result = stub.verify(buildSubmission(Constants.JWT_VC_FORMAT), 1, validJwtToken);
 
         assertTrue(result.isVerified());
         assertNotNull(result.getVerifiedClaims());
@@ -750,7 +751,7 @@ public class VerificationServiceImplTest {
     private VerificationServiceImpl buildStubService(final Map<String, Object> stubbedClaims)
             throws Exception {
 
-        return buildStubService(VerificationConstants.FORMAT_JWT, stubbedClaims);
+        return buildStubService(Constants.JWT_VC_FORMAT, stubbedClaims);
     }
 
     /**

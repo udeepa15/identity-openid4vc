@@ -20,10 +20,10 @@ package org.wso2.carbon.identity.openid4vc.presentation.verification.handler;
 
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+import org.wso2.carbon.identity.openid4vc.issuance.common.constant.Constants;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.PresentationSubmission;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VerificationClientException;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VerificationErrorCode;
-import org.wso2.carbon.identity.openid4vc.presentation.verification.util.VerificationConstants;
 
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
@@ -41,8 +41,8 @@ public class SdJwtVerifierTest {
 
     @Test
     public void testCanHandle() {
-        assertTrue(sdJwtVerifier.canHandle(VerificationConstants.FORMAT_SD_JWT));
-        assertFalse(sdJwtVerifier.canHandle(VerificationConstants.FORMAT_JWT));
+        assertTrue(sdJwtVerifier.canHandle(Constants.VC_SD_JWT_FORMAT));
+        assertFalse(sdJwtVerifier.canHandle(Constants.JWT_VC_FORMAT));
     }
 
     @Test

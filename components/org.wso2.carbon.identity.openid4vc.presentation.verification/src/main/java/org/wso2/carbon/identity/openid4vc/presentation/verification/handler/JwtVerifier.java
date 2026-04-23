@@ -19,6 +19,7 @@
 package org.wso2.carbon.identity.openid4vc.presentation.verification.handler;
 
 import com.nimbusds.jwt.SignedJWT;
+import org.wso2.carbon.identity.openid4vc.issuance.common.constant.Constants;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.PresentationSubmission;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VerificationClientException;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VerificationErrorCode;
@@ -44,7 +45,7 @@ public final class JwtVerifier implements Verifier {
     @Override
     public boolean canHandle(final String format) {
 
-        return VerificationConstants.FORMAT_JWT.equals(format);
+        return Constants.JWT_VC_FORMAT.equals(format);
     }
 
     /**

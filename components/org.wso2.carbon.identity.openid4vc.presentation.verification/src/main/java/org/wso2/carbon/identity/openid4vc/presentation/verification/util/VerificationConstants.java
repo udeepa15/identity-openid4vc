@@ -18,6 +18,7 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.verification.util;
 
+
 /**
  * Constants and general constraints for the OpenID4VC verification component.
  */
@@ -33,18 +34,6 @@ public class VerificationConstants {
     }
 
     /**
-     * Presentation submission field names.
-     */
-    public static final String VP_TOKEN = "vp_token";
-    public static final String PRESENTATION_SUBMISSION = "presentation_submission";
-
-    /**
-     * Supported VP formats.
-     *///ToDo: use the VC common
-    public static final String FORMAT_JWT = "jwt_vc";
-    public static final String FORMAT_SD_JWT = "vc+sd-jwt";
-
-    /**
      * Standard JWT claim names.
      */
 
@@ -58,7 +47,7 @@ public class VerificationConstants {
      * DID prefixes.
      */
     public static final String DID_PREFIX = "did:";
-    public static final String DID_WEB_PREFIX = "did:web:";
+    
 
     /**
      * Protocol prefixes.

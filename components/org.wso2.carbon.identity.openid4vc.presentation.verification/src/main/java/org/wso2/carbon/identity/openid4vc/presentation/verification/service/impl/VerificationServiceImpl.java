@@ -24,6 +24,7 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.component.annotations.ReferencePolicy;
+import org.wso2.carbon.identity.openid4vc.issuance.common.constant.Constants;
 import org.wso2.carbon.identity.openid4vc.presentation.management.model.PresentationDefinition;
 import org.wso2.carbon.identity.openid4vc.presentation.management.service.PresentationDefinitionService;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.PresentationMetadata;
@@ -215,7 +216,6 @@ public class VerificationServiceImpl implements VerificationService {
             }
             String tokenIssuer = issClaimValue.toString();
 
-            // ToDo Resolved: Removed normalize method, using direct string comparison
             if (!pdIssuer.equals(tokenIssuer)) {
                 throw new VerificationClientException(VerificationErrorCode.INVALID_CREDENTIAL,
                         "Issuer verification failed: token issuer '" + tokenIssuer
@@ -284,12 +284,12 @@ public class VerificationServiceImpl implements VerificationService {
             throw new VerificationClientException(VerificationErrorCode.INVALID_VP_FORMAT,
                     "Presentation submission descriptor_map entry is missing a format.");
         }
-        boolean isSupportedFormat = VerificationConstants.FORMAT_JWT.equals(format)
-                || VerificationConstants.FORMAT_SD_JWT.equals(format);
+        boolean isSupportedFormat = Constants.JWT_VC_FORMAT.equals(format)
+                || Constants.VC_SD_JWT_FORMAT.equals(format);
         if (!isSupportedFormat) {
             throw new VerificationClientException(VerificationErrorCode.INVALID_VP_FORMAT,
                     "Unsupported VP format: " + format + ". Supported formats: "
-                            + VerificationConstants.FORMAT_JWT + ", " + VerificationConstants.FORMAT_SD_JWT);
+                            + Constants.JWT_VC_FORMAT + ", " + Constants.VC_SD_JWT_FORMAT);
         }
     }
  

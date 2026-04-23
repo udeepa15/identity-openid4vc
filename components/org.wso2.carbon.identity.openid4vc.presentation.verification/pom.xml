@@ -52,6 +52,12 @@
             <version>${project.version}</version>
         </dependency>
 
+        <dependency>
+            <groupId>org.wso2.carbon.identity.openid4vc</groupId>
+            <artifactId>org.wso2.carbon.identity.openid4vc.issuance.common</artifactId>
+            <version>1.1.7-SNAPSHOT</version>
+        </dependency>
+
         <!-- OpenID4VP DID module -->
         <dependency>
             <groupId>org.wso2.carbon.identity.openid4vc</groupId>
@@ -218,6 +224,7 @@
                             org.wso2.carbon.identity.openid4vc.presentation.common.*;version="${identity.oid4vc.pkg.version}",
                             org.wso2.carbon.identity.openid4vc.presentation.did.*;version="${identity.oid4vc.pkg.version}",
                             org.wso2.carbon.identity.openid4vc.presentation.management.*;version="${identity.oid4vc.pkg.version}",
+                            org.wso2.carbon.identity.openid4vc.issuance.common.*;version="${identity.oid4vc.pkg.version}",
                             org.wso2.carbon.context;version="${carbon.kernel.imp.pkg.version.range}",
                             org.wso2.carbon.utils.multitenancy;version="${carbon.kernel.imp.pkg.version.range}",
                             org.osgi.service.component; version="[1.2.0, 2.0.0)",

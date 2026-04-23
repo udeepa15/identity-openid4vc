@@ -22,12 +22,12 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+import org.wso2.carbon.identity.openid4vc.issuance.common.constant.Constants;
 import org.wso2.carbon.identity.openid4vc.presentation.management.service.PresentationDefinitionService;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.PresentationSubmission;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VerificationErrorCode;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VerificationServerException;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.handler.Verifier;
-import org.wso2.carbon.identity.openid4vc.presentation.verification.util.VerificationConstants;
 
 import java.lang.reflect.Field;
 import java.util.Collections;
@@ -59,7 +59,7 @@ public class VerificationServiceTest {
 
         // Use a stubbed verifier so handle(..) succeeds, allowing the logic to reach the service null check.
         Verifier stubVerifier = mock(Verifier.class);
-        when(stubVerifier.canHandle(VerificationConstants.FORMAT_JWT)).thenReturn(true);
+        when(stubVerifier.canHandle(Constants.JWT_VC_FORMAT)).thenReturn(true);
         when(stubVerifier.handle(any(PresentationSubmission.class), anyInt(), anyString()))
                 .thenReturn(Collections.singletonMap("iss", "test-issuer"));
 
@@ -74,7 +74,7 @@ public class VerificationServiceTest {
         submission.setDefinitionId("def-1");
 
         PresentationSubmission.DescriptorMap descriptor = new PresentationSubmission.DescriptorMap();
-        descriptor.setFormat(VerificationConstants.FORMAT_JWT);
+        descriptor.setFormat(Constants.JWT_VC_FORMAT);
         submission.setDescriptorMap(Collections.singletonList(descriptor));
 
         // This will throw VerificationServerException because presentationDefinitionService is null
