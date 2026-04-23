@@ -151,7 +151,8 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
     private String createRedirectURI(String requestId) throws VPAuthenticatorException {
 
         String baseUrl = VPAuthenticatorUtil.resolveTenantAwareBaseUrl();
-        String requestUri = buildRequestUri(baseUrl, requestId);
+        String requestUri = baseUrl + Constraints.REQUEST_URI_ENDPOINT
+                + requestId;
         String clientId = VPAuthenticatorUtil.getClientId(baseUrl);
 
         return WALLET_LOGIN_PAGE + "?"
@@ -363,16 +364,6 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
     }
 
     /**
-     * Get VPRequestService instance.
-     *
-     * @return VPRequestService instance.
-     */
-    private VPRequestServiceImpl getVPRequestService() {
-
-        return VPServiceDataHolder.getVPRequestService();
-    }
-
-    /**
      * Check if retry authentication is enabled.
      *
      * @return True.
@@ -510,32 +501,4 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         String value = request.getParameter(name);
         return StringUtils.isNotBlank(value) ? Encode.forHtml(value) : null;
     }
-
-
-
-
-    /**
-     * Build the request URI for a specific request ID.
-     *
-     * @param currentBaseUrl The base URL to use.
-     * @param requestId      The request identifier.
-     * @return The complete request URI.
-     */
-    private String buildRequestUri(final String currentBaseUrl,
-                                   final String requestId) {
-
-        String endpoint = Constraints.REQUEST_URI_ENDPOINT
-                + requestId;
-        if (currentBaseUrl.endsWith("/")) {
-            return currentBaseUrl.substring(0, currentBaseUrl.length() - 1)
-                    + endpoint;
-        }
-        return currentBaseUrl + endpoint;
-    }
-
-
-
-
-
-
 }
