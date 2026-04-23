@@ -38,7 +38,6 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.V
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.internal.VPServiceDataHolder;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPContext;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
-import org.wso2.carbon.identity.openid4vc.presentation.authenticator.service.impl.VPRequestServiceImpl;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.VPAuthenticatorUtil;
 
@@ -125,7 +124,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             // Generate a random UUID as the public Request ID.
             String requestId = UUID.randomUUID().toString();
 
-             VPServiceDataHolder.getVPContextService().setVPContext(context,
+            context.setProperty(Constraints.CONTEXT_VP_CONTEXT,
                     new VPContext(VPRequestStatus.ACTIVE));
 
             String redirectUrl = createRedirectURI(requestId);
@@ -140,27 +139,6 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         } catch (IOException e) {
             throw new AuthenticationFailedException("Failed to redirect to login page", e);
         }
-    }
-
-    /**
-     * Build wallet login redirect URI with required bootstrap parameters for QR rendering.
-     *
-     * @param requestId  Masked session data key.
-     * @return Redirect URI with encoded query parameters.
-     */
-    private String createRedirectURI(String requestId) throws VPAuthenticatorException {
-
-        String baseUrl = VPAuthenticatorUtil.resolveTenantAwareBaseUrl();
-        String requestUri = baseUrl + Constraints.REQUEST_URI_ENDPOINT
-                + requestId;
-        String clientId = VPAuthenticatorUtil.getClientId(baseUrl);
-
-        return WALLET_LOGIN_PAGE + "?"
-                + PARAM_SESSION_DATA_KEY + "=" + URLEncoder.encode(requestId, StandardCharsets.UTF_8)
-                + "&" + PARAM_CLIENT_ID + "="
-                + URLEncoder.encode(StringUtils.defaultString(clientId), StandardCharsets.UTF_8)
-                + "&" + PARAM_REQUEST_URI + "="
-                + URLEncoder.encode(StringUtils.defaultString(requestUri), StandardCharsets.UTF_8);
     }
 
     /**
@@ -228,6 +206,27 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         }
 
         context.setSubject(authenticatedUser);
+    }
+
+    /**
+     * Build wallet login redirect URI with required bootstrap parameters for QR rendering.
+     *
+     * @param requestId  Masked session data key.
+     * @return Redirect URI with encoded query parameters.
+     */
+    private String createRedirectURI(String requestId) throws VPAuthenticatorException {
+
+        String baseUrl = VPAuthenticatorUtil.resolveTenantAwareBaseUrl();
+        String requestUri = baseUrl + Constraints.REQUEST_URI_ENDPOINT
+                + requestId;
+        String clientId = VPAuthenticatorUtil.getClientId(baseUrl);
+
+        return WALLET_LOGIN_PAGE + "?"
+                + PARAM_SESSION_DATA_KEY + "=" + URLEncoder.encode(requestId, StandardCharsets.UTF_8)
+                + "&" + PARAM_CLIENT_ID + "="
+                + URLEncoder.encode(StringUtils.defaultString(clientId), StandardCharsets.UTF_8)
+                + "&" + PARAM_REQUEST_URI + "="
+                + URLEncoder.encode(StringUtils.defaultString(requestUri), StandardCharsets.UTF_8);
     }
 
     /**

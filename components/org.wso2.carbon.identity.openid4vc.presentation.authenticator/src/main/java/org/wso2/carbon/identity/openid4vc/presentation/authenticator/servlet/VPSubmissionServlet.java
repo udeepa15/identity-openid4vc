@@ -132,11 +132,7 @@ public class VPSubmissionServlet extends HttpServlet {
             // Parse submission directly into the model.
             VPSubmission submission = parseSubmission(request);
 
-            // Basic validation.
-            if (StringUtils.isBlank(submission.getRequestId())) {
-                sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
-                        new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
-                                "Missing state parameter."));
+            if (!validateRequiredSubmissionFields(submission, response)) {
                 return;
             }
 
@@ -150,13 +146,7 @@ public class VPSubmissionServlet extends HttpServlet {
                                 "Invalid state parameter."));
                 return;
             }
- 
-            if (StringUtils.isBlank(submission.getVpToken())) {
-                sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
-                        new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
-                                "Missing vp_token."));
-                return;
-            }
+
             try {
                 // Parse the presentation_submission string into the DTO.
                 Gson gson = new GsonBuilder()
@@ -211,6 +201,42 @@ public class VPSubmissionServlet extends HttpServlet {
                     new VPAuthenticatorServerException(VPAuthenticatorErrorCode.INTERNAL_SERVER_ERROR,
                             "Internal server error.", e));
         }
+    }
+
+    /**
+     * Validate required fields in the VP submission payload.
+     *
+     * @param submission Parsed submission payload.
+     * @param response HTTP response.
+     * @return True when all required fields are present.
+     * @throws IOException If writing the error response fails.
+     */
+    private boolean validateRequiredSubmissionFields(final VPSubmission submission,
+                                                     final HttpServletResponse response)
+            throws IOException {
+
+        if (StringUtils.isBlank(submission.getRequestId())) {
+            sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
+                    new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
+                            "Missing state parameter."));
+            return false;
+        }
+
+        if (StringUtils.isBlank(submission.getVpToken())) {
+            sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
+                    new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
+                            "Missing vp_token."));
+            return false;
+        }
+
+        if (StringUtils.isBlank(submission.getPresentationSubmission())) {
+            sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
+                    new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
+                            "Missing presentation submission parameter."));
+            return false;
+        }
+
+        return true;
     }
 
     private VPSubmission parseSubmission(final HttpServletRequest request)

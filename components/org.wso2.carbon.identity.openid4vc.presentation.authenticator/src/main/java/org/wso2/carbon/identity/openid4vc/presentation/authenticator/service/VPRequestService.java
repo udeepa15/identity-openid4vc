@@ -19,8 +19,6 @@ package org.wso2.carbon.identity.openid4vc.presentation.authenticator.service;
 
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 
-import java.util.Map;
-
 /**
  * Base service contract for managing VP (Verifiable Presentation) requests.
  */
@@ -34,17 +32,5 @@ public abstract class VPRequestService {
      * @throws VPAuthenticatorException If an error occurs during JWT generation.
      */
     public abstract String generateRequestJwt(String requestId) throws VPAuthenticatorException;
-
-    /**
-     * Resolve metadata required for initiating the VP request (client ID, request URI).
-     *
-     * @param requestId VP request identifier.
-     * @return Map containing request metadata.
-     * @throws VPAuthenticatorException If an error occurs during metadata resolution.
-     */
-    public abstract Map<String, String> getVPRequestMetadata(String requestId)
-            throws VPAuthenticatorException;
-
-
 
 }

@@ -160,7 +160,7 @@ public class VPRequestServiceImpl extends VPRequestService {
                 .nonce(nonce)
                 .presentationDefinitionId(presentationDefinitionId)
                 .presentationDefinition(presentationDefinition)
-                .responseUri(buildResponseUri(baseUrl))
+                .responseUri(baseUrl + Constraints.RESPONSE_URI_ENDPOINT)
                 .responseMode(OpenID4VPConstants.Protocol.RESPONSE_MODE_DIRECT_POST)
                 .status(VPRequestStatus.ACTIVE)
                 .expiresAt(expiresAt)
@@ -172,20 +172,8 @@ public class VPRequestServiceImpl extends VPRequestService {
         return buildRequestObjectJwt(vpRequest, didMethod);
     }
 
-    @Override
-    public Map<String, String> getVPRequestMetadata(String requestId) throws VPAuthenticatorException {
+
 //ToDo : check with multi tenent
-        String baseUrl = VPAuthenticatorUtil.resolveTenantAwareBaseUrl();
-        Map<String, String> metadata = new HashMap<>();
-        metadata.put(Constraints.PARAM_CLIENT_ID, VPAuthenticatorUtil.getClientId(baseUrl));
-        metadata.put(Constraints.PARAM_REQUEST_URI, buildRequestUri(baseUrl, requestId));
-
-        return metadata;
-    }
-
-
-
-
 
 
     /**
@@ -317,40 +305,4 @@ public class VPRequestServiceImpl extends VPRequestService {
                     "Error building request object JWT.", e);
         }
     }
-
-    /**
-     * Build the response URI.
-     *
-     * @param currentBaseUrl The base URL to use.
-     * @return The complete response URI.
-     */
-    private String buildResponseUri(final String currentBaseUrl) {
-
-        String endpoint = Constraints.RESPONSE_URI_ENDPOINT;
-        if (currentBaseUrl.endsWith("/")) {
-            return currentBaseUrl.substring(0, currentBaseUrl.length() - 1)
-                    + endpoint;
-        }
-        return currentBaseUrl + endpoint;
-    }
-
-    /**
-     * Build the request URI for a specific request ID.
-     *
-     * @param currentBaseUrl The base URL to use.
-     * @param requestId      The request identifier.
-     * @return The complete request URI.
-     */
-    private String buildRequestUri(final String currentBaseUrl,
-                                   final String requestId) {
-
-        String endpoint = Constraints.REQUEST_URI_ENDPOINT
-                + requestId;
-        if (currentBaseUrl.endsWith("/")) {
-            return currentBaseUrl.substring(0, currentBaseUrl.length() - 1)
-                    + endpoint;
-        }
-        return currentBaseUrl + endpoint;
-    }
-
 }

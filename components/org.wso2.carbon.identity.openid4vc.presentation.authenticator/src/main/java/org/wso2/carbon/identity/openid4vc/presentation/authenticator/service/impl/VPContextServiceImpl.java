@@ -82,10 +82,6 @@ public class VPContextServiceImpl implements VPContextService {
     @Override
     public Optional<VPContext> getVPContext(String contextId) {
 
-        if (StringUtils.isBlank(contextId)) {
-            return Optional.empty();
-        }
-
         AuthenticationContext context = FrameworkUtils.getAuthenticationContextFromCache(contextId);
         return getVPContext(context);
     }
