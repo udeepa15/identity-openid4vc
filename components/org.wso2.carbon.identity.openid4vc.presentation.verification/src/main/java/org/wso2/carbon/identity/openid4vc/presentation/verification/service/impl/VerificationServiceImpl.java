@@ -18,6 +18,7 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.verification.service.impl;
 
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -188,47 +189,48 @@ public class VerificationServiceImpl implements VerificationService {
     }
 
     /**
-        * Verifies extracted claims against the requested credential constraints in
-        * the supplied Presentation Definition.
-        *
-        * @param verifiedClaims The already verified claims extracted from the VP
-        * @param definition The Presentation Definition to enforce
-        * @return The verified claim map when all constraints are satisfied
-        * @throws VerificationException If an issuer or requested-claim constraint is not met
+     * Verifies extracted claims against the requested credential constraints in
+     * the supplied Presentation Definition.
+     *
+     * @param verifiedClaims The already verified claims extracted from the VP
+     * @param definition The Presentation Definition to enforce
+     * @return The verified claim map when all constraints are satisfied
+     * @throws VerificationException If an issuer or requested-claim constraint is not met
      */
     private Map<String, Object> verifyAgainstDefinition(Map<String, Object> verifiedClaims,
-                                                       PresentationDefinition definition)
+                                                        PresentationDefinition definition)
             throws VerificationException {
 
-        if (definition.getRequestedCredentials() == null) {
+        // Safety check to ensure the list is not null or empty
+        if (definition.getRequestedCredentials() == null || definition.getRequestedCredentials().isEmpty()) {
             return verifiedClaims;
         }
-        //Currently Supports a single VC
-        for (PresentationDefinition.RequestedCredential req : definition.getRequestedCredentials()) {
 
-            String pdIssuer = req.getIssuer();
-            if (StringUtils.isNotBlank(pdIssuer)) {
-                Object issClaimValue = verifiedClaims.get(VerificationConstants.CLAIM_ISS);
-                if (issClaimValue == null) {
-                    throw new VerificationClientException(VerificationErrorCode.INVALID_CREDENTIAL,
-                            "Issuer verification failed: 'iss' claim is missing from the VP token.");
-                }
-                String tokenIssuer = issClaimValue.toString();
-                String pdNormalized = normalizeIssuer(pdIssuer);
-                String tokenNormalized = normalizeIssuer(tokenIssuer); //ToDo: do not nomalize (use  asingle method)
-                if (pdNormalized == null || tokenNormalized == null || !pdNormalized.equals(tokenNormalized)) {
-                    throw new VerificationClientException(VerificationErrorCode.INVALID_CREDENTIAL,
-                            "Issuer verification failed: token issuer '" + tokenIssuer
-                                    + "' does not match the expected issuer '" + pdIssuer + "'.");
-                }
+        // Currently Supports a single VC. Multi-VC support will be added later.
+        PresentationDefinition.RequestedCredential req = definition.getRequestedCredentials().get(0);
+
+        String pdIssuer = req.getIssuer();
+        if (StringUtils.isNotBlank(pdIssuer)) {
+            Object issClaimValue = verifiedClaims.get(VerificationConstants.CLAIM_ISS);
+            if (issClaimValue == null) {
+                throw new VerificationClientException(VerificationErrorCode.INVALID_CREDENTIAL,
+                        "Issuer verification failed: 'iss' claim is missing from the VP token.");
             }
-//ToDo: string utils
-            if (req.getClaims() != null && !req.getClaims().isEmpty()) {
-                for (String claim : req.getClaims()) {
-                    if (!verifiedClaims.containsKey(claim)) {
-                        throw new VerificationClientException(VerificationErrorCode.INVALID_CREDENTIAL,
-                                "Requested claim '" + claim + "' is missing from the presentation");
-                    }
+            String tokenIssuer = issClaimValue.toString();
+
+            // ToDo Resolved: Removed normalize method, using direct string comparison
+            if (!pdIssuer.equals(tokenIssuer)) {
+                throw new VerificationClientException(VerificationErrorCode.INVALID_CREDENTIAL,
+                        "Issuer verification failed: token issuer '" + tokenIssuer
+                                + "' does not match the expected issuer '" + pdIssuer + "'.");
+            }
+        }
+
+        if (CollectionUtils.isNotEmpty(req.getClaims())) {
+            for (String claim : req.getClaims()) {
+                if (!verifiedClaims.containsKey(claim)) {
+                    throw new VerificationClientException(VerificationErrorCode.INVALID_CREDENTIAL,
+                            "Requested claim '" + claim + "' is missing from the presentation");
                 }
             }
         }
@@ -293,84 +295,6 @@ public class VerificationServiceImpl implements VerificationService {
                             + VerificationConstants.FORMAT_JWT + ", " + VerificationConstants.FORMAT_SD_JWT);
         }
     }
-
-    /**
-     * Normalize an issuer identifier for strict comparison.
-        *
-        * <p>The method normalizes both DID Web and URL-based issuer values to a
-        * comparable canonical form.</p>
-        *
-        * @param issuer The issuer value to normalize
-        * @return The normalized issuer value, or {@code null} when normalization is not possible
-     */
-    private String normalizeIssuer(String issuer) {
- 
-         if (StringUtils.isBlank(issuer)) {
-             return null;
-         }
- 
-         issuer = issuer.trim();
- 
-         if (issuer.startsWith(VerificationConstants.DID_WEB_PREFIX)) {
-             String afterPrefix = issuer.substring(VerificationConstants.DID_WEB_PREFIX.length());
-             if (StringUtils.isBlank(afterPrefix)) {
-                 return null;
-             }
- 
-             String[] segments = afterPrefix.split(":");
-             StringBuilder normalized = new StringBuilder(segments[0].toLowerCase(Locale.ROOT));
- 
-             for (int i = 1; i < segments.length; i++) {
-                 normalized.append("/").append(segments[i]);
-             }
-             String result = normalized.toString();
-             return result.endsWith("/") ? result.substring(0, result.length() - 1) : result;
-         }
- 
-         try {
-             URI uri = new URI(issuer);
-             String host = uri.getHost();
-             String scheme = uri.getScheme();
-             
-             if (host == null || scheme == null) {
-                 return null;
-             }
- 
-             StringBuilder normalized = new StringBuilder();
- 
-             if ("http".equalsIgnoreCase(scheme)) {
-                 normalized.append("http://");
-             } else if (!"https".equalsIgnoreCase(scheme)) {
-                 return null; 
-             }
-             
-             normalized.append(host.toLowerCase(Locale.ROOT));
- 
-             int port = uri.getPort();
-             if (port != -1) {
-                 boolean isDefaultHttps = "https".equalsIgnoreCase(scheme) && port == 443;
-                 boolean isDefaultHttp = "http".equalsIgnoreCase(scheme) && port == 80;
-                 
-                 if (!isDefaultHttps && !isDefaultHttp) {
-                     normalized.append(":").append(port);
-                 }
-             }
- 
-             String path = uri.getPath();
-             if (StringUtils.isNotBlank(path)) {
-                 if (!path.startsWith("/")) {
-                     normalized.append("/");
-                 }
-                 normalized.append(path);
-             }
- 
-             String result = normalized.toString();
-             return result.endsWith("/") ? result.substring(0, result.length() - 1) : result;
- 
-         } catch (URISyntaxException e) {
-             return null;
-         }
-     }
  
      /**
       * OSGi bind callback that receives the active
