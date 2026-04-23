@@ -18,7 +18,9 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.verification.dto;
 
-
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -26,57 +28,107 @@ import java.util.Map;
  */
 public class VerificationResult {
 
+    private boolean isVerified;
+    private String statusMessage;
+    private List<String> errors;
     private Map<String, Object> verifiedClaims;
-    private VerificationStatus status;
+    private PresentationMetadata metadata;
 
-    /**
-     * Returns the verified claim set produced by the verifier.
-     *
-     * @return A map containing verified claims
-     */
+    public VerificationResult() {
+        this.errors = new ArrayList<>();
+        this.verifiedClaims = new HashMap<>();
+    }
+
+    private VerificationResult(Builder builder) {
+        this.isVerified = builder.isVerified;
+        this.statusMessage = builder.statusMessage;
+        this.errors = builder.errors != null ? builder.errors : new ArrayList<>();
+        this.verifiedClaims = builder.verifiedClaims != null ? builder.verifiedClaims : new HashMap<>();
+        this.metadata = builder.metadata;
+    }
+
+    public boolean isVerified() {
+        return isVerified;
+    }
+
+    public void setVerified(boolean verified) {
+        isVerified = verified;
+    }
+
+    public String getStatusMessage() {
+        return statusMessage;
+    }
+
+    public void setStatusMessage(String statusMessage) {
+        this.statusMessage = statusMessage;
+    }
+
+    public List<String> getErrors() {
+        return errors;
+    }
+
+    public void setErrors(List<String> errors) {
+        this.errors = errors;
+    }
+
     public Map<String, Object> getVerifiedClaims() {
-
         return verifiedClaims;
     }
 
-    /**
-     * Sets the verified claim set produced by the verifier.
-     *
-     * @param verifiedClaims A map containing verified claims
-     */
     public void setVerifiedClaims(Map<String, Object> verifiedClaims) {
-
         this.verifiedClaims = verifiedClaims;
     }
 
-    /**
-     * Returns the verification workflow status.
-     *
-     * @return The {@link VerificationStatus}
-     */
-    public VerificationStatus getStatus() {
+    public PresentationMetadata getMetadata() {
+        return metadata;
+    }
 
-        return status;
+    public void setMetadata(PresentationMetadata metadata) {
+        this.metadata = metadata;
     }
 
     /**
-     * Sets the verification workflow status.
-     *
-     * @param status The {@link VerificationStatus}
+     * Builder class for VerificationResult.
      */
-    public void setStatus(VerificationStatus status) {
+    public static class Builder {
+        private boolean isVerified;
+        private String statusMessage;
+        private List<String> errors = new ArrayList<>();
+        private Map<String, Object> verifiedClaims = new HashMap<>();
+        private PresentationMetadata metadata;
 
-        this.status = status;
-    }
+        public Builder isVerified(boolean isVerified) {
+            this.isVerified = isVerified;
+            return this;
+        }
 
-    /**
-     * Enum for verification status.
-     */
-    public enum VerificationStatus {
+        public Builder statusMessage(String statusMessage) {
+            this.statusMessage = statusMessage;
+            return this;
+        }
 
-        SUBMITTED,
-        PENDING,
-        VERIFIED,
-        FAILED
+        public Builder errors(List<String> errors) {
+            this.errors = errors;
+            return this;
+        }
+
+        public Builder addError(String error) {
+            this.errors.add(error);
+            return this;
+        }
+
+        public Builder verifiedClaims(Map<String, Object> verifiedClaims) {
+            this.verifiedClaims = verifiedClaims;
+            return this;
+        }
+
+        public Builder metadata(PresentationMetadata metadata) {
+            this.metadata = metadata;
+            return this;
+        }
+
+        public VerificationResult build() {
+            return new VerificationResult(this);
+        }
     }
 }

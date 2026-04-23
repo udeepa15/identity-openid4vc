@@ -40,6 +40,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertTrue;
 
 public class DtoModelCoverageTest {
 
@@ -63,13 +64,15 @@ public class DtoModelCoverageTest {
 
     @Test
     public void testVerificationResult() {
-        VerificationResult result = new VerificationResult();
-        result.setStatus(VerificationResult.VerificationStatus.VERIFIED);
+        VerificationResult result = new VerificationResult.Builder()
+                .isVerified(true)
+                .statusMessage("Success")
+                .build();
         Map<String, Object> claims = new HashMap<>();
         claims.put("sub", "user1");
         result.setVerifiedClaims(claims);
 
-        assertEquals(result.getStatus(), VerificationResult.VerificationStatus.VERIFIED);
+        assertTrue(result.isVerified());
         assertEquals(result.getVerifiedClaims().get("sub"), "user1");
     }
 

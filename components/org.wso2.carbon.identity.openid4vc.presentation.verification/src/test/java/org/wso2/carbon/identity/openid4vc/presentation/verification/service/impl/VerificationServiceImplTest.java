@@ -31,7 +31,6 @@ import org.wso2.carbon.identity.openid4vc.presentation.management.model.Presenta
 import org.wso2.carbon.identity.openid4vc.presentation.management.service.PresentationDefinitionService;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.PresentationSubmission;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VerificationResult;
-import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VerificationClientException;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VerificationErrorCode;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VerificationServerException;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.handler.Verifier;
@@ -118,23 +117,19 @@ public class VerificationServiceImplTest {
     @Test(description = "validateRequest: null vpToken throws INVALID_VP_SUBMISSION")
     public void testValidateRequest_nullToken_throwsInvalidSubmission() throws Exception {
         PresentationSubmission sub = buildSubmission(VerificationConstants.FORMAT_JWT);
-        try {
-            service.verify(sub, 1, null);
-            fail("Expected VerificationClientException");
-        } catch (VerificationClientException e) {
-            assertEquals(e.getErrorCode(), VerificationErrorCode.INVALID_VP_SUBMISSION);
-        }
+        VerificationResult result = service.verify(sub, 1, null);
+        org.testng.Assert.assertFalse(result.isVerified());
+        org.testng.Assert.assertFalse(result.getErrors().isEmpty());
+
     }
 
     @Test(description = "validateRequest: blank vpToken throws INVALID_VP_SUBMISSION")
     public void testValidateRequest_blankToken_throwsInvalidSubmission() throws Exception {
         PresentationSubmission sub = buildSubmission(VerificationConstants.FORMAT_JWT);
-        try {
-            service.verify(sub, 1, "   ");
-            fail("Expected VerificationClientException");
-        } catch (VerificationClientException e) {
-            assertEquals(e.getErrorCode(), VerificationErrorCode.INVALID_VP_SUBMISSION);
-        }
+        VerificationResult result = service.verify(sub, 1, "   ");
+        org.testng.Assert.assertFalse(result.isVerified());
+        org.testng.Assert.assertFalse(result.getErrors().isEmpty());
+
     }
 
     @Test(description = "validateRequest: blank definition_id throws INVALID_VP_SUBMISSION")
@@ -155,12 +150,10 @@ public class VerificationServiceImplTest {
 
     @Test(description = "validateRequest: null submission throws INVALID_VP_SUBMISSION")
     public void testValidateRequest_nullSubmission_throwsInvalidSubmission() throws Exception {
-        try {
-            service.verify(null, 1, validJwtToken);
-            fail("Expected VerificationClientException");
-        } catch (VerificationClientException e) {
-            assertEquals(e.getErrorCode(), VerificationErrorCode.INVALID_VP_SUBMISSION);
-        }
+        VerificationResult result = service.verify(null, 1, validJwtToken);
+        org.testng.Assert.assertFalse(result.isVerified());
+        org.testng.Assert.assertFalse(result.getErrors().isEmpty());
+
     }
 
     @Test(description = "validateRequest: null descriptorMap throws INVALID_VP_SUBMISSION")
@@ -168,12 +161,10 @@ public class VerificationServiceImplTest {
         PresentationSubmission sub = new PresentationSubmission();
         sub.setDefinitionId("def-1");
         sub.setDescriptorMap(null);
-        try {
-            service.verify(sub, 1, validJwtToken);
-            fail("Expected VerificationClientException");
-        } catch (VerificationClientException e) {
-            assertEquals(e.getErrorCode(), VerificationErrorCode.INVALID_VP_SUBMISSION);
-        }
+        VerificationResult result = service.verify(sub, 1, validJwtToken);
+        org.testng.Assert.assertFalse(result.isVerified());
+        org.testng.Assert.assertFalse(result.getErrors().isEmpty());
+
     }
 
     @Test(description = "validateRequest: empty descriptorMap throws INVALID_VP_SUBMISSION")
@@ -181,12 +172,10 @@ public class VerificationServiceImplTest {
         PresentationSubmission sub = new PresentationSubmission();
         sub.setDefinitionId("def-1");
         sub.setDescriptorMap(Collections.emptyList());
-        try {
-            service.verify(sub, 1, validJwtToken);
-            fail("Expected VerificationClientException");
-        } catch (VerificationClientException e) {
-            assertEquals(e.getErrorCode(), VerificationErrorCode.INVALID_VP_SUBMISSION);
-        }
+        VerificationResult result = service.verify(sub, 1, validJwtToken);
+        org.testng.Assert.assertFalse(result.isVerified());
+        org.testng.Assert.assertFalse(result.getErrors().isEmpty());
+
     }
 
     // =========================================================================
@@ -196,35 +185,29 @@ public class VerificationServiceImplTest {
     @Test(description = "validateRequest: null format in descriptor throws INVALID_VP_FORMAT")
     public void testValidateRequest_nullFormat_throwsInvalidFormat() throws Exception {
         PresentationSubmission sub = buildSubmission(null);
-        try {
-            service.verify(sub, 1, validJwtToken);
-            fail("Expected VerificationClientException");
-        } catch (VerificationClientException e) {
-            assertEquals(e.getErrorCode(), VerificationErrorCode.INVALID_VP_FORMAT);
-        }
+        VerificationResult result = service.verify(sub, 1, validJwtToken);
+        org.testng.Assert.assertFalse(result.isVerified());
+        org.testng.Assert.assertFalse(result.getErrors().isEmpty());
+
     }
 
     @Test(description = "validateRequest: blank format in descriptor throws INVALID_VP_FORMAT")
     public void testValidateRequest_blankFormat_throwsInvalidFormat() throws Exception {
         PresentationSubmission sub = buildSubmission("   ");
-        try {
-            service.verify(sub, 1, validJwtToken);
-            fail("Expected VerificationClientException");
-        } catch (VerificationClientException e) {
-            assertEquals(e.getErrorCode(), VerificationErrorCode.INVALID_VP_FORMAT);
-        }
+        VerificationResult result = service.verify(sub, 1, validJwtToken);
+        org.testng.Assert.assertFalse(result.isVerified());
+        org.testng.Assert.assertFalse(result.getErrors().isEmpty());
+
     }
 
     @Test(description = "validateRequest: unknown format throws INVALID_VP_FORMAT")
     public void testValidateRequest_unknownFormat_throwsInvalidFormat() throws Exception {
         PresentationSubmission sub = buildSubmission("ldp_vc");
-        try {
-            service.verify(sub, 1, validJwtToken);
-            fail("Expected VerificationClientException");
-        } catch (VerificationClientException e) {
-            assertEquals(e.getErrorCode(), VerificationErrorCode.INVALID_VP_FORMAT);
-            assertTrue(e.getMessage().contains("Unsupported VP format"));
-        }
+        VerificationResult result = service.verify(sub, 1, validJwtToken);
+        org.testng.Assert.assertFalse(result.isVerified());
+        org.testng.Assert.assertFalse(result.getErrors().isEmpty());
+        assertTrue(result.getErrors().get(0).contains("Unsupported VP format"));
+
     }
 
     @Test(description = "validateRequest: jwt_vc format is accepted (known format)")
@@ -336,7 +319,7 @@ public class VerificationServiceImplTest {
         stub.setPresentationDefinitionService(pdService);
 
         VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
-        assertEquals(result.getStatus(), VerificationResult.VerificationStatus.VERIFIED);
+        assertTrue(result.isVerified());
     }
 
     @Test(description = "verifyAgainstDefinition: no issuer constraint in PD — skips issuer check")
@@ -350,7 +333,7 @@ public class VerificationServiceImplTest {
         stub.setPresentationDefinitionService(pdService);
 
         VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
-        assertEquals(result.getStatus(), VerificationResult.VerificationStatus.VERIFIED);
+        assertTrue(result.isVerified());
     }
 
     // --- Issuer verification paths ---
@@ -368,7 +351,7 @@ public class VerificationServiceImplTest {
         stub.setPresentationDefinitionService(pdService);
 
         VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
-        assertEquals(result.getStatus(), VerificationResult.VerificationStatus.VERIFIED);
+        assertTrue(result.isVerified());
     }
 
     @Test(description = "verifyAgainstDefinition: https:// PD issuer matches https:// token iss (same path) — passes")
@@ -382,7 +365,7 @@ public class VerificationServiceImplTest {
         stub.setPresentationDefinitionService(pdService);
 
         VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
-        assertEquals(result.getStatus(), VerificationResult.VerificationStatus.VERIFIED);
+        assertTrue(result.isVerified());
     }
 
     @Test(description = "verifyAgainstDefinition: issuer host comparison is case-insensitive — passes")
@@ -396,7 +379,7 @@ public class VerificationServiceImplTest {
         stub.setPresentationDefinitionService(pdService);
 
         VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
-        assertEquals(result.getStatus(), VerificationResult.VerificationStatus.VERIFIED);
+        assertTrue(result.isVerified());
     }
 
     @Test(description = "verifyAgainstDefinition: did:web with complex path — matches correctly")
@@ -410,7 +393,7 @@ public class VerificationServiceImplTest {
         stub.setPresentationDefinitionService(pdService);
  
         VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
-        assertEquals(result.getStatus(), VerificationResult.VerificationStatus.VERIFIED);
+        assertTrue(result.isVerified());
     }
  
     @Test(description = "verifyAgainstDefinition: https:// issuer with port — matches strictly")
@@ -424,7 +407,7 @@ public class VerificationServiceImplTest {
         stub.setPresentationDefinitionService(pdService);
  
         VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
-        assertEquals(result.getStatus(), VerificationResult.VerificationStatus.VERIFIED);
+        assertTrue(result.isVerified());
     }
 
     @Test(description = "verifyAgainstDefinition: issuer host mismatch — throws INVALID_CREDENTIAL")
@@ -437,13 +420,11 @@ public class VerificationServiceImplTest {
         VerificationServiceImpl stub = buildStubService(claims);
         stub.setPresentationDefinitionService(pdService);
  
-        try {
-            stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
-            fail("Expected VerificationClientException");
-        } catch (VerificationClientException e) {
-            assertEquals(e.getErrorCode(), VerificationErrorCode.INVALID_CREDENTIAL);
-            assertTrue(e.getMessage().contains("Issuer verification failed"));
-        }
+        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        org.testng.Assert.assertFalse(result.isVerified());
+        org.testng.Assert.assertFalse(result.getErrors().isEmpty());
+        assertTrue(result.getErrors().get(0).contains("Issuer verification failed"));
+
     }
 
     @Test(description = "verifyAgainstDefinition: issuer path mismatch — throws INVALID_CREDENTIAL")
@@ -456,12 +437,10 @@ public class VerificationServiceImplTest {
         VerificationServiceImpl stub = buildStubService(claims);
         stub.setPresentationDefinitionService(pdService);
 
-        try {
-            stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
-            fail("Expected VerificationClientException");
-        } catch (VerificationClientException e) {
-            assertEquals(e.getErrorCode(), VerificationErrorCode.INVALID_CREDENTIAL);
-        }
+        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        org.testng.Assert.assertFalse(result.isVerified());
+        org.testng.Assert.assertFalse(result.getErrors().isEmpty());
+
     }
 
     @Test(description = "verifyAgainstDefinition: issuer path case mismatch — throws INVALID_CREDENTIAL")
@@ -474,12 +453,10 @@ public class VerificationServiceImplTest {
         VerificationServiceImpl stub = buildStubService(claims);
         stub.setPresentationDefinitionService(pdService);
 
-        try {
-            stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
-            fail("Expected VerificationClientException");
-        } catch (VerificationClientException e) {
-            assertEquals(e.getErrorCode(), VerificationErrorCode.INVALID_CREDENTIAL);
-        }
+        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        org.testng.Assert.assertFalse(result.isVerified());
+        org.testng.Assert.assertFalse(result.getErrors().isEmpty());
+
     }
 
     @Test(description = "verifyAgainstDefinition: issuer port mismatch — throws INVALID_CREDENTIAL")
@@ -492,12 +469,10 @@ public class VerificationServiceImplTest {
         VerificationServiceImpl stub = buildStubService(claims);
         stub.setPresentationDefinitionService(pdService);
 
-        try {
-            stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
-            fail("Expected VerificationClientException");
-        } catch (VerificationClientException e) {
-            assertEquals(e.getErrorCode(), VerificationErrorCode.INVALID_CREDENTIAL);
-        }
+        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        org.testng.Assert.assertFalse(result.isVerified());
+        org.testng.Assert.assertFalse(result.getErrors().isEmpty());
+
     }
 
     @Test(description = "verifyAgainstDefinition: PD issuer set but iss claim absent — throws INVALID_CREDENTIAL")
@@ -510,13 +485,11 @@ public class VerificationServiceImplTest {
                 Collections.singletonMap("email", (Object) "alice@example.com"));
         stub.setPresentationDefinitionService(pdService);
 
-        try {
-            stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
-            fail("Expected VerificationClientException");
-        } catch (VerificationClientException e) {
-            assertEquals(e.getErrorCode(), VerificationErrorCode.INVALID_CREDENTIAL);
-            assertTrue(e.getMessage().contains("'iss' claim is missing"));
-        }
+        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        org.testng.Assert.assertFalse(result.isVerified());
+        org.testng.Assert.assertFalse(result.getErrors().isEmpty());
+        assertTrue(result.getErrors().get(0).contains("'iss' claim is missing"));
+
     }
 
     @Test(description = "verifyAgainstDefinition: unparseable PD issuer string —" + 
@@ -532,12 +505,10 @@ public class VerificationServiceImplTest {
         VerificationServiceImpl stub = buildStubService(claims);
         stub.setPresentationDefinitionService(pdService);
 
-        try {
-            stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
-            fail("Expected VerificationClientException");
-        } catch (VerificationClientException e) {
-            assertEquals(e.getErrorCode(), VerificationErrorCode.INVALID_CREDENTIAL);
-        }
+        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        org.testng.Assert.assertFalse(result.isVerified());
+        org.testng.Assert.assertFalse(result.getErrors().isEmpty());
+
     }
 
     @Test(description = "verifyAgainstDefinition: http scheme matches http token — passes")
@@ -551,7 +522,7 @@ public class VerificationServiceImplTest {
         stub.setPresentationDefinitionService(pdService);
 
         VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
-        assertEquals(result.getStatus(), VerificationResult.VerificationStatus.VERIFIED);
+        assertTrue(result.isVerified());
     }
 
     @Test(description = "verifyAgainstDefinition: http PD mismatch https token — throws INVALID_CREDENTIAL")
@@ -564,12 +535,10 @@ public class VerificationServiceImplTest {
         VerificationServiceImpl stub = buildStubService(claims);
         stub.setPresentationDefinitionService(pdService);
 
-        try {
-            stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
-            fail("Expected VerificationClientException");
-        } catch (VerificationClientException e) {
-            assertEquals(e.getErrorCode(), VerificationErrorCode.INVALID_CREDENTIAL);
-        }
+        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        org.testng.Assert.assertFalse(result.isVerified());
+        org.testng.Assert.assertFalse(result.getErrors().isEmpty());
+
     }
 
     @Test(description = "verifyAgainstDefinition: https PD mismatch http token — throws INVALID_CREDENTIAL")
@@ -582,12 +551,10 @@ public class VerificationServiceImplTest {
         VerificationServiceImpl stub = buildStubService(claims);
         stub.setPresentationDefinitionService(pdService);
 
-        try {
-            stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
-            fail("Expected VerificationClientException");
-        } catch (VerificationClientException e) {
-            assertEquals(e.getErrorCode(), VerificationErrorCode.INVALID_CREDENTIAL);
-        }
+        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        org.testng.Assert.assertFalse(result.isVerified());
+        org.testng.Assert.assertFalse(result.getErrors().isEmpty());
+
     }
 
     @Test(description = "verifyAgainstDefinition: port 80 is stripped for http — passes")
@@ -601,7 +568,7 @@ public class VerificationServiceImplTest {
         stub.setPresentationDefinitionService(pdService);
 
         VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
-        assertEquals(result.getStatus(), VerificationResult.VerificationStatus.VERIFIED);
+        assertTrue(result.isVerified());
     }
 
     @Test(description = "verifyAgainstDefinition: port 80 is preserved for https — throws mismatch")
@@ -614,12 +581,10 @@ public class VerificationServiceImplTest {
         VerificationServiceImpl stub = buildStubService(claims);
         stub.setPresentationDefinitionService(pdService);
 
-        try {
-            stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
-            fail("Expected VerificationClientException");
-        } catch (VerificationClientException e) {
-            assertEquals(e.getErrorCode(), VerificationErrorCode.INVALID_CREDENTIAL);
-        }
+        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        org.testng.Assert.assertFalse(result.isVerified());
+        org.testng.Assert.assertFalse(result.getErrors().isEmpty());
+
     }
 
     @Test(description = "verifyAgainstDefinition: unsupported scheme (ftp) — throws INVALID_CREDENTIAL")
@@ -632,12 +597,10 @@ public class VerificationServiceImplTest {
         VerificationServiceImpl stub = buildStubService(claims);
         stub.setPresentationDefinitionService(pdService);
 
-        try {
-            stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
-            fail("Expected VerificationClientException");
-        } catch (VerificationClientException e) {
-            assertEquals(e.getErrorCode(), VerificationErrorCode.INVALID_CREDENTIAL);
-        }
+        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        org.testng.Assert.assertFalse(result.isVerified());
+        org.testng.Assert.assertFalse(result.getErrors().isEmpty());
+
     }
 
     // --- Claim presence validation ---
@@ -654,7 +617,7 @@ public class VerificationServiceImplTest {
         stub.setPresentationDefinitionService(pdService);
 
         VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
-        assertEquals(result.getStatus(), VerificationResult.VerificationStatus.VERIFIED);
+        assertTrue(result.isVerified());
         assertEquals(result.getVerifiedClaims().get("email"), "alice@example.com");
         assertEquals(result.getVerifiedClaims().get("given_name"), "Alice");
     }
@@ -669,13 +632,11 @@ public class VerificationServiceImplTest {
                 Collections.singletonMap("email", (Object) "alice@example.com"));
         stub.setPresentationDefinitionService(pdService);
 
-        try {
-            stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
-            fail("Expected VerificationClientException");
-        } catch (VerificationClientException e) {
-            assertEquals(e.getErrorCode(), VerificationErrorCode.INVALID_CREDENTIAL);
-            assertTrue(e.getMessage().contains("given_name"));
-        }
+        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        org.testng.Assert.assertFalse(result.isVerified());
+        org.testng.Assert.assertFalse(result.getErrors().isEmpty());
+        assertTrue(result.getErrors().get(0).contains("given_name"));
+
     }
 
     @Test(description = "verifyAgainstDefinition: empty claims list in PD — no claim check, passes")
@@ -687,7 +648,7 @@ public class VerificationServiceImplTest {
         stub.setPresentationDefinitionService(pdService);
 
         VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
-        assertEquals(result.getStatus(), VerificationResult.VerificationStatus.VERIFIED);
+        assertTrue(result.isVerified());
     }
 
     @Test(description = "verifyAgainstDefinition: both issuer and claims valid — both checks pass")
@@ -702,7 +663,7 @@ public class VerificationServiceImplTest {
         stub.setPresentationDefinitionService(pdService);
 
         VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
-        assertEquals(result.getStatus(), VerificationResult.VerificationStatus.VERIFIED);
+        assertTrue(result.isVerified());
     }
 
     @Test(description = "verifyAgainstDefinition: issuer passes but required claim missing — throws INVALID_CREDENTIAL")
@@ -717,13 +678,11 @@ public class VerificationServiceImplTest {
         VerificationServiceImpl stub = buildStubService(claims);
         stub.setPresentationDefinitionService(pdService);
 
-        try {
-            stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
-            fail("Expected VerificationClientException");
-        } catch (VerificationClientException e) {
-            assertEquals(e.getErrorCode(), VerificationErrorCode.INVALID_CREDENTIAL);
-            assertTrue(e.getMessage().contains("phone_number"));
-        }
+        VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
+        org.testng.Assert.assertFalse(result.isVerified());
+        org.testng.Assert.assertFalse(result.getErrors().isEmpty());
+        assertTrue(result.getErrors().get(0).contains("phone_number"));
+
     }
 
     // =========================================================================
@@ -743,7 +702,7 @@ public class VerificationServiceImplTest {
 
         VerificationResult result = stub.verify(buildSubmission(VerificationConstants.FORMAT_JWT), 1, validJwtToken);
 
-        assertEquals(result.getStatus(), VerificationResult.VerificationStatus.VERIFIED);
+        assertTrue(result.isVerified());
         assertNotNull(result.getVerifiedClaims());
         assertEquals(result.getVerifiedClaims().get("email"), "alice@example.com");
     }

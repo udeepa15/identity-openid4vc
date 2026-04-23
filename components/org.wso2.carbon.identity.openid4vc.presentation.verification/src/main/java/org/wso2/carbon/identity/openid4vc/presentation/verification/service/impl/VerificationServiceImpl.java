@@ -25,6 +25,7 @@ import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.component.annotations.ReferencePolicy;
 import org.wso2.carbon.identity.openid4vc.presentation.management.model.PresentationDefinition;
 import org.wso2.carbon.identity.openid4vc.presentation.management.service.PresentationDefinitionService;
+import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.PresentationMetadata;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.PresentationSubmission;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VerificationResult;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VerificationClientException;
@@ -94,49 +95,96 @@ public class VerificationServiceImpl implements VerificationService {
     public VerificationResult verify(PresentationSubmission submission, int tenantId, String vpToken)
             throws VerificationException {
 
-        validateRequest(submission, vpToken);
+        VerificationResult.Builder resultBuilder = new VerificationResult.Builder();
 
-        if (tenantId == MultitenantConstants.INVALID_TENANT_ID) {
-            throw new VerificationClientException(VerificationErrorCode.INVALID_VP_SUBMISSION,
-                    "Invalid tenant ID provided.");
-        }
-
-        String format = submission.getDescriptorMap().get(0).getFormat();
-        Verifier verifier = verifiers.stream()
-                .filter(v -> v.canHandle(format))
-                .findFirst()
-                .orElseThrow(() -> new VerificationClientException(VerificationErrorCode.INVALID_VP_FORMAT,
-                        "No verifier found for format: " + format));
-
-        Map<String, Object> verifiedClaims = verifier.handle(submission, tenantId, vpToken);
-        
-        if (presentationDefinitionService == null) {
-            throw new VerificationServerException(VerificationErrorCode.INTERNAL_SERVER_ERROR,
-                    "Presentation definition service is not available");
-        }
-//ToDo: do the presentation ID validation at the authenticator
-        PresentationDefinition definition;
         try {
-            definition = presentationDefinitionService.getPresentationDefinitionById(
-                    submission.getDefinitionId(), tenantId);
-            if (definition == null) {
-                throw new VerificationServerException(VerificationErrorCode.INTERNAL_SERVER_ERROR,
-                        "Presentation definition not found for ID: " + submission.getDefinitionId());
+            validateRequest(submission, vpToken);
+
+            if (tenantId == MultitenantConstants.INVALID_TENANT_ID) {
+                throw new VerificationClientException(VerificationErrorCode.INVALID_VP_SUBMISSION,
+                        "Invalid tenant ID provided.");
             }
-        } catch (VerificationException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new VerificationServerException(VerificationErrorCode.INTERNAL_SERVER_ERROR,
-                    "Error fetching presentation definition: " + e.getMessage(), e);
+
+            String format = submission.getDescriptorMap().get(0).getFormat();
+            Verifier verifier = verifiers.stream()
+                    .filter(v -> v.canHandle(format))
+                    .findFirst()
+                    .orElseThrow(() -> new VerificationClientException(VerificationErrorCode.INVALID_VP_FORMAT,
+                            "No verifier found for format: " + format));
+
+            Map<String, Object> verifiedClaims = verifier.handle(submission, tenantId, vpToken);
+            
+            if (presentationDefinitionService == null) {
+                throw new VerificationServerException(VerificationErrorCode.INTERNAL_SERVER_ERROR,
+                        "Presentation definition service is not available");
+            }
+            PresentationDefinition definition;
+            try {
+                definition = presentationDefinitionService.getPresentationDefinitionById(
+                        submission.getDefinitionId(), tenantId);
+                if (definition == null) {
+                    throw new VerificationServerException(VerificationErrorCode.INTERNAL_SERVER_ERROR,
+                            "Presentation definition not found for ID: " + submission.getDefinitionId());
+                }
+            } catch (VerificationException e) {
+                throw e;
+            } catch (Exception e) {
+                throw new VerificationServerException(VerificationErrorCode.INTERNAL_SERVER_ERROR,
+                        "Error fetching presentation definition: " + e.getMessage(), e);
+            }
+            
+            Map<String, Object> finalClaims = verifyAgainstDefinition(verifiedClaims, definition);
+            
+            PresentationMetadata metadata = extractMetadata(vpToken, format, finalClaims);
+            
+            resultBuilder.isVerified(true)
+                         .verifiedClaims(finalClaims)
+                         .metadata(metadata)
+                         .statusMessage("Verification successful");
+            return resultBuilder.build();
+
+        } catch (VerificationClientException e) {
+            return resultBuilder.isVerified(false)
+                                .addError(e.getMessage())
+                                .statusMessage("Verification failed")
+                                .build();
         }
-        //ToDo: remove the generic exception
-        Map<String, Object> finalClaims = verifyAgainstDefinition(verifiedClaims, definition);
-        
-        VerificationResult result = new VerificationResult();
-        result.setVerifiedClaims(finalClaims);
-        result.setStatus(VerificationResult.VerificationStatus.VERIFIED);
-        return result;
-        //ToDo: Modify the model (Auth0)
+    }
+
+    /**
+     * Extracts presentation metadata from the token and verified claims.
+     *
+     * @param vpToken The raw verifiable presentation token
+     * @param format The presentation format
+     * @param claims The verified claims map
+     * @return The extracted {@link PresentationMetadata}
+     */
+    private PresentationMetadata extractMetadata(String vpToken, String format, Map<String, Object> claims) {
+
+        PresentationMetadata.Builder builder = new PresentationMetadata.Builder()
+                .vpFormat(format)
+                .presentationTime(System.currentTimeMillis());
+
+        try {
+            com.nimbusds.jwt.SignedJWT parsedVp = com.nimbusds.jwt.SignedJWT.parse(vpToken);
+            if (parsedVp.getHeader() != null && parsedVp.getHeader().getAlgorithm() != null) {
+                builder.algorithm(parsedVp.getHeader().getAlgorithm().getName());
+            }
+        } catch (java.text.ParseException e) {
+            // Ignore parse exception as the token is already verified by this point
+        }
+
+        if (claims.containsKey(VerificationConstants.CLAIM_ISS)) {
+            builder.issuerDid(claims.get(VerificationConstants.CLAIM_ISS).toString());
+        }
+        if (claims.containsKey("nonce")) {
+            builder.nonce(claims.get("nonce").toString());
+        }
+        if (claims.containsKey(VerificationConstants.CLAIM_SUB)) {
+            builder.holderDid(claims.get(VerificationConstants.CLAIM_SUB).toString());
+        }
+
+        return builder.build();
     }
 
     /**
@@ -167,7 +215,7 @@ public class VerificationServiceImpl implements VerificationService {
                 }
                 String tokenIssuer = issClaimValue.toString();
                 String pdNormalized = normalizeIssuer(pdIssuer);
-                String tokenNormalized = normalizeIssuer(tokenIssuer);//ToDo: do not nomalize (use  asingle method)
+                String tokenNormalized = normalizeIssuer(tokenIssuer); //ToDo: do not nomalize (use  asingle method)
                 if (pdNormalized == null || tokenNormalized == null || !pdNormalized.equals(tokenNormalized)) {
                     throw new VerificationClientException(VerificationErrorCode.INVALID_CREDENTIAL,
                             "Issuer verification failed: token issuer '" + tokenIssuer
