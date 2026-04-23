@@ -40,10 +40,7 @@ import org.wso2.carbon.identity.openid4vc.presentation.verification.service.Veri
 import org.wso2.carbon.identity.openid4vc.presentation.verification.util.VerificationConstants;
 import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
 
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 /**

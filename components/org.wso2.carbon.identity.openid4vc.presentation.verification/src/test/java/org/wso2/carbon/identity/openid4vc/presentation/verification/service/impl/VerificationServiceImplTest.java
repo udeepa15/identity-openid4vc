@@ -339,10 +339,9 @@ public class VerificationServiceImplTest {
     // --- Issuer verification paths ---
     // Note: Issuer verification requires strict matching of host, port, and path components.
 
-    @Test(description = "verifyAgainstDefinition: did:web issuer matches https:// iss (same path) — passes")
+    @Test(description = "verifyAgainstDefinition: issuer matching with https:// iss — passes")
     public void testVerifyAgainstDefinition_didWebMatchesHttpsIss_passes() throws Exception {
-        // did:web:example.ngrok-free.app:oid4vci -> example.ngrok-free.app/oid4vci
-        PresentationDefinition pd = buildPd("did:web:example.ngrok-free.app:oid4vci", null);
+        PresentationDefinition pd = buildPd("https://example.ngrok-free.app/oid4vci", null);
         when(pdService.getPresentationDefinitionById(anyString(), anyInt())).thenReturn(pd);
 
         Map<String, Object> claims = new HashMap<>();
@@ -368,13 +367,13 @@ public class VerificationServiceImplTest {
         assertTrue(result.isVerified());
     }
 
-    @Test(description = "verifyAgainstDefinition: issuer host comparison is case-insensitive — passes")
+    @Test(description = "verifyAgainstDefinition: issuer host comparison — passes")
     public void testVerifyAgainstDefinition_issuerCaseInsensitive_passes() throws Exception {
-        PresentationDefinition pd = buildPd("did:web:EXAMPLE.NGROK-FREE.APP:oid4vci", null);
+        PresentationDefinition pd = buildPd("https://example.ngrok-free.app/oid4vci", null);
         when(pdService.getPresentationDefinitionById(anyString(), anyInt())).thenReturn(pd);
 
         Map<String, Object> claims = new HashMap<>();
-        claims.put("iss", "https://example.ngrok-free.app/oid4vci/ "); // Trailing space/slash handled
+        claims.put("iss", "https://example.ngrok-free.app/oid4vci");
         VerificationServiceImpl stub = buildStubService(claims);
         stub.setPresentationDefinitionService(pdService);
 
@@ -382,9 +381,9 @@ public class VerificationServiceImplTest {
         assertTrue(result.isVerified());
     }
 
-    @Test(description = "verifyAgainstDefinition: did:web with complex path — matches correctly")
+    @Test(description = "verifyAgainstDefinition: issuer with path — matches strictly")
     public void testVerifyAgainstDefinition_didWebWithPath_matchesStrictly() throws Exception {
-        PresentationDefinition pd = buildPd("did:web:example.ngrok-free.app:t:tenant1:oid4vci", null);
+        PresentationDefinition pd = buildPd("https://example.ngrok-free.app/t/tenant1/oid4vci", null);
         when(pdService.getPresentationDefinitionById(anyString(), anyInt())).thenReturn(pd);
 
         Map<String, Object> claims = new HashMap<>();
@@ -557,9 +556,9 @@ public class VerificationServiceImplTest {
 
     }
 
-    @Test(description = "verifyAgainstDefinition: port 80 is stripped for http — passes")
+    @Test(description = "verifyAgainstDefinition: port 80 is matching — passes")
     public void testVerifyAgainstDefinition_httpPort80Stripped_passes() throws Exception {
-        PresentationDefinition pd = buildPd("http://example.com", null);
+        PresentationDefinition pd = buildPd("http://example.com:80", null);
         when(pdService.getPresentationDefinitionById(anyString(), anyInt())).thenReturn(pd);
 
         Map<String, Object> claims = new HashMap<>();
@@ -653,7 +652,7 @@ public class VerificationServiceImplTest {
 
     @Test(description = "verifyAgainstDefinition: both issuer and claims valid — both checks pass")
     public void testVerifyAgainstDefinition_issuerAndClaimsBothValid_passes() throws Exception {
-        PresentationDefinition pd = buildPd("did:web:example.ngrok-free.app:oid4vci", Arrays.asList("email"));
+        PresentationDefinition pd = buildPd("https://example.ngrok-free.app/oid4vci", Arrays.asList("email"));
         when(pdService.getPresentationDefinitionById(anyString(), anyInt())).thenReturn(pd);
 
         Map<String, Object> claims = new HashMap<>();
@@ -668,7 +667,7 @@ public class VerificationServiceImplTest {
 
     @Test(description = "verifyAgainstDefinition: issuer passes but required claim missing — throws INVALID_CREDENTIAL")
     public void testVerifyAgainstDefinition_issuerPassesClaimMissing_throws() throws Exception {
-        PresentationDefinition pd = buildPd("did:web:example.ngrok-free.app:oid4vci",
+        PresentationDefinition pd = buildPd("https://example.ngrok-free.app/oid4vci",
                 Arrays.asList("phone_number"));
         when(pdService.getPresentationDefinitionById(anyString(), anyInt())).thenReturn(pd);
 
