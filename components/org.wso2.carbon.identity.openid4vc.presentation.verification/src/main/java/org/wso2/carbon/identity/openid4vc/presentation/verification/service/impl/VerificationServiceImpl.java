@@ -114,7 +114,7 @@ public class VerificationServiceImpl implements VerificationService {
             throw new VerificationServerException(VerificationErrorCode.INTERNAL_SERVER_ERROR,
                     "Presentation definition service is not available");
         }
-
+//ToDo: do the presentation ID validation at the authenticator
         PresentationDefinition definition;
         try {
             definition = presentationDefinitionService.getPresentationDefinitionById(
@@ -129,13 +129,14 @@ public class VerificationServiceImpl implements VerificationService {
             throw new VerificationServerException(VerificationErrorCode.INTERNAL_SERVER_ERROR,
                     "Error fetching presentation definition: " + e.getMessage(), e);
         }
-        
+        //ToDo: remove the generic exception
         Map<String, Object> finalClaims = verifyAgainstDefinition(verifiedClaims, definition);
         
         VerificationResult result = new VerificationResult();
         result.setVerifiedClaims(finalClaims);
         result.setStatus(VerificationResult.VerificationStatus.VERIFIED);
         return result;
+        //ToDo: Modify the model (Auth0)
     }
 
     /**
@@ -154,7 +155,7 @@ public class VerificationServiceImpl implements VerificationService {
         if (definition.getRequestedCredentials() == null) {
             return verifiedClaims;
         }
-
+//ToDo infor about the single VC
         for (PresentationDefinition.RequestedCredential req : definition.getRequestedCredentials()) {
 
             String pdIssuer = req.getIssuer();
@@ -166,14 +167,14 @@ public class VerificationServiceImpl implements VerificationService {
                 }
                 String tokenIssuer = issClaimValue.toString();
                 String pdNormalized = normalizeIssuer(pdIssuer);
-                String tokenNormalized = normalizeIssuer(tokenIssuer);
+                String tokenNormalized = normalizeIssuer(tokenIssuer);//ToDo: do not nomalize (use  asingle method)
                 if (pdNormalized == null || tokenNormalized == null || !pdNormalized.equals(tokenNormalized)) {
                     throw new VerificationClientException(VerificationErrorCode.INVALID_CREDENTIAL,
                             "Issuer verification failed: token issuer '" + tokenIssuer
                                     + "' does not match the expected issuer '" + pdIssuer + "'.");
                 }
             }
-
+//ToDo: string utils
             if (req.getClaims() != null && !req.getClaims().isEmpty()) {
                 for (String claim : req.getClaims()) {
                     if (!verifiedClaims.containsKey(claim)) {

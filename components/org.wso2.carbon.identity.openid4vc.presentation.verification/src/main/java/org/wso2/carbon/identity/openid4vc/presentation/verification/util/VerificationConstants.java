@@ -40,13 +40,15 @@ public class VerificationConstants {
 
     /**
      * Supported VP formats.
-     */
+     *///ToDo: use the VC common
     public static final String FORMAT_JWT = "jwt_vc";
     public static final String FORMAT_SD_JWT = "vc+sd-jwt";
 
     /**
      * Standard JWT claim names.
      */
+
+    //ToDo: use auth claims
     public static final String CLAIM_ISS = "iss";
     public static final String CLAIM_SUB = "sub";
     public static final String CLAIM_IAT = "iat";
@@ -55,7 +57,7 @@ public class VerificationConstants {
 
     /**
      * SD-JWT specific claim names.
-     */
+     *///ToDo: use the library
     public static final String CLAIM_SD = "_sd";
     public static final String CLAIM_SD_ALG = "_sd_alg";
 
