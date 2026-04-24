@@ -39,6 +39,7 @@ import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPCon
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.model.VPRequestStatus;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.VPAuthenticatorUtil;
+import org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VerificationResult;
 
 import java.io.IOException;
 import java.net.URLEncoder;
@@ -154,13 +155,11 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
             AuthenticationContext context) throws AuthenticationFailedException {
 
         // Use the framework-provided AuthenticationContext as the primary source.
+        //This contex is an alias under a new key 
         VPContext vpContext = getVPContext(context)
                 .orElseThrow(() -> new AuthenticationFailedException(
                         "No VP request context found in authentication context."));
-        //ToDo: move the claims getting here
-        org.wso2.carbon.identity.openid4vc.presentation.verification.dto.VerificationResult verificationResult =
-                vpContext.getVerificationResult();
-//ToDo: improve NUll check
+        VerificationResult verificationResult = vpContext.getVerificationResult();
         if (verificationResult == null || MapUtils.isEmpty(verificationResult.getVerifiedClaims())) {
             throw new AuthenticationFailedException("No verified claims found in context. "
                     + "Verification must have failed.");
@@ -190,9 +189,7 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
         // 5. Pass the RAW claims directly to the framework.
         Map<ClaimMapping, String> rawAttributes = new HashMap<>();
         for (Map.Entry<String, Object> entry : verifiedClaims.entrySet()) {
-            //ToDo: import
-            if (entry.getValue() != null && org.apache.commons.lang.StringUtils
-                    .isNotBlank(entry.getValue().toString())) {
+            if (entry.getValue() != null && StringUtils.isNotBlank(entry.getValue().toString())) {
                 String claimName = entry.getKey();
                 String claimValue = entry.getValue().toString();
 
@@ -504,10 +501,6 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
     }
 
     private Optional<VPContext> getVPContext(AuthenticationContext context) {
-
-        if (context == null) {
-            return Optional.empty();
-        }
 
         Object vpContextObj = context.getProperty(Constraints.CONTEXT_VP_CONTEXT);
         if (vpContextObj instanceof VPContext) {
