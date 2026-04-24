@@ -19,6 +19,7 @@
 package org.wso2.carbon.identity.openid4vc.presentation.authenticator.util;
 
 import org.apache.commons.lang.StringUtils;
+import org.wso2.carbon.context.PrivilegedCarbonContext;
 import org.wso2.carbon.identity.core.ServiceURLBuilder;
 import org.wso2.carbon.identity.core.URLBuilderException;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
@@ -45,13 +46,21 @@ public final class VPAuthenticatorUtil {
      * @return Tenant-aware base URL.
      * @throws VPAuthenticatorException If URL resolution fails.
      */
-    public static String resolveTenantAwareBaseUrl()
-            throws VPAuthenticatorException {
+    public static String resolveTenantAwareBaseUrl() throws VPAuthenticatorException {
 
         try {
-            return ServiceURLBuilder.create()
+            String baseUrl = ServiceURLBuilder.create()
                     .build(IdentityUtil.getHostName())
                     .getAbsolutePublicUrlWithoutPath();
+
+            String tenantDomain = PrivilegedCarbonContext.getThreadLocalCarbonContext().getTenantDomain();
+
+            if (tenantDomain != null && !Constraints.SUPER_TENANT_DOMAIN.equals(tenantDomain)) {
+                return baseUrl + Constraints.TENANT_PATH_PREFIX + tenantDomain;
+            }
+
+            return baseUrl;
+
         } catch (URLBuilderException e) {
             throw new VPAuthenticatorServerException(VPAuthenticatorErrorCode.INTERNAL_SERVER_ERROR,
                     "Error while resolving tenant-aware base URL.", e);

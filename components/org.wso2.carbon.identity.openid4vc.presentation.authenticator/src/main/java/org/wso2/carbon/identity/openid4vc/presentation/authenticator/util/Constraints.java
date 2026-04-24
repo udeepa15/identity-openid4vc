@@ -106,6 +106,8 @@ public class Constraints {
     public static final int DISPLAY_ORDER_5 = 5;
 
     public static final int SUPER_TENANT_ID_PLACEHOLDER = -1234;
+    public static final String SUPER_TENANT_DOMAIN = "carbon.super";
+    public static final String TENANT_PATH_PREFIX = "/t/";
     public static final String TENANT_DOMAIN_PATTERN = "^[a-zA-Z0-9._-]+$";
 
     /**
