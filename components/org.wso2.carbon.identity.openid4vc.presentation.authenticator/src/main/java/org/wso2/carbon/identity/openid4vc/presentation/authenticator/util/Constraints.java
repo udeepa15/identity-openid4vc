@@ -38,6 +38,7 @@ public class Constraints {
     public static final String PARAM_SESSION_DATA_KEY = "sessionDataKey";
     public static final String PARAM_CLIENT_ID = "clientId";
     public static final String PARAM_REQUEST_URI = "requestUri";
+    public static final String PARAM_TENANT_DOMAIN = "tenantDomain";
 
     /**
      * Session data and UI attribute keys.
