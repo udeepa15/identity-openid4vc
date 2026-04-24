@@ -32,6 +32,9 @@
     String clientId = request.getParameter("clientId");
     String requestUri = request.getParameter("requestUri");
 
+    // Manually grab the tenant domain from the URL
+    String tenantDomain = request.getParameter("tenantDomain");
+
     if (sessionDataKey == null) {
         Object v = request.getAttribute("openid4vp_ui_session_data_key");
         sessionDataKey = v instanceof String ? (String) v : null;
@@ -40,6 +43,12 @@
     if (sessionDataKey == null) {
         Object v = request.getSession().getAttribute("openid4vp_ui_session_data_key");
         sessionDataKey = v instanceof String ? (String) v : null;
+    }
+
+    // Build the tenant prefix (e.g., "/t/wallet-test")
+    String tenantPrefix = "";
+    if (tenantDomain != null && !tenantDomain.trim().isEmpty() && !"carbon.super".equals(tenantDomain)) {
+        tenantPrefix = "/t/" + Encode.forUriComponent(tenantDomain);
     }
 %>
 
@@ -226,8 +235,8 @@
                 clientId: '<%=clientId != null ? Encode.forJavaScript(clientId) : ""%>',
                 requestUri: '<%=requestUri != null ? Encode.forJavaScript(requestUri) : ""%>',
                 pollInterval: 5000,
-                // UPDATED: Dynamically injects tenant path and hits the API Identity endpoint
-                pollEndpoint: '<%= Encode.forJavaScriptBlock(identityServerEndpointContextParam) %>/api/identity/oid4vp/v1/vp-request/<%=Encode.forUriComponent(sessionDataKey != null ? sessionDataKey : "")%>/status'
+                // FOOLPROOF: Dynamically injects tenant path manually constructed from the query param
+                pollEndpoint: '<%= tenantPrefix %>/oid4vp/v1/vp-request/<%=Encode.forUriComponent(sessionDataKey != null ? sessionDataKey : "")%>/status'
             };
 
             var pollTimer = null;
