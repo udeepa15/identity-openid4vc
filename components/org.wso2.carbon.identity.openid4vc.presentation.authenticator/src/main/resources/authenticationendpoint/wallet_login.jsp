@@ -65,13 +65,7 @@
             <jsp:include page="includes/analytics.jsp"/>
         <% } %>
 
-        <!-- QRCode.js library -->
         <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-
-        <!--[if lt IE 9]>
-        <script src="js/html5shiv.min.js"></script>
-        <script src="js/respond.min.js"></script>
-        <![endif]-->
 
         <style>
             #qrcode {
@@ -218,7 +212,6 @@
             <jsp:include page="includes/footer.jsp"/>
         <% } %>
 
-        <!-- Hidden form for authentication callback -->
         <form id="authForm" style="display: none;" method="POST" action="<%=commonauthURL%>">
             <input type="hidden" name="sessionDataKey"
                 value='<%=Encode.forHtmlAttribute(sessionDataKey != null ? sessionDataKey : "")%>'>
@@ -233,7 +226,8 @@
                 clientId: '<%=clientId != null ? Encode.forJavaScript(clientId) : ""%>',
                 requestUri: '<%=requestUri != null ? Encode.forJavaScript(requestUri) : ""%>',
                 pollInterval: 5000,
-                pollEndpoint: '/oid4vp/v1/vp-request/<%=Encode.forUriComponent(sessionDataKey != null ? sessionDataKey : "")%>/status'
+                // UPDATED: Dynamically injects tenant path and hits the API Identity endpoint
+                pollEndpoint: '<%= Encode.forJavaScriptBlock(identityServerEndpointContextParam) %>/api/identity/oid4vp/v1/vp-request/<%=Encode.forUriComponent(sessionDataKey != null ? sessionDataKey : "")%>/status'
             };
 
             var pollTimer = null;
@@ -409,4 +403,3 @@
         </script>
     </body>
 </html>
-
