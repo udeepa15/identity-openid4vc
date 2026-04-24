@@ -26,7 +26,6 @@ import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.Ve
 import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VerificationException;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VerificationServerException;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.util.SignatureVerifier;
-import org.wso2.carbon.identity.openid4vc.presentation.verification.util.VerificationConstants;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.vcmodel.SdJwt;
 import org.wso2.carbon.identity.sdjwt.Disclosure;
 import org.wso2.carbon.identity.sdjwt.SDJWT;
@@ -116,10 +115,10 @@ public final class SdJwtVerifier implements Verifier {
     private Map<String, Object> getClaims(final SdJwt payload) {
         
         Map<String, Object> claims = new HashMap<>(payload.getAdditionalClaims());
-        claims.put(VerificationConstants.CLAIM_ISS, payload.getIss());
-        claims.put(VerificationConstants.CLAIM_SUB, payload.getSub());
-        claims.put(VerificationConstants.CLAIM_IAT, payload.getIat());
-        claims.put(VerificationConstants.CLAIM_EXP, payload.getExp());
+        claims.put(Constants.CLAIM_ISS, payload.getIss());
+        claims.put(Constants.CLAIM_SUB, payload.getSub());
+        claims.put(Constants.CLAIM_IAT, payload.getIat());
+        claims.put(Constants.CLAIM_EXP, payload.getExp());
         if (payload.getCnf() != null) {
             claims.put(SDJWTConstants.CLAIM_CNF, payload.getCnf());
         }

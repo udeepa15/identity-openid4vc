@@ -173,14 +173,14 @@ public class VerificationServiceImpl implements VerificationService {
             // Ignore parse exception as the token is already verified by this point
         }
 
-        if (claims.get(VerificationConstants.CLAIM_ISS) != null) {
-            builder.issuerDid(claims.get(VerificationConstants.CLAIM_ISS).toString());
+        if (claims.get(Constants.CLAIM_ISS) != null) {
+            builder.issuerDid(claims.get(Constants.CLAIM_ISS).toString());
         }
         if (claims.get("nonce") != null) {
             builder.nonce(claims.get("nonce").toString());
         }
-        if (claims.get(VerificationConstants.CLAIM_SUB) != null) {
-            builder.holderDid(claims.get(VerificationConstants.CLAIM_SUB).toString());
+        if (claims.get(Constants.CLAIM_SUB) != null) {
+            builder.holderDid(claims.get(Constants.CLAIM_SUB).toString());
         }
 
         return builder.build();
@@ -209,7 +209,7 @@ public class VerificationServiceImpl implements VerificationService {
 
         String pdIssuer = req.getIssuer();
         if (StringUtils.isNotBlank(pdIssuer)) {
-            Object issClaimValue = verifiedClaims.get(VerificationConstants.CLAIM_ISS);
+            Object issClaimValue = verifiedClaims.get(Constants.CLAIM_ISS);
             if (issClaimValue == null) {
                 throw new VerificationClientException(VerificationErrorCode.INVALID_CREDENTIAL,
                         "Issuer verification failed: 'iss' claim is missing from the VP token.");

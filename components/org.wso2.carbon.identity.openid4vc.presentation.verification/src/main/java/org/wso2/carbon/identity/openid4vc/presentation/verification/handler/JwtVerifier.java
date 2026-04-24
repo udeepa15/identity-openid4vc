@@ -26,7 +26,6 @@ import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.Ve
 import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VerificationException;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.exception.VerificationServerException;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.util.SignatureVerifier;
-import org.wso2.carbon.identity.openid4vc.presentation.verification.util.VerificationConstants;
 import org.wso2.carbon.identity.openid4vc.presentation.verification.vcmodel.Jwt;
 import org.wso2.carbon.identity.sdjwt.constant.SDJWTConstants;
 
@@ -97,10 +96,10 @@ public final class JwtVerifier implements Verifier {
     private Map<String, Object> getClaims(final Jwt payload) {
 
         Map<String, Object> claims = new HashMap<>(payload.getAdditionalClaims());
-        claims.put(VerificationConstants.CLAIM_ISS, payload.getIss());
-        claims.put(VerificationConstants.CLAIM_SUB, payload.getSub());
-        claims.put(VerificationConstants.CLAIM_IAT, payload.getIat());
-        claims.put(VerificationConstants.CLAIM_EXP, payload.getExp());
+        claims.put(Constants.CLAIM_ISS, payload.getIss());
+        claims.put(Constants.CLAIM_SUB, payload.getSub());
+        claims.put(Constants.CLAIM_IAT, payload.getIat());
+        claims.put(Constants.CLAIM_EXP, payload.getExp());
         if (payload.getCnf() != null) {
             claims.put(SDJWTConstants.CLAIM_CNF, payload.getCnf());
         }
@@ -134,19 +133,19 @@ public final class JwtVerifier implements Verifier {
 
         Map<String, Object> claims = jwt.getJWTClaimsSet().getClaims();
 
-        if (claims.containsKey(VerificationConstants.CLAIM_ISS)) {
-            model.setIss(claims.get(VerificationConstants.CLAIM_ISS).toString());
+        if (claims.containsKey(Constants.CLAIM_ISS)) {
+            model.setIss(claims.get(Constants.CLAIM_ISS).toString());
         }
-        if (claims.containsKey(VerificationConstants.CLAIM_IAT) 
+        if (claims.containsKey(Constants.CLAIM_IAT) 
                 && jwt.getJWTClaimsSet().getIssueTime() != null) {
             model.setIat(jwt.getJWTClaimsSet().getIssueTime().getTime());
         }
-        if (claims.containsKey(VerificationConstants.CLAIM_EXP) 
+        if (claims.containsKey(Constants.CLAIM_EXP) 
                 && jwt.getJWTClaimsSet().getExpirationTime() != null) {
             model.setExp(jwt.getJWTClaimsSet().getExpirationTime().getTime());
         }
-        if (claims.containsKey(VerificationConstants.CLAIM_SUB)) {
-            model.setSub(claims.get(VerificationConstants.CLAIM_SUB).toString());
+        if (claims.containsKey(Constants.CLAIM_SUB)) {
+            model.setSub(claims.get(Constants.CLAIM_SUB).toString());
         }
         if (claims.containsKey(SDJWTConstants.CLAIM_CNF)
                 && claims.get(SDJWTConstants.CLAIM_CNF) instanceof Map) {
@@ -154,10 +153,10 @@ public final class JwtVerifier implements Verifier {
         }
 
         Map<String, Object> additional = new HashMap<>(claims);
-        additional.remove(VerificationConstants.CLAIM_ISS);
-        additional.remove(VerificationConstants.CLAIM_IAT);
-        additional.remove(VerificationConstants.CLAIM_EXP);
-        additional.remove(VerificationConstants.CLAIM_SUB);
+        additional.remove(Constants.CLAIM_ISS);
+        additional.remove(Constants.CLAIM_IAT);
+        additional.remove(Constants.CLAIM_EXP);
+        additional.remove(Constants.CLAIM_SUB);
         additional.remove(SDJWTConstants.CLAIM_CNF);
         model.setAdditionalClaims(additional);
     }

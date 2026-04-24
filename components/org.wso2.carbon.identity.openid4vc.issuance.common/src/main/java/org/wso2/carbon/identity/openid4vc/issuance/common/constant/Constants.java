@@ -44,6 +44,10 @@ public class Constants {
     public static final String PROOF_TYPE = "proof_type";
     public static final String JWT_PROOF = "jwt";
     public static final String JWT_PROOF_TYPE = "openid4vci-proof+jwt";
+    public static final String CLAIM_ISS = "iss";
+    public static final String CLAIM_SUB = "sub";
+    public static final String CLAIM_IAT = "iat";
+    public static final String CLAIM_EXP = "exp";
     public static final int MAX_CLOCK_SKEW_SECONDS = 60;
     public static final int DEFAULT_NONCE_TTL_SECONDS = 300;
     public static final String NONCE = "nonce";

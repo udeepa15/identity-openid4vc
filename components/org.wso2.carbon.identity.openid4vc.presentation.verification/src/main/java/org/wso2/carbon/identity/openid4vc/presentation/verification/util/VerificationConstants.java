@@ -34,16 +34,6 @@ public class VerificationConstants {
     }
 
     /**
-     * Standard JWT claim names.
-     */
-
-    //ToDo: use auth claims
-    public static final String CLAIM_ISS = "iss";
-    public static final String CLAIM_SUB = "sub";
-    public static final String CLAIM_IAT = "iat";
-    public static final String CLAIM_EXP = "exp";
-
-    /**
      * DID prefixes.
      */
     public static final String DID_PREFIX = "did:";
