@@ -24,7 +24,6 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.owasp.encoder.Encode;
-import org.wso2.carbon.context.PrivilegedCarbonContext;
 import org.wso2.carbon.identity.application.authentication.framework.AbstractApplicationAuthenticator;
 import org.wso2.carbon.identity.application.authentication.framework.AuthenticatorFlowStatus;
 import org.wso2.carbon.identity.application.authentication.framework.FederatedApplicationAuthenticator;
@@ -66,7 +65,6 @@ import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.PARAM_REQUEST_URI;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.PARAM_SESSION_DATA_KEY;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.PARAM_STATUS;
-import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.PARAM_TENANT_DOMAIN;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.PARAM_VP_REQUEST_ID;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.PROP_CLIENT_ID;
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.PROP_PRESENTATION_DEFINITION_ID;
@@ -216,21 +214,19 @@ public class OpenID4VPAuthenticator extends AbstractApplicationAuthenticator
      * @return Redirect URI with encoded query parameters.
      */
     private String createRedirectURI(String requestId) throws VPAuthenticatorException {
-        
-        String baseUrl = VPAuthenticatorUtil.resolveTenantAwareBaseUrl();
+
+        String baseUrl = VPAuthenticatorUtil.resolveBaseUrl();
         String requestUri = baseUrl + Constraints.REQUEST_URI_ENDPOINT
                 + requestId;
         String clientId = VPAuthenticatorUtil.getClientId(baseUrl);
-        String tenantDomain = PrivilegedCarbonContext.getThreadLocalCarbonContext().getTenantDomain();
+        //String tenantDomain = PrivilegedCarbonContext.getThreadLocalCarbonContext().getTenantDomain();
 
         return WALLET_LOGIN_PAGE + "?"
                 + PARAM_SESSION_DATA_KEY + "=" + URLEncoder.encode(requestId, StandardCharsets.UTF_8)
                 + "&" + PARAM_CLIENT_ID + "="
                 + URLEncoder.encode(StringUtils.defaultString(clientId), StandardCharsets.UTF_8)
                 + "&" + PARAM_REQUEST_URI + "="
-                + URLEncoder.encode(StringUtils.defaultString(requestUri), StandardCharsets.UTF_8)
-                + "&" + PARAM_TENANT_DOMAIN + "="
-                + URLEncoder.encode(StringUtils.defaultString(tenantDomain), StandardCharsets.UTF_8);
+                + URLEncoder.encode(StringUtils.defaultString(requestUri), StandardCharsets.UTF_8);
     }
 
     /**

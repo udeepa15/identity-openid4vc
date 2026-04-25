@@ -23,13 +23,16 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.osgi.service.component.annotations.Component;
+import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorErrorCode;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorException;
 import org.wso2.carbon.identity.openid4vc.presentation.authenticator.exception.VPAuthenticatorServerException;
 import org.wso2.carbon.identity.openid4vc.presentation.common.constant.OpenID4VPConstants;
+import org.wso2.carbon.identity.openid4vc.presentation.common.util.OpenID4VPUtil;
 import org.wso2.carbon.identity.openid4vc.presentation.did.exception.DIDServerException;
 import org.wso2.carbon.identity.openid4vc.presentation.did.service.DIDDocumentService;
 import org.wso2.carbon.identity.openid4vc.presentation.did.service.impl.DIDDocumentServiceImpl;
+import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -48,14 +51,13 @@ import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util
 import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util.Constraints.TENANT_DOMAIN_PATTERN;
 
 /**
- * Servlet handling the /.well-known/did.json endpoint.
+ * Servlet handling the did.json endpoint for both super tenant and sub-tenants.
  *
  * <p>Serves the DID Document for WSO2 Identity Server using did:web method.
- * The DID will be: did:web:{domain} where domain is extracted from the request.
  * For example:</p>
  * <ul>
- *     <li>https://example.com/.well-known/did.json → did:web:example.com</li>
- *     <li>https://localhost:9443/.well-known/did.json → did:web:localhost%3A9443</li>
+ * <li>Super Tenant: https://example.com/.well-known/did.json → did:web:example.com</li>
+ * <li>Sub Tenant: https://example.com/t/wallet-test/did.json → did:web:example.com:t:wallet-test</li>
  * </ul>
  */
 @Component(
@@ -63,6 +65,7 @@ import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util
         immediate = true,
         property = {
                 "osgi.http.whiteboard.servlet.pattern=/.well-known/did.json",
+                "osgi.http.whiteboard.servlet.pattern=/did.json",
                 "osgi.http.whiteboard.servlet.name=OpenID4VPWellKnownDID",
                 "osgi.http.whiteboard.servlet.asyncSupported=true"
         }
@@ -79,9 +82,9 @@ public class WellKnownDIDServlet extends HttpServlet {
      */
     private static final Log LOG = LogFactory.getLog(WellKnownDIDServlet.class);
 
-     /**
-      * Service instance for DID document operations.
-      */
+    /**
+     * Service instance for DID document operations.
+     */
     private transient DIDDocumentService didDocumentService;
 
     /**
@@ -109,41 +112,65 @@ public class WellKnownDIDServlet extends HttpServlet {
             throws ServletException, IOException {
 
         try {
-            // Get tenant domain and ID from context.
-            String tenantDomain = org.wso2.carbon.identity.core.util.IdentityTenantUtil.getTenantDomainFromContext();
-            if (StringUtils.isBlank(tenantDomain) || !tenantDomain.matches(TENANT_DOMAIN_PATTERN)) {
-                tenantDomain = org.wso2.carbon.utils.multitenancy.MultitenantConstants.SUPER_TENANT_DOMAIN_NAME;
+            // 1. Resolve the Tenant Domain
+            String tenantDomain = IdentityTenantUtil.getTenantDomainFromContext();
+
+            // Failsafe: Extract tenant from URI if context is empty (common for unauthenticated OSGi endpoints)
+            String requestURI = request.getRequestURI();
+            if ((StringUtils.isBlank(tenantDomain) || !tenantDomain.matches(TENANT_DOMAIN_PATTERN))
+                    && requestURI.startsWith("/t/")) {
+                String[] parts = requestURI.split("/");
+                if (parts.length > 2) {
+                    tenantDomain = parts[2];
+                }
             }
+
+            if (StringUtils.isBlank(tenantDomain) || !tenantDomain.matches(TENANT_DOMAIN_PATTERN)) {
+                tenantDomain = MultitenantConstants.SUPER_TENANT_DOMAIN_NAME;
+            }
+
+            // 2. Resolve the Tenant ID
             int tenantId;
             try {
-                tenantId = org.wso2.carbon.identity.core.util.IdentityTenantUtil.getTenantId(tenantDomain);
+                tenantId = IdentityTenantUtil.getTenantId(tenantDomain);
             } catch (RuntimeException ex) {
                 LOG.debug("Falling back to super tenant ID placeholder for tenant domain: " + tenantDomain, ex);
                 tenantId = SUPER_TENANT_ID_PLACEHOLDER;
             }
 
-            // Dynamically construct domain with path for this tenant.
-            String baseUrl = org.wso2.carbon.identity.openid4vc.presentation.common.util.OpenID4VPUtil
-                    .getTenantAwareBaseUrl(tenantDomain);
+            // 3. Dynamically construct domain with path for this tenant.
+            String baseUrl = OpenID4VPUtil.getTenantAwareBaseUrl(tenantDomain);
             String domain = baseUrl.replace("https://", "").replace("http://", "");
             if (domain.endsWith("/")) {
                 domain = domain.substring(0, domain.length() - 1);
             }
 
-            // Generate DID document.
-            String didDocument = didDocumentService.getDIDDocument(domain, tenantId);
+            // W3C specs require colons (:) instead of slashes (/) for did:web paths.
+            // Example: "example.com/t/wallet-test" becomes "example.com:t:wallet-test"
+            domain = domain.replace("/", ":");
 
-            // Send response.
-            response.setContentType("application/did+json;charset=UTF-8");
-            response.setStatus(HttpServletResponse.SC_OK);
+            // 5. Generate DID document.
+            // Force tenant flow so KeyStoreManager loads the correct tenant's EdDSA keys
+            org.wso2.carbon.context.PrivilegedCarbonContext.startTenantFlow();
+            try {
+                org.wso2.carbon.context.PrivilegedCarbonContext.getThreadLocalCarbonContext()
+                        .setTenantDomain(tenantDomain, true);
 
-            // Add CORS headers.
-            addCORSHeaders(request, response);
+                String didDocument = didDocumentService.getDIDDocument(domain, tenantId);
 
-            writeResponse(response, didDocument);
+                // Send response.
+                response.setContentType("application/did+json;charset=UTF-8");
+                response.setStatus(HttpServletResponse.SC_OK);
+
+                // Add CORS headers.
+                addCORSHeaders(request, response);
+
+                writeResponse(response, didDocument);
+            } finally {
+                org.wso2.carbon.context.PrivilegedCarbonContext.endTenantFlow();
+            }
 
         } catch (DIDServerException e) {
-            // Extract the newly added DIDErrorCode details for better logging
             String errorCode = e.getCode() != null ? e.getCode() : "UNKNOWN_DID_ERROR";
             String errorDesc = e.getDescription() != null ? e.getDescription() : "No description available";
 
@@ -173,8 +200,8 @@ public class WellKnownDIDServlet extends HttpServlet {
                                    VPAuthenticatorException exception)
             throws IOException {
 
-         response.setContentType(OpenID4VPConstants.HTTP.CONTENT_TYPE_JSON + RESPONSE_CONTENT_TYPE_CHARSET_UTF_8);
-         response.setStatus(statusCode);
+        response.setContentType(OpenID4VPConstants.HTTP.CONTENT_TYPE_JSON + RESPONSE_CONTENT_TYPE_CHARSET_UTF_8);
+        response.setStatus(statusCode);
 
         JsonObject errorJson = new JsonObject();
         errorJson.addProperty(RESPONSE_ERROR, exception.getOAuth2ErrorCode());

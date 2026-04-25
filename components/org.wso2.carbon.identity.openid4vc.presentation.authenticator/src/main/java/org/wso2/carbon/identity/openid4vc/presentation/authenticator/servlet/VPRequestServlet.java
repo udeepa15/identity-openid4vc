@@ -58,8 +58,8 @@ import static org.wso2.carbon.identity.openid4vc.presentation.authenticator.util
  *
  * <p>Endpoints:</p>
  * <ul>
- *     <li>GET /api/identity/oid4vp/v1/vp-request/{requestId} - Get authorization request JWT.</li>
- *     <li>GET /api/identity/oid4vp/v1/vp-request/{requestId}/status - Get request status (with polling).</li>
+ *     <li>GET /oid4vp/v1/vp-request/{requestId} - Get authorization request JWT.</li>
+ *     <li>GET /oid4vp/v1/vp-request/{requestId}/status - Get request status (with polling).</li>
  * </ul>
  */
 @Component(

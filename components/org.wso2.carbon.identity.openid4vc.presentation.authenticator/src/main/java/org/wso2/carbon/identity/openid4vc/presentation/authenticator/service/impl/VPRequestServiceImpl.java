@@ -62,54 +62,24 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public class VPRequestServiceImpl extends VPRequestService {
 
-    /**
-     * Key for the presentation definition ID property.
-     */
     private static final String PROP_PRESENTATION_DEFINITION_ID = Constraints.PROP_PRESENTATION_DEFINITION_ID;
-
-    /**
-     * Default expiry time for VP requests in milliseconds (1 minutes).
-     */
     private static final long DEFAULT_EXPIRY_MS = 60000;
 
-    /**
-     * Holder for the PresentationDefinitionService reference.
-     */
     private final AtomicReference<PresentationDefinitionService> presentationDefinitionServiceRef;
-
-    /**
-     * Cached base URL for building URIs.
-     */
     private volatile String baseUrl;
 
     public VPRequestServiceImpl() {
-
         this.presentationDefinitionServiceRef =
                 new AtomicReference<>(VPServiceDataHolder.getPresentationDefinitionService());
     }
 
-    /**
-     * Constructor for dependency injection.
-     *
-     * @param presentationDefinitionService The presentation definition service.
-     * @param baseUrl                       The base URL for the server.
-     */
     public VPRequestServiceImpl(PresentationDefinitionService presentationDefinitionService,
-            String baseUrl) {
-
+                                String baseUrl) {
         this.presentationDefinitionServiceRef = new AtomicReference<>(presentationDefinitionService);
         this.baseUrl = baseUrl;
     }
 
-
-    /**
-     * Get the presentation definition service with initialization check.
-     *
-     * @return PresentationDefinitionService instance.
-     * @throws VPAuthenticatorException If the service is not initialized.
-     */
     private PresentationDefinitionService getPresentationDefinitionService() throws VPAuthenticatorException {
-
         PresentationDefinitionService service = presentationDefinitionServiceRef.get();
         if (service == null) {
             throw new VPAuthenticatorServerException(VPAuthenticatorErrorCode.INTERNAL_SERVER_ERROR,
@@ -133,10 +103,9 @@ public class VPRequestServiceImpl extends VPRequestService {
                     "No VP context found for request ID: " + requestId);
         }
 
-        // 1. Resolve basic configuration.
         String didMethod = Constraints.DEFAULT_DID_METHOD_WEB;
         String signingAlgorithm = OpenID4VPConstants.Verification.ALG_EDDSA;
-        String baseUrl = VPAuthenticatorUtil.resolveTenantAwareBaseUrl();
+        String baseUrl = VPAuthenticatorUtil.resolveBaseUrl();
 
         String clientId = VPAuthenticatorUtil.getClientId(baseUrl);
         String presentationDefinitionId = MapUtils.getString(context.getAuthenticatorProperties(),
@@ -148,15 +117,11 @@ public class VPRequestServiceImpl extends VPRequestService {
         }
 
         int tenantId = IdentityTenantUtil.getTenantId(context.getTenantDomain());
-
-        // 2. Resolve identifiers and timestamps.
         String nonce = UUID.randomUUID().toString();
         long expiresAt = System.currentTimeMillis() + DEFAULT_EXPIRY_MS;
 
-        // 3. Resolve and process presentation definition.
         String presentationDefinition = resolvePresentationDefinition(presentationDefinitionId, tenantId);
 
-        // 4. Build temporary request object for JWT generation.
         VPRequest vpRequest = new VPRequest.Builder()
                 .requestId(requestId)
                 .clientId(clientId)
@@ -175,18 +140,6 @@ public class VPRequestServiceImpl extends VPRequestService {
         return buildRequestObjectJwt(vpRequest, didMethod);
     }
 
-
-//ToDo : check with multi tenent
-
-
-    /**
-     * Resolve the presentation definition from ID or inline value.
-     *
-     * @param definitionId      The presentation definition ID.
-     * @param tenantId          The tenant ID.
-     * @return The resolution presentation definition JSON.
-     * @throws VPAuthenticatorException If an error occurs during resolution.
-     */
     private String resolvePresentationDefinition(final String definitionId,
                                                  final int tenantId)
             throws VPAuthenticatorException {
@@ -209,17 +162,6 @@ public class VPRequestServiceImpl extends VPRequestService {
                 "No presentation definition available.");
     }
 
-    /**
-     * Build the request object as a JWT.
-     *
-     * <p>Note: In production, this should be properly signed with the verifier's
-     * private key.</p>
-     *
-     * @param vpRequest         The VP request model.
-     * @param didMethod         The DID method to use.
-     * @return The signed request object JWT.
-     * @throws VPAuthenticatorException If an error occurs during JWT building.
-     */
     private String buildRequestObjectJwt(final VPRequest vpRequest,
                                          final String didMethod)
             throws VPAuthenticatorException {
@@ -228,7 +170,7 @@ public class VPRequestServiceImpl extends VPRequestService {
             DIDProvider provider = DIDProviderFactory.getProvider(didMethod);
             int tenantId = vpRequest.getTenantId();
             String activeBaseUrl = VPAuthenticatorUtil
-                    .resolveTenantAwareBaseUrl();
+                    .resolveBaseUrl();
 
             String did = provider.getDID(tenantId, activeBaseUrl);
             String keyId = provider.getSigningKeyId(tenantId, activeBaseUrl);
@@ -236,21 +178,28 @@ public class VPRequestServiceImpl extends VPRequestService {
             // Create claims set.
             com.nimbusds.jwt.JWTClaimsSet.Builder claimsBuilder =
                     new com.nimbusds.jwt.JWTClaimsSet.Builder()
-                    .issuer(did)
-                    .claim(OpenID4VPConstants.RequestParams.RESPONSE_TYPE,
-                            OpenID4VPConstants.Protocol.RESPONSE_TYPE_VP_TOKEN)
-                    .claim(OpenID4VPConstants.RequestParams.RESPONSE_MODE,
-                            vpRequest.getResponseMode())
-                    .claim(OpenID4VPConstants.RequestParams.RESPONSE_URI,
-                            vpRequest.getResponseUri())
-                    .claim(OpenID4VPConstants.RequestParams.NONCE,
-                            vpRequest.getNonce())
-                    .claim(OpenID4VPConstants.RequestParams.STATE,
-                            vpRequest.getRequestId())
-                    .claim(OpenID4VPConstants.RequestParams.CLIENT_ID,
-                            vpRequest.getClientId())
-                    .issueTime(new Date())
-                    .jwtID(UUID.randomUUID().toString());
+                            .issuer(did)
+                            .claim(OpenID4VPConstants.RequestParams.RESPONSE_TYPE,
+                                    OpenID4VPConstants.Protocol.RESPONSE_TYPE_VP_TOKEN)
+                            .claim(OpenID4VPConstants.RequestParams.RESPONSE_MODE,
+                                    vpRequest.getResponseMode())
+                            .claim(OpenID4VPConstants.RequestParams.RESPONSE_URI,
+                                    vpRequest.getResponseUri())
+                            .claim(OpenID4VPConstants.RequestParams.NONCE,
+                                    vpRequest.getNonce())
+                            .claim(OpenID4VPConstants.RequestParams.STATE,
+                                    vpRequest.getRequestId())
+
+                            // --- LISSI & EUDI WALLET COMPATIBILITY ---
+                            // Lissi strictly requires 'client_id_scheme'. Since WSO2 is signing
+                            // this request with a DID, we must explicitly declare the scheme as "did"
+                            // and use the DID itself as the client_id.
+                            .claim("client_id_scheme", "did")
+                            .claim(OpenID4VPConstants.RequestParams.CLIENT_ID, did)
+                            // ------------------------------------------
+
+                            .issueTime(new Date())
+                            .jwtID(UUID.randomUUID().toString());
 
             // Set expiration.
             Date exp = new Date(System.currentTimeMillis() + DEFAULT_EXPIRY_MS);
@@ -259,7 +208,6 @@ public class VPRequestServiceImpl extends VPRequestService {
             // Add presentation definition JSON object.
             JsonObject storedPdJson = JsonParser.parseString(
                     vpRequest.getPresentationDefinition()).getAsJsonObject();
-            // Convert to Map for Nimbus.
             @SuppressWarnings("unchecked")
             Map<String, Object> pdMap = new Gson()
                     .fromJson(storedPdJson, Map.class);
@@ -270,12 +218,17 @@ public class VPRequestServiceImpl extends VPRequestService {
             clientMetadata.put(Constraints.METADATA_CLIENT_NAME, did);
 
             Map<String, Object> vpFormats = new HashMap<>();
-
             Map<String, Object> vcSdJwt = new HashMap<>();
+
+            // --- LISSI & EUDI WALLET COMPATIBILITY ---
+            // European wallets heavily rely on Elliptic Curve (ES256) alongside EdDSA.
+            // We must declare support for both algorithms for SD-JWT presentations.
             vcSdJwt.put(Constraints.METADATA_SD_JWT_ALG_VALUES,
-                    Arrays.asList(Constraints.ALG_RS256, Constraints.ALG_EDDSA));
+                    Arrays.asList(Constraints.ALG_RS256, Constraints.ALG_EDDSA, "ES256"));
             vcSdJwt.put(Constraints.METADATA_KB_JWT_ALG_VALUES,
-                    Arrays.asList(Constraints.ALG_RS256, Constraints.ALG_EDDSA));
+                    Arrays.asList(Constraints.ALG_RS256, Constraints.ALG_EDDSA, "ES256"));
+            // ------------------------------------------
+
             vpFormats.put(Constraints.FORMAT_VC_SD_JWT, vcSdJwt);
 
             clientMetadata.put(Constraints.METADATA_VP_FORMATS, vpFormats);

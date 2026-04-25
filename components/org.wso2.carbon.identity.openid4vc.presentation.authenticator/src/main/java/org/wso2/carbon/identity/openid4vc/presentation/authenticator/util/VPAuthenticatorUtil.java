@@ -68,6 +68,24 @@ public final class VPAuthenticatorUtil {
     }
 
     /**
+     * Resolve base URL from framework utilities.
+     *
+     * @return Base URL without tenant prefix.
+     * @throws VPAuthenticatorException If URL resolution fails.
+     */
+    public static String resolveBaseUrl() throws VPAuthenticatorException {
+
+        try {
+            return ServiceURLBuilder.create()
+                    .build(IdentityUtil.getHostName())
+                    .getAbsolutePublicUrlWithoutPath();
+        } catch (URLBuilderException e) {
+            throw new VPAuthenticatorServerException(VPAuthenticatorErrorCode.INTERNAL_SERVER_ERROR,
+                    "Error while resolving base URL.", e);
+        }
+    }
+
+    /**
      * Get the client ID for the given base URL.
      *
      * @param baseUrl Base URL.
