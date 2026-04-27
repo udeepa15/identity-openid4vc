@@ -33,6 +33,7 @@ public class VerificationResult {
     private List<String> errors;
     private Map<String, Object> verifiedClaims;
     private PresentationMetadata metadata;
+    private boolean isPDVerified;
 
     public VerificationResult() {
         this.errors = new ArrayList<>();
@@ -45,6 +46,7 @@ public class VerificationResult {
         this.errors = builder.errors != null ? builder.errors : new ArrayList<>();
         this.verifiedClaims = builder.verifiedClaims != null ? builder.verifiedClaims : new HashMap<>();
         this.metadata = builder.metadata;
+        this.isPDVerified = builder.isPDVerified;
     }
 
     public boolean isVerified() {
@@ -87,6 +89,14 @@ public class VerificationResult {
         this.metadata = metadata;
     }
 
+    public boolean isPDVerified() {
+        return isPDVerified;
+    }
+
+    public void setPDVerified(boolean isPDVerified) {
+        this.isPDVerified = isPDVerified;
+    }
+
     /**
      * Builder class for VerificationResult.
      */
@@ -96,6 +106,7 @@ public class VerificationResult {
         private List<String> errors = new ArrayList<>();
         private Map<String, Object> verifiedClaims = new HashMap<>();
         private PresentationMetadata metadata;
+        private boolean isPDVerified;
 
         public Builder isVerified(boolean isVerified) {
             this.isVerified = isVerified;
@@ -124,6 +135,11 @@ public class VerificationResult {
 
         public Builder metadata(PresentationMetadata metadata) {
             this.metadata = metadata;
+            return this;
+        }
+
+        public Builder isPDVerified(boolean isPDVerified) {
+            this.isPDVerified = isPDVerified;
             return this;
         }
 

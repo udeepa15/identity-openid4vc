@@ -18,6 +18,11 @@
 
 package org.wso2.carbon.identity.openid4vc.presentation.verification.service.impl;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.JsonSyntaxException;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.osgi.service.component.annotations.Component;
@@ -104,15 +109,42 @@ public class VerificationServiceImpl implements VerificationService {
                         "Invalid tenant ID provided.");
             }
 
-            String format = submission.getDescriptorMap().get(0).getFormat();
+            String format;
+            String actualVpToken = vpToken;
+            boolean isSubmissionNull = (submission == null);
+
+            if (isSubmissionNull) {
+                try {
+                    JsonObject jsonObject = JsonParser.parseString(vpToken).getAsJsonObject();
+                    JsonArray sdJwtPidArray = jsonObject.getAsJsonArray("sd-jwt-pid");
+                    actualVpToken = sdJwtPidArray.get(0).getAsString();
+                    format = Constants.VC_SD_JWT_FORMAT;
+                } catch (Exception e) {
+                    throw new VerificationClientException(VerificationErrorCode.INVALID_VP_SUBMISSION,
+                            "Failed to parse sd-jwt-pid from VP token.", e);
+                }
+            } else {
+                format = submission.getDescriptorMap().get(0).getFormat();
+            }
+
             Verifier verifier = verifiers.stream()
                     .filter(v -> v.canHandle(format))
                     .findFirst()
                     .orElseThrow(() -> new VerificationClientException(VerificationErrorCode.INVALID_VP_FORMAT,
                             "No verifier found for format: " + format));
 
-            Map<String, Object> verifiedClaims = verifier.handle(submission, tenantId, vpToken);
+            Map<String, Object> verifiedClaims = verifier.handle(submission, tenantId, actualVpToken);
             
+            if (isSubmissionNull) {
+                PresentationMetadata metadata = extractMetadata(actualVpToken, format, verifiedClaims);
+                resultBuilder.isVerified(true)
+                             .verifiedClaims(verifiedClaims)
+                             .metadata(metadata)
+                             .isPDVerified(false)
+                             .statusMessage("Verification successful");
+                return resultBuilder.build();
+            }
+
             if (presentationDefinitionService == null) {
                 throw new VerificationServerException(VerificationErrorCode.INTERNAL_SERVER_ERROR,
                         "Presentation definition service is not available");
@@ -134,11 +166,12 @@ public class VerificationServiceImpl implements VerificationService {
             
             Map<String, Object> finalClaims = verifyAgainstDefinition(verifiedClaims, definition);
             
-            PresentationMetadata metadata = extractMetadata(vpToken, format, finalClaims);
+            PresentationMetadata metadata = extractMetadata(actualVpToken, format, finalClaims);
             
             resultBuilder.isVerified(true)
                          .verifiedClaims(finalClaims)
                          .metadata(metadata)
+                         .isPDVerified(true)
                          .statusMessage("Verification successful");
             return resultBuilder.build();
 
@@ -263,6 +296,9 @@ public class VerificationServiceImpl implements VerificationService {
 
         // --- Submission checks ---
         if (submission == null) {
+            if (isSdJwtPidFormat(vpToken)) {
+                return;
+            }
             throw new VerificationClientException(VerificationErrorCode.INVALID_VP_SUBMISSION,
                     "Presentation submission is null.");
         }
@@ -293,6 +329,20 @@ public class VerificationServiceImpl implements VerificationService {
         }
     }
  
+    private boolean isSdJwtPidFormat(String vpToken) {
+
+        try {
+            JsonElement element = JsonParser.parseString(vpToken);
+            if (element.isJsonObject()) {
+                JsonObject jsonObject = element.getAsJsonObject();
+                return jsonObject.has("sd-jwt-pid");
+            }
+        } catch (JsonSyntaxException e) {
+            return false;
+        }
+        return false;
+    }
+
      /**
       * OSGi bind callback that receives the active
       * {@link PresentationDefinitionService} reference.
