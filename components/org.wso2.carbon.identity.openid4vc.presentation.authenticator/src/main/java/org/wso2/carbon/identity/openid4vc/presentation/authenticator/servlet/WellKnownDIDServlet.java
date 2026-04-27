@@ -118,7 +118,7 @@ public class WellKnownDIDServlet extends HttpServlet {
             // Failsafe: Extract tenant from URI if context is empty (common for unauthenticated OSGi endpoints)
             String requestURI = request.getRequestURI();
             if ((StringUtils.isBlank(tenantDomain) || !tenantDomain.matches(TENANT_DOMAIN_PATTERN))
-                    && requestURI.startsWith("/t/")) {
+                    && StringUtils.isNotBlank(requestURI) && requestURI.startsWith("/t/")) {
                 String[] parts = requestURI.split("/");
                 if (parts.length > 2) {
                     tenantDomain = parts[2];

@@ -39,6 +39,7 @@ public class WellKnownDIDServletTest {
 
     @BeforeMethod
     public void setUp() throws Exception {
+        System.setProperty("carbon.home", "");
         MockitoAnnotations.openMocks(this);
         servlet = new WellKnownDIDServlet();
         
@@ -57,6 +58,7 @@ public class WellKnownDIDServletTest {
     public void tearDown() {
         mockedTenantUtil.close();
         mockedOpenID4VPUtil.close();
+        System.clearProperty("carbon.home");
     }
 
     @Test

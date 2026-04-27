@@ -87,7 +87,7 @@ public class Constraints {
     public static final String FORMAT_VC_SD_JWT = "vc+sd-jwt";
     public static final String METADATA_SD_JWT_ALG_VALUES = "sd-jwt_alg_values";
     public static final String METADATA_KB_JWT_ALG_VALUES = "kb-jwt_alg_values";
-    public static final String JOSE_TYPE_OAUTH_AUTHZ_REQ = "oauth-authz-req+jwt";
+    public static final String JOSE_TYPE_OAUTH_AUTHZ_REQ = "application/oauth-authz-req+jwt";
     public static final String ALG_RS256 = "RS256";
     public static final String ALG_EDDSA = "EdDSA";
 
