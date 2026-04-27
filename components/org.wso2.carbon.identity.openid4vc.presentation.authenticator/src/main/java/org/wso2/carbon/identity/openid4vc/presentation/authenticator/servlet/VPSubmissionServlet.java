@@ -155,17 +155,20 @@ public class VPSubmissionServlet extends HttpServlet {
             }
 
             try {
-                if (!validatePresentationDefinitionId(expectedDefinitionId,
-                        submission.getPresentationSubmission(), response)) {
-                    return;
-                }
+                PresentationSubmission presentationSubmission = null;
+                if (StringUtils.isNotBlank(submission.getPresentationSubmission())) {
+                    if (!validatePresentationDefinitionId(expectedDefinitionId,
+                            submission.getPresentationSubmission(), response)) {
+                        return;
+                    }
 
-                // Parse the presentation_submission string into the DTO.
-                Gson gson = new GsonBuilder()
-                        .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
-                        .create();
-                PresentationSubmission presentationSubmission = gson
-                        .fromJson(submission.getPresentationSubmission(), PresentationSubmission.class);
+                    // Parse the presentation_submission string into the DTO.
+                    Gson gson = new GsonBuilder()
+                            .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
+                            .create();
+                    presentationSubmission = gson
+                            .fromJson(submission.getPresentationSubmission(), PresentationSubmission.class);
+                }
  
                 VerificationResult verificationResult = VPServiceDataHolder
                         .getVerificationService()
@@ -250,13 +253,6 @@ public class VPSubmissionServlet extends HttpServlet {
             sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
                     new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
                             "Missing vp_token."));
-            return false;
-        }
-
-        if (StringUtils.isBlank(submission.getPresentationSubmission())) {
-            sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST,
-                    new VPAuthenticatorClientException(VPAuthenticatorErrorCode.INVALID_REQUEST,
-                            "Missing presentation submission parameter."));
             return false;
         }
 
