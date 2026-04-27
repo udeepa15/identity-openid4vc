@@ -25,6 +25,7 @@ import com.nimbusds.jose.JOSEObjectType;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.JWSObject;
+import com.nimbusds.jose.JWSSigner;
 import com.nimbusds.jose.Payload;
 import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jose.util.Base64;
@@ -177,21 +178,22 @@ public class VPRequestServiceImpl extends VPRequestService {
         try {
             DIDProvider provider = DIDProviderFactory.getProvider(didMethod);
             int tenantId = vpRequest.getTenantId();
-            String activeBaseUrl = VPAuthenticatorUtil.resolveBaseUrl();
 
-            String did = provider.getDID(tenantId, activeBaseUrl);
-            String keyId = provider.getSigningKeyId(tenantId, activeBaseUrl);
+            // Hardcoded DID details to match your hosted did.json
+            String hardcodedDid = "did:web:masked-unprofitably-ardith.ngrok-free.dev";
+            String hardcodedKeyId = "did:web:masked-unprofitably-ardith.ngrok-free.dev#ed25519";
 
-            // 1. Core Claims - 'state' must match WSO2 requestId for correlation
+            // 1. Core Claims - Strictly following OID4VP high-assurance profile
             JWTClaimsSet.Builder claimsBuilder = new JWTClaimsSet.Builder()
-                    .issuer(did)
+                    .issuer(hardcodedDid)
+                    .audience("https://self-issued.me/v2") // Added for standard wallet compatibility
                     .claim("response_type", "vp_token")
                     .claim("response_mode", "direct_post")
                     .claim("response_uri", vpRequest.getResponseUri())
                     .claim("nonce", vpRequest.getNonce())
                     .claim("state", vpRequest.getRequestId())
                     .claim("client_id_scheme", "did")
-                    .claim("client_id", did)
+                    .claim("client_id", hardcodedDid)
                     .issueTime(new Date())
                     .jwtID(UUID.randomUUID().toString());
 
@@ -202,7 +204,7 @@ public class VPRequestServiceImpl extends VPRequestService {
             Map<String, Object> pdMap = new Gson().fromJson(storedPdJson, Map.class);
             claimsBuilder.claim("presentation_definition", pdMap);
 
-            // 3. DCQL Query Structure (Modern Wallets like Lissi)
+            // 3. DCQL Query Structure (Critical for Lissi/Inji UI rendering)
             Map<String, Object> dcqlQuery = new HashMap<>();
             List<Map<String, Object>> credentials = new ArrayList<>();
             Map<String, Object> cred = new HashMap<>();
@@ -238,114 +240,28 @@ public class VPRequestServiceImpl extends VPRequestService {
             vpFormats.put("vc+sd-jwt", dcSdJwt);
             clientMetadata.put("vp_formats", vpFormats);
 
-            // Modern key for EUDI Profile
+            // Modern key for EUDI/Lissi Profile
             clientMetadata.put("vp_formats_supported", vpFormats);
 
             claimsBuilder.claim("client_metadata", clientMetadata);
 
-            // 5. Header Fix: Explicitly set Type for Inji compatibility
+            // 5. Header: Using the hardcoded Key ID from your did.json
             JWSHeader header = new JWSHeader.Builder(provider.getSigningAlgorithm())
-                    .keyID(keyId)
+                    .keyID(hardcodedKeyId) // Exactly matches the "id" in your verificationMethod
                     .type(new JOSEObjectType("application/oauth-authz-req+jwt"))
                     .build();
 
             JWSObject jwsObject = new JWSObject(header, new Payload(claimsBuilder.build().toJSONObject()));
-            jwsObject.sign(provider.getSigner(tenantId));
+
+            // Sign using provider logic
+            JWSSigner signer = provider.getSigner(tenantId);
+            jwsObject.sign(signer);
 
             return jwsObject.serialize();
 
         } catch (Exception e) {
             throw new VPAuthenticatorServerException(VPAuthenticatorErrorCode.SIGNING_ERROR,
-                    "Inji-optimized JWT build failed", e);
-        }
-    }
-
-    private String buildRequestObjectJwtWithX5c(final VPRequest vpRequest)
-            throws VPAuthenticatorException {
-
-        try {
-            int tenantId = vpRequest.getTenantId();
-            String clientId = vpRequest.getClientId();
-
-            KeyStoreManager keyStoreManager = KeyStoreManager.getInstance(tenantId);
-            X509Certificate certificate = keyStoreManager.getDefaultPrimaryCertificate();
-            PrivateKey privateKey = keyStoreManager.getDefaultPrivateKey();
-
-            List<Base64> x5cList = new ArrayList<>();
-            x5cList.add(Base64.encode(certificate.getEncoded()));
-
-            // 1. Core Claims - 'state' must match WSO2 requestId for correlation
-            JWTClaimsSet.Builder claimsBuilder = new JWTClaimsSet.Builder()
-                    .issuer(clientId)
-                    .claim("response_type", "vp_token")
-                    .claim("response_mode", "direct_post")
-                    .claim("response_uri", vpRequest.getResponseUri())
-                    .claim("nonce", vpRequest.getNonce())
-                    .claim("state", vpRequest.getRequestId())
-                    .claim("client_id_scheme", "x509_san_dns")
-                    .claim("client_id", clientId)
-                    .issueTime(new Date())
-                    .jwtID(UUID.randomUUID().toString());
-
-            claimsBuilder.expirationTime(new Date(System.currentTimeMillis() + DEFAULT_EXPIRY_MS));
-
-            // 2. DIF Presentation Definition
-            JsonObject storedPdJson = JsonParser.parseString(vpRequest.getPresentationDefinition()).getAsJsonObject();
-            Map<String, Object> pdMap = new Gson().fromJson(storedPdJson, Map.class);
-            claimsBuilder.claim("presentation_definition", pdMap);
-
-            // 3. DCQL Query Structure (Modern Wallets like Lissi)
-            Map<String, Object> dcqlQuery = new HashMap<>();
-            List<Map<String, Object>> credentials = new ArrayList<>();
-            Map<String, Object> cred = new HashMap<>();
-            cred.put("id", "credential_query_1");
-            cred.put("format", "dc+sd-jwt");
-
-            Map<String, Object> meta = new HashMap<>();
-            meta.put("vct_values", Arrays.asList("NIC"));
-            cred.put("meta", meta);
-
-            List<Map<String, Object>> claimsList = new ArrayList<>();
-            Map<String, Object> emailClaim = new HashMap<>();
-            emailClaim.put("id", "email");
-            emailClaim.put("path", Arrays.asList("email"));
-            claimsList.add(emailClaim);
-            cred.put("claims", claimsList);
-
-            credentials.add(cred);
-            dcqlQuery.put("credentials", credentials);
-            claimsBuilder.claim("dcql_query", dcqlQuery);
-
-            // 4. Client Metadata
-            Map<String, Object> clientMetadata = new HashMap<>();
-            clientMetadata.put("client_name", "WSO2 Verifier");
-
-            List<String> algs = Arrays.asList("EdDSA", "ES256", "RS256");
-            Map<String, Object> dcSdJwt = new HashMap<>();
-            dcSdJwt.put("sd-jwt_alg_values", algs);
-            dcSdJwt.put("kb-jwt_alg_values", algs);
-
-            Map<String, Object> vpFormats = new HashMap<>();
-            vpFormats.put("vc+sd-jwt", dcSdJwt);
-            clientMetadata.put("vp_formats", vpFormats);
-            clientMetadata.put("vp_formats_supported", vpFormats);
-
-            claimsBuilder.claim("client_metadata", clientMetadata);
-
-            // 5. Header setup with x5c and RS256
-            JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.RS256)
-                    .type(new JOSEObjectType("oauth-authz-req+jwt"))
-                    .x509CertChain(x5cList)
-                    .build();
-
-            JWSObject jwsObject = new JWSObject(header, new Payload(claimsBuilder.build().toJSONObject()));
-            jwsObject.sign(new RSASSASigner(privateKey));
-
-            return jwsObject.serialize();
-
-        } catch (Exception e) {
-            throw new VPAuthenticatorServerException(VPAuthenticatorErrorCode.SIGNING_ERROR,
-                    "x5c JWT build failed", e);
+                    "Inji-optimized JWT build failed with hardcoded DID", e);
         }
     }
 
